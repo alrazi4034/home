@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>إدخال الخطة الأسبوعية - المعلم</title>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px 10px 90px; background:#F3ECDA; font-family:'IBM Plex Sans Arabic',sans-serif; color:#222;}
+  .wrap{max-width:1100px; margin:0 auto;}
+  h1{font-size:19px; margin:4px 0 18px; text-align:center; font-family:'El Messiri',sans-serif; font-weight:600;}
+
+  .card{background:#fff; border:1px solid #D6C9A3; border-radius:10px; padding:16px 18px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+  .card h2{font-size:14px; margin:0 0 12px; color:#7C9A72; border-bottom:1px solid #EEE; padding-bottom:8px; font-family:'El Messiri',sans-serif; font-weight:600;}
+
+  .row{display:flex; flex-wrap:wrap; gap:14px;}
+  .field{flex:1; min-width:160px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:#555; margin-bottom:5px;}
+  select, input[type=text], input[type=number]{
+    width:100%; padding:9px 10px; border:1px solid #D6C9A3; border-radius:6px;
+    font-family:'IBM Plex Sans Arabic',sans-serif; font-size:14px; background:#fff;
+  }
+  .sections{display:flex; gap:10px; flex-wrap:wrap;}
+  .sections label{display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; background:#F5F2E8; padding:7px 12px; border-radius:6px; cursor:pointer; border:1px solid #D6C9A3;}
+  .sections input{width:auto;}
+  .week-info{font-size:12.5px; color:#666; margin-top:6px;}
+  .week-info b{color:#C97B5A;}
+
+  /* ===== Grid ===== */
+  table{width:100%; border-collapse:collapse; table-layout:fixed; margin-top:8px;}
+  thead th{background:#7C9A72; color:#fff; padding:8px 4px; font-size:13px; text-align:center; border:1px solid #5F7A57; font-family:'El Messiri',sans-serif; font-weight:600;}
+  thead th .en{display:block; font-size:10px; opacity:0.85;}
+  tbody td.row-label{font-size:12.5px; font-weight:700; text-align:center; vertical-align:middle; padding:6px; width:15%;}
+  tbody td.row-label .en{display:block; font-size:10px; font-weight:600; color:#777;}
+  tbody td.cell{border:1px solid #D6C9A3; padding:0; vertical-align:top;}
+  tbody td.cell textarea{
+    width:100%; height:90px; border:none; resize:vertical; padding:8px;
+    font-family:'IBM Plex Sans Arabic',sans-serif; font-size:12.5px; outline:none;
+  }
+  tbody td.cell textarea:focus{background:#FFFDF2;}
+
+  /* ===== Mini schedule table (non-daily) ===== */
+  .mini-wrap{margin-top:14px;}
+  .mini-wrap h3{font-size:13px; color:#555; margin:0 0 8px;}
+  table.mini{width:auto; min-width:260px;}
+  table.mini th, table.mini td{border:1px solid #D6C9A3; padding:6px 10px; font-size:12.5px; text-align:center;}
+  table.mini th{background:#F0ECDD;}
+  table.mini select{padding:4px 6px; font-size:12px;}
+
+  /* ===== Exam ===== */
+  .exam-row{display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+  .exam-day{background:#F5E9E7; color:#C97B5A; font-weight:700; padding:8px 14px; border-radius:6px; font-size:13.5px;}
+  select.exam-day-select{background:#F5E9E7; color:#C97B5A; font-weight:700; padding:8px 14px; border-radius:6px; font-size:13.5px; border:1px solid #E7D2C4; font-family:'IBM Plex Sans Arabic',sans-serif;}
+  .exam-warning{
+    margin-top:10px; background:#FFF4E0; border:1px solid #E8C27A; color:#8A5A1E;
+    padding:10px 14px; border-radius:6px; font-size:13px; line-height:1.7; font-weight:600;
+  }
+  .exam-toggle{display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600;}
+  textarea.exam-detail{width:100%; margin-top:8px; min-height:50px; padding:8px; border:1px solid #D6C9A3; border-radius:6px; font-family:'IBM Plex Sans Arabic',sans-serif; font-size:13px;}
+  textarea.exam-detail:disabled{background:#F3F1EA; color:#999;}
+
+  .btn{
+    font-family:'IBM Plex Sans Arabic',sans-serif; font-size:15px; font-weight:700;
+    padding:12px 26px; border-radius:8px; border:none;
+    background:#7C9A72; color:#fff; cursor:pointer;
+  }
+  .btn:hover{background:#5F7A57;}
+  .footbar{max-width:1100px; margin:10px auto; text-align:center;}
+  .note{font-size:12px; color:#888; margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="text-align:left; margin-bottom:6px;">
+    <button type="button" id="langToggle" style="padding:6px 14px; font-size:12.5px; border-radius:6px; border:1px solid #7C9A72; background:#fff; color:#7C9A72; font-weight:700; cursor:pointer;">English</button>
+  </div>
+  <h1 data-i18n="title">نموذج إدخال الخطة الأسبوعية — للمعلم</h1>
+
+  <div class="card" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+    <strong style="font-size:13.5px;" data-i18n="importLabel">استيراد خطة سابقة للتعديل عليها:</strong>
+    <input type="file" id="importInput" accept=".json" style="display:none;">
+    <button type="button" data-i18n="importBtn" style="padding:8px 16px; font-size:13px; border-radius:6px; border:1px solid #7C9A72; background:#fff; color:#7C9A72; font-weight:700; cursor:pointer;" onclick="document.getElementById('importInput').click()">اختيار ملف JSON</button>
+    <span id="importStatus" style="font-size:12.5px; color:#7C9A72;"></span>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="basicInfo">بيانات أساسية</h2>
+    <div class="row">
+      <div class="field">
+        <label data-i18n="subject">المادة</label>
+        <select id="subject"></select>
+      </div>
+      <div class="field">
+        <label data-i18n="grade">الصف</label>
+        <select id="grade"></select>
+      </div>
+      <div class="field">
+        <label data-i18n="teacherName">اسم المعلم</label>
+        <input type="text" id="teacherName" data-i18n-ph="teacherNamePh" placeholder="اكتب اسمك">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field">
+        <label data-i18n="sections">الشعب (يمكن اختيار أكثر من شعبة)</label>
+        <div class="sections" id="sectionsBox"></div>
+      </div>
+      <div class="field">
+        <label data-i18n="frequency">عدد الحصص أسبوعيًا</label>
+        <select id="frequency">
+          <option value="5" data-i18n="freq5">يومي (5 حصص: الاثنين - الجمعة)</option>
+          <option value="4" data-i18n="freq4">4 حصص أسبوعيًا</option>
+          <option value="3" data-i18n="freq3">3 حصص أسبوعيًا</option>
+          <option value="2" data-i18n="freq2">حصتان أسبوعيًا</option>
+          <option value="1" data-i18n="freq1">حصة واحدة أسبوعيًا</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="weekNum">رقم الأسبوع</label>
+        <input type="number" id="weekNum" min="1" max="20" value="1">
+        <div class="week-info"><span data-i18n="dateLabel">التاريخ:</span> <b id="dateRange" dir="ltr">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="lessonPlan">خطة الدروس</h2>
+    <div id="gridArea"></div>
+    <div id="miniArea" class="mini-wrap" style="display:none;"></div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="exams">الاختبارات</h2>
+    <div class="exam-row">
+      <span data-i18n="examDayLabel">يوم اختبار هذه المادة:</span>
+      <select id="examDay" class="exam-day-select"></select>
+      <label class="exam-toggle"><input type="checkbox" id="hasExam"> <span data-i18n="hasExamLabel">يوجد اختبار هذا الأسبوع</span></label>
+    </div>
+    <div id="examDayWarning" class="exam-warning" style="display:none;"></div>
+    <textarea class="exam-detail" id="examDetail" data-i18n-ph="examDetailPh" placeholder="تفاصيل الاختبار (المنهج، الصفحات...)" disabled></textarea>
+  </div>
+
+  <div class="footbar">
+    <button class="btn" onclick="exportJSON()" data-i18n="exportBtn">تصدير الملف (JSON)</button>
+    <div class="note" data-i18n="exportNote">سيتم تنزيل ملف باسم الأسبوع والمادة والصف والشعب — أرسله للمنسق كما هو، بدون تعديل اسمه.</div>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   الترجمة (زر تحويل اللغة) — تُترجم واجهة النموذج فقط، وليس أسماء المواد
+   أو الأيام أو محتوى الخطة نفسه، لأنها تُحفظ كما هي بملف JSON وتظهر لاحقًا
+   بالمستند النهائي العربي بغض النظر عن لغة واجهة الإدخال
+   ====================================================================== */
+let currentLang = 'ar';
+const I18N = {
+  ar: {
+    title:'نموذج إدخال الخطة الأسبوعية — للمعلم', importLabel:'استيراد خطة سابقة للتعديل عليها:',
+    importBtn:'اختيار ملف JSON', basicInfo:'بيانات أساسية', subject:'المادة', grade:'الصف',
+    teacherName:'اسم المعلم', teacherNamePh:'اكتب اسمك', sections:'الشعب (يمكن اختيار أكثر من شعبة)',
+    frequency:'عدد الحصص أسبوعيًا', freq5:'يومي (5 حصص: الاثنين - الجمعة)', freq4:'4 حصص أسبوعيًا',
+    freq3:'3 حصص أسبوعيًا', freq2:'حصتان أسبوعيًا', freq1:'حصة واحدة أسبوعيًا', weekNum:'رقم الأسبوع',
+    dateLabel:'التاريخ:', lessonPlan:'خطة الدروس', exams:'الاختبارات', examDayLabel:'يوم اختبار هذه المادة:',
+    hasExamLabel:'يوجد اختبار هذا الأسبوع', examDetailPh:'تفاصيل الاختبار (المنهج، الصفحات...)',
+    exportBtn:'تصدير الملف (JSON)',
+    exportNote:'سيتم تنزيل ملف باسم الأسبوع والمادة والصف والشعب — أرسله للمنسق كما هو، بدون تعديل اسمه.',
+    section:'شعبة', miniHeading:'حدد اليوم الفعلي لكل حصة أسبوعية حسب كل شعبة:',
+    needSection:'رجاءً اختر شعبة واحدة على الأقل', needTeacher:'رجاءً اكتب اسم المعلم',
+    badFile:'ملف غير صالح أو تالف', imported:'✓ تم استيراد: ', langBtn:'English'
+  },
+  en: {
+    title:'Weekly Lesson Plan — Teacher Input', importLabel:'Import a previous plan to edit:',
+    importBtn:'Choose JSON File', basicInfo:'Basic Information', subject:'Subject', grade:'Grade',
+    teacherName:'Teacher Name', teacherNamePh:'Enter your name', sections:'Sections (you can select more than one)',
+    frequency:'Periods per Week', freq5:'Daily (5 periods: Mon - Fri)', freq4:'4 periods a week',
+    freq3:'3 periods a week', freq2:'2 periods a week', freq1:'1 period a week', weekNum:'Week Number',
+    dateLabel:'Date:', lessonPlan:'Lesson Plan', exams:'Exams', examDayLabel:'Exam day for this subject:',
+    hasExamLabel:'There is an exam this week', examDetailPh:'Exam details (syllabus, pages...)',
+    exportBtn:'Export File (JSON)',
+    exportNote:'A file named after the week, subject, grade, and sections will download — send it to the coordinator as-is, without renaming it.',
+    section:'Section', miniHeading:'Set the actual weekday for each weekly period, per section:',
+    needSection:'Please select at least one section', needTeacher:'Please enter the teacher name',
+    badFile:'Invalid or corrupted file', imported:'✓ Imported: ', langBtn:'العربية'
+  }
+};
+function t(key){ return (I18N[currentLang] && I18N[currentLang][key]) || key; }
+
+function applyLang(lang){
+  currentLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPh); });
+  document.getElementById('langToggle').textContent = t('langBtn');
+  document.querySelectorAll('.sec-lbl-text').forEach(el=>{ el.textContent = t('section') + ' ' + el.dataset.i; });
+  if(typeof rebuildGradeOptions === 'function') rebuildGradeOptions();
+  if(typeof rebuildExamDayOptions === 'function') rebuildExamDayOptions();
+  if(typeof checkExamDayConflict === 'function') checkExamDayConflict();
+  if(typeof buildMiniTable === 'function') buildMiniTable(); // يعيد رسم الجدول الفرعي وخياراته بنفس اللغة (بدون مسح الجدول الرئيسي)
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const btn = document.getElementById('langToggle');
+  if(btn) btn.addEventListener('click', ()=> applyLang(currentLang === 'ar' ? 'en' : 'ar'));
+});
+/* ====================================================================== */
+
+/* ======================================================================
+   إعدادات قابلة للتعديل — عدّل هنا فقط عند تغيّر المواد/الصفوف/التواريخ
+   ====================================================================== */
+const SUBJECTS = [
+  "التربية الإسلامية","اللغة العربية","English","الرياضيات",
+  "العلوم","الدراسات الاجتماعية","اللغة الفرنسية","AI & Technology"
+];
+
+/* ┌──────────────────────────────────────────────────────────────────┐
+   │  رمز كل مادة يُستخدم باسم ملف JSON الناتج (week_N_code_GX_شعب)   │
+   └──────────────────────────────────────────────────────────────────┘ */
+const SUBJECT_CODES = {
+  "التربية الإسلامية":"islamic",
+  "اللغة العربية":"arabic",
+  "English":"english",
+  "العلوم":"science",
+  "الرياضيات":"math",
+  "الدراسات الاجتماعية":"social",
+  "AI & Technology":"AIT",
+  "اللغة الفرنسية":"french"
+};
+const GRADES = [
+  {v:5, ar:"الخامس", en:"Grade 5"}, {v:6, ar:"السادس", en:"Grade 6"},
+  {v:7, ar:"السابع", en:"Grade 7"}, {v:8, ar:"الثامن", en:"Grade 8"}
+];
+const SECTIONS_PER_GRADE = 4; // عدد الشعب لكل صف (1 إلى هذا الرقم)
+
+// تاريخ بداية الأسبوع الأول من الفصل الدراسي الأول (يوم الاثنين)
+const SEMESTER1_WEEK1_MONDAY = "2026-08-31";
+
+/* ┌──────────────────────────────────────────────────────────────────┐
+   │  ✏️  هنا فقط: اليوم "المقترح" افتراضيًا لكل مادة (يظهر تلقائي     │
+   │      عند اختيار المادة، والمعلم يقدر يغيّره — النظام ينبّهه فقط   │
+   │      لو تعارض مع مادة ثانية). يجب يطابق نفس الأيام بالضبط في     │
+   │      EXAM_TABLE_STRUCTURE داخل ملف coordinator-tool.html          │
+   └──────────────────────────────────────────────────────────────────┘ */
+const EXAM_DAY_POLICY = {
+  "اللغة العربية":"الاثنين",
+  "الدراسات الاجتماعية":"الاثنين",
+  "التربية الإسلامية":"الثلاثاء",
+  "English":"الثلاثاء",
+  "العلوم":"الأربعاء",
+  "الرياضيات":"الخميس",
+  "اللغة الفرنسية":"الجمعة",
+  "AI & Technology":"الجمعة"
+};
+/* ====================================================================== */
+
+const WEEKDAYS_AR = ["الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
+const WEEKDAYS_EN = ["Mon","Tue","Wed","Thu","Fri"];
+// أسماء الأيام الكاملة بالإنجليزية — تُستخدم للعرض فقط عند التبديل للإنجليزية.
+// القيمة المخزّنة فعليًا بالبيانات تبقى دائمًا بالعربي (الاثنين، الثلاثاء...) بغض النظر عن لغة الواجهة
+const WEEKDAYS_EN_FULL = {
+  "الاثنين":"Monday", "الثلاثاء":"Tuesday", "الأربعاء":"Wednesday", "الخميس":"Thursday", "الجمعة":"Friday"
+};
+const PERIOD_LABELS = ["الحصة الأسبوعية الأولى","الحصة الأسبوعية الثانية","الحصة الأسبوعية الثالثة","الحصة الأسبوعية الرابعة"];
+const ROW_DEFS = [
+  {key:"topic", ar:"عنوان الدرس", en:"Lesson Topic"},
+  {key:"outcomes", ar:"نواتج التعلم", en:"Learning Outcomes"},
+  {key:"homework", ar:"التكليفات والواجبات", en:"Homework"}
+];
+
+// ---------- تهيئة القوائم ----------
+const subjectSel = document.getElementById('subject');
+SUBJECTS.forEach(s=>{
+  const o = document.createElement('option'); o.value=s; o.textContent=s;
+  subjectSel.appendChild(o);
+});
+
+const gradeSel = document.getElementById('grade');
+function rebuildGradeOptions(){
+  const currentVal = gradeSel.value;
+  gradeSel.innerHTML = '';
+  GRADES.forEach(g=>{
+    const o = document.createElement('option');
+    o.value = g.v;
+    o.textContent = currentLang==='en' ? g.en : g.ar;
+    gradeSel.appendChild(o);
+  });
+  if(Array.from(gradeSel.options).some(o=>o.value===currentVal)) gradeSel.value = currentVal;
+}
+rebuildGradeOptions();
+
+const sectionsBox = document.getElementById('sectionsBox');
+for(let i=1;i<=SECTIONS_PER_GRADE;i++){
+  const lbl = document.createElement('label');
+  lbl.innerHTML = `<input type="checkbox" class="sec-cb" value="${i}"> <span class="sec-lbl-text" data-i="${i}">شعبة ${i}</span>`;
+  sectionsBox.appendChild(lbl);
+}
+sectionsBox.querySelector('.sec-cb').checked = true;
+
+// ---------- حساب تاريخ الأسبوع ----------
+function pad(n){return n<10?'0'+n:n;}
+function fmtDate(d){return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();}
+function getWeekRange(weekNum){
+  const start = new Date(SEMESTER1_WEEK1_MONDAY+"T00:00:00");
+  const monday = new Date(start.getTime() + (weekNum-1)*7*86400000);
+  const friday = new Date(monday.getTime() + 4*86400000);
+  return {monday, friday};
+}
+function updateDateRange(){
+  const w = parseInt(document.getElementById('weekNum').value) || 1;
+  const {monday, friday} = getWeekRange(w);
+  document.getElementById('dateRange').textContent = fmtDate(monday)+' - '+fmtDate(friday);
+}
+document.getElementById('weekNum').addEventListener('input', updateDateRange);
+updateDateRange();
+
+// ---------- بناء الجدول الديناميكي ----------
+function selectedSections(){
+  return Array.from(document.querySelectorAll('.sec-cb:checked')).map(c=>parseInt(c.value));
+}
+
+function computeColumns(freq){
+  if(freq === 5){
+    return WEEKDAYS_AR.map((ar,i)=>({ar, en:WEEKDAYS_EN[i]}));
+  }
+  return PERIOD_LABELS.slice(0, freq).map(l=>({ar:l, en:''}));
+}
+
+// الجدول الرئيسي (عنوان الدرس/النواتج/الواجبات) — يُبنى فقط عند تغيّر عدد الحصص،
+// وليس عند تغيّر الشعب، حتى لا يُمسح المحتوى المكتوب لمجرد تبديل شعبة
+function buildMainGrid(){
+  const freq = parseInt(document.getElementById('frequency').value);
+  const gridArea = document.getElementById('gridArea');
+  gridArea.innerHTML = '';
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  const tbody = document.createElement('tbody');
+
+  const columns = computeColumns(freq);
+
+  const thLabel = document.createElement('th');
+  thLabel.style.width = '15%';
+  thLabel.textContent = 'اليوم';
+  const enSpan = document.createElement('span'); enSpan.className='en'; enSpan.textContent='Day';
+  thLabel.appendChild(enSpan);
+  trh.appendChild(thLabel);
+  columns.forEach(c=>{
+    const th = document.createElement('th');
+    th.textContent = c.ar;
+    if(c.en){ const en=document.createElement('span'); en.className='en'; en.textContent=c.en; th.appendChild(en); }
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+
+  ROW_DEFS.forEach(rd=>{
+    const tr = document.createElement('tr');
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'row-label';
+    tdLabel.textContent = rd.ar;
+    const en = document.createElement('span'); en.className='en'; en.textContent = rd.en;
+    tdLabel.appendChild(en);
+    tr.appendChild(tdLabel);
+    columns.forEach((c,ci)=>{
+      const td = document.createElement('td');
+      td.className = 'cell';
+      const ta = document.createElement('textarea');
+      ta.dataset.row = rd.key;
+      ta.dataset.col = ci;
+      td.appendChild(ta);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  gridArea.appendChild(table);
+  applyGridAlignment();
+}
+
+// الجدول الفرعي (توزيع الشعب على الأيام) — يُبنى عند تغيّر عدد الحصص أو الشعب المختارة
+function buildMiniTable(){
+  const freq = parseInt(document.getElementById('frequency').value);
+  const miniArea = document.getElementById('miniArea');
+  miniArea.innerHTML = '';
+  miniArea.style.display = 'none';
+  if(freq >= 5) return;
+
+  const columns = computeColumns(freq);
+  miniArea.style.display = 'block';
+  const h3 = document.createElement('h3');
+  h3.textContent = t('miniHeading');
+  miniArea.appendChild(h3);
+
+  const mt = document.createElement('table');
+  mt.className = 'mini';
+  const mthead = document.createElement('thead');
+  const mtrh = document.createElement('tr');
+  const thSec = document.createElement('th'); thSec.textContent = t('section');
+  mtrh.appendChild(thSec);
+  columns.forEach(c=>{ const th=document.createElement('th'); th.textContent=c.ar; mtrh.appendChild(th); });
+  mthead.appendChild(mtrh);
+  mt.appendChild(mthead);
+
+  const mtbody = document.createElement('tbody');
+  const secs = selectedSections();
+  if(secs.length === 0){
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = columns.length+1;
+    td.textContent = t('needSection');
+    td.style.color = '#C97B5A';
+    tr.appendChild(td);
+    mtbody.appendChild(tr);
+  } else {
+    secs.forEach(sec=>{
+      const tr = document.createElement('tr');
+      const tdSec = document.createElement('td');
+      tdSec.textContent = t('section') + ' ' + sec;
+      tdSec.style.fontWeight = '700';
+      tr.appendChild(tdSec);
+      columns.forEach((c,ci)=>{
+        const td = document.createElement('td');
+        const sel = document.createElement('select');
+        sel.dataset.section = sec;
+        sel.dataset.col = ci;
+        WEEKDAYS_AR.forEach(w=>{
+          const o = document.createElement('option'); o.value=w;
+          o.textContent = currentLang==='en' ? WEEKDAYS_EN_FULL[w] : w;
+          sel.appendChild(o);
+        });
+        td.appendChild(sel);
+        tr.appendChild(td);
+      });
+      mtbody.appendChild(tr);
+      // نطبّق الترتيب التصاعدي مباشرة عشان القيم الافتراضية تكون منطقية من البداية
+      enforceMiniDayOrder(sec, columns.length);
+    });
+  }
+  mt.appendChild(mtbody);
+  miniArea.appendChild(mt);
+}
+
+// إعادة بناء كاملة (الجدول الرئيسي + الفرعي معًا) — تُستخدم فقط عند تغيّر عدد الحصص
+// أو عند استيراد ملف جديد بالكامل، حيث يكون طبيعيًا تصفير كل شي
+function buildGrid(){
+  buildMainGrid();
+  buildMiniTable();
+}
+
+document.getElementById('frequency').addEventListener('change', buildGrid);
+
+/* منطق ترتيب الأيام التصاعدي بالجدول الفرعي:
+   لما يختار المعلم يوم الحصة الأولى، تُحذف تلقائيًا كل الأيام قبله (أو نفس اليوم)
+   من خيارات الحصة الثانية، وهكذا تصاعديًا — يسرّع الإدخال ويمنع ترتيب غير منطقي
+   (مثل ما تكون الحصة الثانية بيوم قبل الحصة الأولى بنفس الشعبة) */
+function enforceMiniDayOrder(sec, numCols){
+  let minIndex = -1;
+  for(let ci=0; ci<numCols; ci++){
+    const sel = document.querySelector(`select[data-section="${sec}"][data-col="${ci}"]`);
+    if(!sel) continue;
+    const currentVal = sel.value;
+    sel.innerHTML = '';
+    // >= بدل > : نفس يوم الحصة السابقة يبقى متاحًا (حصتان بنفس اليوم جائز)، فقط الأيام
+    // اللي قبله تُحذف — يمنع فقط ترتيب رجعي غير منطقي
+    WEEKDAYS_AR.forEach((w,wi)=>{
+      if(wi >= minIndex){
+        const o = document.createElement('option'); o.value=w;
+        o.textContent = currentLang==='en' ? WEEKDAYS_EN_FULL[w] : w;
+        sel.appendChild(o);
+      }
+    });
+    if(Array.from(sel.options).some(o=>o.value===currentVal)){
+      sel.value = currentVal;
+    } else if(sel.options.length){
+      sel.value = sel.options[0].value;
+    }
+    minIndex = WEEKDAYS_AR.indexOf(sel.value);
+  }
+}
+document.getElementById('miniArea').addEventListener('change', function(e){
+  if(e.target.tagName === 'SELECT' && e.target.dataset.section){
+    const sec = e.target.dataset.section;
+    const numCols = document.querySelectorAll(`select[data-section="${sec}"]`).length;
+    enforceMiniDayOrder(sec, numCols);
+  }
+});
+// محاذاة خانات الجدول: الإنجليزي وAI & Technology لليسار، بقية المواد لليمين
+// (لازم تكون معرّفة قبل أول استدعاء لـ buildGrid() تحت، لأنها تُستخدم داخل buildMainGrid)
+const LTR_ALIGN_SUBJECTS = ['English', 'AI & Technology', 'اللغة الفرنسية'];
+function applyGridAlignment(){
+  const subj = subjectSel.value;
+  const isLtr = LTR_ALIGN_SUBJECTS.includes(subj);
+  document.querySelectorAll('#gridArea textarea').forEach(ta=>{
+    ta.style.direction = isLtr ? 'ltr' : 'rtl';
+    ta.style.textAlign = isLtr ? 'left' : 'right';
+  });
+}
+subjectSel.addEventListener('change', applyGridAlignment);
+
+sectionsBox.addEventListener('change', buildMiniTable);
+buildGrid();
+
+// ---------- الاختبار: يوم مقترح افتراضيًا، قابل للتعديل مع تنبيه عند التعارض ----------
+
+// خريطة عكسية: كل يوم -> المواد اللي هذا يومها الافتراضي (لبناء رسالة التنبيه)
+const DAY_TO_SUBJECTS = {};
+Object.entries(EXAM_DAY_POLICY).forEach(([subj, day])=>{
+  if(!DAY_TO_SUBJECTS[day]) DAY_TO_SUBJECTS[day] = [];
+  DAY_TO_SUBJECTS[day].push(subj);
+});
+
+const examDaySelect = document.getElementById('examDay');
+function rebuildExamDayOptions(){
+  const currentVal = examDaySelect.value;
+  examDaySelect.innerHTML = '';
+  WEEKDAYS_AR.forEach(d=>{
+    const o = document.createElement('option');
+    o.value = d;
+    o.textContent = currentLang==='en' ? WEEKDAYS_EN_FULL[d] : d;
+    examDaySelect.appendChild(o);
+  });
+  if(Array.from(examDaySelect.options).some(o=>o.value===currentVal)) examDaySelect.value = currentVal;
+}
+rebuildExamDayOptions();
+
+function updateExamDay(){
+  const subj = subjectSel.value;
+  examDaySelect.value = EXAM_DAY_POLICY[subj] || WEEKDAYS_AR[0];
+  checkExamDayConflict();
+}
+function checkExamDayConflict(){
+  const subj = subjectSel.value;
+  const chosen = examDaySelect.value;
+  const defaultDay = EXAM_DAY_POLICY[subj];
+  const warningBox = document.getElementById('examDayWarning');
+  if(chosen === defaultDay){
+    warningBox.style.display = 'none';
+    return;
+  }
+  const owners = (DAY_TO_SUBJECTS[chosen] || []).filter(s=> s !== subj);
+  const chosenDisplay = currentLang==='en' ? WEEKDAYS_EN_FULL[chosen] : chosen;
+  const defaultDisplay = currentLang==='en' ? WEEKDAYS_EN_FULL[defaultDay] : defaultDay;
+  if(owners.length > 0){
+    const ownersText = owners.join(currentLang==='en' ? ', ' : '، ');
+    warningBox.innerHTML = currentLang==='en'
+      ? `⚠️ <b>${chosenDisplay}</b> is already designated for the exam of <b>${ownersText}</b>. Please contact administration for approval before using this day, to avoid exam conflicts.`
+      : `⚠️ يوم <b>${chosenDisplay}</b> مخصص أصلاً لاختبار مادة <b>${ownersText}</b>. رجاءً تواصل مع الإدارة للموافقة قبل استخدام هذا اليوم لتجنّب تعارض الاختبارات.`;
+    warningBox.style.display = 'block';
+  } else {
+    warningBox.innerHTML = currentLang==='en'
+      ? `ℹ️ This differs from your subject's suggested default day (${defaultDisplay}), but it isn't reserved for another subject based on current data.`
+      : `ℹ️ هذا خارج اليوم المقترح افتراضيًا لمادتك (${defaultDisplay})، لكنه غير محجوز لمادة أخرى حسب البيانات الحالية.`;
+    warningBox.style.display = 'block';
+  }
+}
+subjectSel.addEventListener('change', updateExamDay);
+examDaySelect.addEventListener('change', checkExamDayConflict);
+updateExamDay();
+
+document.getElementById('hasExam').addEventListener('change', function(){
+  document.getElementById('examDetail').disabled = !this.checked;
+});
+
+// ---------- الاستيراد (تعديل خطة سابقة) ----------
+document.getElementById('importInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const data = JSON.parse(ev.target.result);
+      importData(data);
+      document.getElementById('importStatus').textContent = t('imported') + file.name;
+    }catch(err){
+      alert(t('badFile'));
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // للسماح باستيراد نفس الملف مرة أخرى لاحقًا
+});
+
+function importData(data){
+  subjectSel.value = data.subject;
+  gradeSel.value = String(data.grade);
+  updateExamDay();
+
+  document.querySelectorAll('.sec-cb').forEach(cb=>{
+    cb.checked = (data.sections || []).includes(parseInt(cb.value));
+  });
+
+  document.getElementById('teacherName').value = data.teacherName || '';
+  document.getElementById('frequency').value = String(data.frequency);
+  document.getElementById('weekNum').value = data.week || 1;
+  updateDateRange();
+
+  // إعادة بناء الجدول بعد ضبط كل الاختيارات أعلاه
+  buildGrid();
+
+  const cols = data.isDaily ? (data.days||[]) : (data.periods||[]);
+  cols.forEach((c,ci)=>{
+    ['topic','outcomes','homework'].forEach(key=>{
+      const ta = document.querySelector(`textarea[data-row="${key}"][data-col="${ci}"]`);
+      if(ta) ta.value = c[key] || '';
+    });
+    if(!data.isDaily && c.schedule){
+      Object.keys(c.schedule).forEach(sec=>{
+        const sel = document.querySelector(`select[data-section="${sec}"][data-col="${ci}"]`);
+        if(sel) sel.value = c.schedule[sec];
+      });
+    }
+  });
+
+  if(data.exam){
+    if(data.exam.day && WEEKDAYS_AR.includes(data.exam.day)) examDaySelect.value = data.exam.day;
+    checkExamDayConflict();
+    document.getElementById('hasExam').checked = !!data.exam.hasExam;
+    document.getElementById('examDetail').disabled = !data.exam.hasExam;
+    document.getElementById('examDetail').value = data.exam.details || '';
+  }
+}
+
+// ---------- التصدير ----------
+function sanitize(str){
+  return str.replace(/[\s\/\\?%*:|"<>&]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function exportJSON(){
+  const subject = subjectSel.value;
+  const gradeVal = parseInt(gradeSel.value);
+  const gradeAr = GRADES.find(g=>g.v===gradeVal).ar;
+  const sections = selectedSections();
+  const teacherName = document.getElementById('teacherName').value.trim();
+  const freq = parseInt(document.getElementById('frequency').value);
+  const weekNum = parseInt(document.getElementById('weekNum').value) || 1;
+  const {monday, friday} = getWeekRange(weekNum);
+
+  if(sections.length === 0){ alert(t('needSection')); return; }
+  if(!teacherName){ alert(t('needTeacher')); return; }
+
+  const data = {
+    subject, grade: gradeVal, gradeAr, sections, teacherName,
+    frequency: freq, isDaily: freq===5,
+    week: weekNum, dateFrom: fmtDate(monday), dateTo: fmtDate(friday),
+    days: [], periods: [],
+    exam: {
+      day: examDaySelect.value,
+      hasExam: document.getElementById('hasExam').checked,
+      details: document.getElementById('examDetail').value.trim()
+    }
+  };
+
+  const cols = freq===5 ? WEEKDAYS_AR : PERIOD_LABELS.slice(0,freq);
+  cols.forEach((label,ci)=>{
+    const entry = {label};
+    if(freq===5) entry.en = WEEKDAYS_EN[ci];
+    ROW_DEFS.forEach(rd=>{
+      const ta = document.querySelector(`textarea[data-row="${rd.key}"][data-col="${ci}"]`);
+      entry[rd.key] = ta ? ta.value.trim() : '';
+    });
+    if(freq < 5){
+      entry.schedule = {};
+      sections.forEach(sec=>{
+        const sel = document.querySelector(`select[data-section="${sec}"][data-col="${ci}"]`);
+        entry.schedule[sec] = sel ? sel.value : '';
+      });
+    }
+    if(freq===5) data.days.push(entry); else data.periods.push(entry);
+  });
+
+  const subjectCode = SUBJECT_CODES[subject] || sanitize(subject);
+  const filename = `week_${weekNum}_${sanitize(subjectCode)}_G${gradeVal}_${sections.join('-')}.json`;
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+</script>
+</body>
+</html>

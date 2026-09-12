@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مرسال واتساب – أولياء الأمور</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --green:#25D366;--dark:#128C7E;--light:#dcf8c6;
+  --bg:#f0f4f0;--white:#fff;--text:#1a1a2e;
+  --muted:#6b7280;--border:#e2e8f0;
+  --shadow:0 4px 24px rgba(18,140,126,0.10);--r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);direction:rtl;min-height:100vh;}
+header{background:linear-gradient(135deg,var(--dark),var(--green));color:#fff;padding:22px 36px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(18,140,126,0.3);}
+.logo{width:48px;height:48px;background:rgba(255,255,255,0.18);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+header h1{font-size:1.5rem;font-weight:900;}
+header p{font-size:.85rem;opacity:.85;margin-top:2px;}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px;}
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:22px 24px;margin-bottom:20px;}
+.card-title{font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';width:4px;height:17px;background:var(--green);border-radius:4px;display:block;}
+
+/* DROP */
+.drop-zone{border:2px dashed var(--green);border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;background:#f6fff8;transition:.2s;}
+.drop-zone:hover,.drop-zone.over{background:var(--light);border-color:var(--dark);}
+.drop-zone .ico{font-size:34px;margin-bottom:6px;}
+.drop-zone p{color:var(--muted);font-size:.9rem;}
+.drop-zone strong{color:var(--dark);}
+#fileInput{display:none;}
+
+/* QUICK MESSAGES */
+.qmsg-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.qmsg-btn{
+  padding:7px 14px;border:2px solid var(--border);border-radius:10px;
+  background:#f8fafc;color:var(--text);font-family:'Cairo',sans-serif;
+  font-size:.82rem;font-weight:600;cursor:pointer;transition:.18s;text-align:right;
+}
+.qmsg-btn:hover{border-color:var(--green);background:var(--light);color:var(--dark);}
+.qmsg-btn.active{border-color:var(--green);background:var(--light);color:var(--dark);}
+
+/* TEXTAREA */
+textarea{width:100%;min-height:100px;border:2px solid var(--border);border-radius:12px;padding:11px 13px;font-family:'Cairo',sans-serif;font-size:.97rem;resize:vertical;outline:none;direction:rtl;color:var(--text);transition:.2s;}
+textarea:focus{border-color:var(--green);}
+.hint{font-size:.78rem;color:var(--muted);margin-top:5px;}
+.hint code{background:#eef;padding:1px 5px;border-radius:4px;}
+
+/* FILTER BUTTONS */
+.filter-section{margin-bottom:14px;}
+.filter-label{font-size:.82rem;font-weight:700;color:var(--muted);margin-bottom:6px;}
+.filter-btns{display:flex;flex-wrap:wrap;gap:6px;}
+.fbtn{
+  padding:5px 13px;border:2px solid var(--border);border-radius:20px;
+  background:#f8fafc;color:var(--text);font-family:'Cairo',sans-serif;
+  font-size:.82rem;font-weight:700;cursor:pointer;transition:.15s;
+}
+.fbtn:hover{border-color:var(--green);background:var(--light);}
+.fbtn.active{background:var(--dark);color:#fff;border-color:var(--dark);}
+.lbtn{
+  padding:5px 11px;border:2px solid var(--border);border-radius:20px;
+  background:#f8fafc;color:var(--text);font-family:'Cairo',sans-serif;
+  font-size:.8rem;font-weight:700;cursor:pointer;transition:.15s;min-width:32px;text-align:center;
+}
+.lbtn:hover{border-color:#6366f1;background:#eef2ff;}
+.lbtn.active{background:#6366f1;color:#fff;border-color:#6366f1;}
+
+/* TABLE */
+.badge{background:var(--light);color:var(--dark);border-radius:20px;padding:3px 13px;font-size:.82rem;font-weight:700;}
+.tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead{background:linear-gradient(90deg,var(--dark),var(--green));}
+thead th{color:#fff;padding:11px 13px;font-size:.88rem;font-weight:700;text-align:right;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:#f6fff8;}
+tbody td{padding:9px 13px;font-size:.9rem;vertical-align:middle;}
+.tag{display:inline-block;background:var(--light);color:var(--dark);border-radius:20px;padding:2px 10px;font-size:.78rem;font-weight:700;}
+.ph{direction:ltr;display:inline-block;color:var(--muted);font-size:.84rem;}
+.acts{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:3px;padding:4px 9px;border:none;border-radius:7px;font-family:'Cairo',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:.15s;text-decoration:none;white-space:nowrap;}
+.btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,0.12);}
+.btn-wa{background:var(--green);color:#fff;}
+.btn-qr{background:#1a1a2e;color:#fff;}
+.btn-edit{background:#f59e0b;color:#fff;}
+.btn-del{background:#ef4444;color:#fff;}
+
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.top-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.tbtn{padding:8px 16px;font-size:.88rem;border-radius:10px;border:none;cursor:pointer;font-family:'Cairo',sans-serif;font-weight:700;transition:.15s;}
+.tbtn:hover{opacity:.88;transform:translateY(-1px);}
+.tbtn-add{background:var(--green);color:#fff;}
+.tbtn-export{background:#6366f1;color:#fff;}
+.tbtn-all{background:var(--dark);color:#fff;}
+
+.empty{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty .ico{font-size:48px;margin-bottom:12px;}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:999;opacity:0;pointer-events:none;transition:opacity .25s;}
+.overlay.on{opacity:1;pointer-events:all;}
+.modal{background:#fff;border-radius:20px;padding:26px 22px;width:92%;text-align:center;transform:scale(.9);transition:transform .25s;box-shadow:0 24px 64px rgba(0,0,0,0.25);}
+.overlay.on .modal{transform:scale(1);}
+.modal h3{font-size:1.05rem;font-weight:900;color:var(--dark);margin-bottom:4px;}
+.modal .sub{color:var(--muted);font-size:.84rem;margin-bottom:14px;direction:ltr;}
+.modal-close{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:12px;font-family:'Cairo',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:.2s;margin-top:12px;}
+.modal-close:hover{background:var(--dark);}
+#qrModal{max-width:540px;}
+#qrBox{min-height:360px;display:flex;align-items:center;justify-content:center;margin-bottom:4px;}
+#qrBox img{border-radius:12px;display:block;max-width:100%;}
+#editModal{max-width:400px;text-align:right;}
+#editModal h3{text-align:center;}
+.form-row{margin-bottom:12px;}
+.form-row label{display:block;font-weight:700;color:var(--dark);margin-bottom:4px;font-size:.88rem;}
+.form-row input{width:100%;border:2px solid var(--border);border-radius:10px;padding:8px 12px;font-family:'Cairo',sans-serif;font-size:.93rem;outline:none;direction:rtl;transition:.2s;}
+.form-row input:focus{border-color:var(--green);}
+.form-btns{display:flex;gap:10px;margin-top:4px;}
+.form-btns button{flex:1;padding:10px;border:none;border-radius:11px;font-family:'Cairo',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:.2s;}
+.form-save{background:var(--green);color:#fff;}
+.form-save:hover{background:var(--dark);}
+.form-cancel{background:#f3f4f6;color:var(--text);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">💬</div>
+  <div>
+    <h1>برنامج التواصل مع أولياء الامور</h1>
+    <p>إرسال رسائل لأولياء أمور الطلاب بسهولة - مدرسة الرازي</p>
+	    <p>تصميم وإعداد: محمود شحادة   |   مديرة المدرسة: بدرية الظنحاني</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- IMPORT -->
+  <div class="card">
+    <div class="card-title">استيراد بيانات الطلاب</div>
+    <button class="qmsg-btn" id="btnPullShared" style="border-color:var(--green);color:var(--dark);margin-bottom:12px;">🔗 سحب بيانات الطلاب من بوابة الرازي</button>
+    <div id="sharedDataStatus" style="font-size:.78rem;color:var(--muted);margin-bottom:10px;"></div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="ico">📂</div>
+      <p><strong>أو اسحب ملف CSV هنا</strong> أو انقر للاختيار يدوياً</p>
+      <p style="margin-top:4px;font-size:.78rem;">الأعمدة: <strong>الصف ، الاسم ، رقم الواتساب</strong></p>
+    </div>
+    <input type="file" id="fileInput" accept=".csv">
+  </div>
+
+  <!-- MESSAGE -->
+  <div class="card">
+    <div class="card-title">نص الرسالة</div>
+    <div class="qmsg-grid" id="qmsgGrid"></div>
+    <textarea id="msg" placeholder="اكتب رسالتك هنا، أو اختر رسالة جاهزة من الأعلى..."></textarea>
+    <p class="hint">💡 <code>{اسم}</code> يُستبدل باسم الطالب تلقائياً</p>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card" id="tblCard" style="display:none">
+    <div class="top">
+      <div class="card-title" style="margin-bottom:0">قائمة الطلاب</div>
+      <div class="top-btns">
+        <button class="tbtn tbtn-add" onclick="openAdd()">➕ إضافة</button>
+        <button class="tbtn tbtn-export" onclick="exportCSV()">⬇️ تصدير</button>
+        <button class="tbtn tbtn-all" onclick="sendAll()">📨 إرسال للكل</button>
+      </div>
+    </div>
+
+    <!-- CLASS FILTER -->
+    <div class="filter-section">
+      <div class="filter-label">📚 فلتر الصف</div>
+      <div class="filter-btns" id="clsBtns"></div>
+    </div>
+
+    <!-- LETTER FILTER -->
+    <div class="filter-section">
+      <div class="filter-label">🔤 فلتر بالحرف الأول من الاسم</div>
+      <div class="filter-btns" id="letterBtns"></div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span class="badge" id="cnt">0 طالب</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>الصف</th><th>الاسم</th><th>الواتساب</th><th>إجراءات</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="empty" id="empty">
+    <div class="ico">📋</div>
+    <p>ارفع ملف CSV أو أضف طلاباً يدوياً</p>
+    <br>
+    <button class="tbtn tbtn-add" onclick="initEmpty()">➕ إضافة طالب يدوياً</button>
+  </div>
+
+</div>
+
+<!-- QR MODAL -->
+<div class="overlay" id="qrOverlay">
+  <div class="modal" id="qrModal">
+    <h3 id="mName"></h3>
+    <p class="sub" id="mPhone"></p>
+    <div id="qrBox"><p style="color:#9ca3af">جارٍ التحميل...</p></div>
+    <button class="modal-close" onclick="closeQR()">✕ إغلاق</button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="editOverlay">
+  <div class="modal" id="editModal">
+    <h3 id="editTitle">إضافة طالب</h3><br>
+    <div class="form-row"><label>الصف</label><input type="text" id="fCls" placeholder="مثال: 7A"></div>
+    <div class="form-row"><label>اسم الطالب</label><input type="text" id="fName" placeholder="مثال: أحمد محمد"></div>
+    <div class="form-row"><label>رقم الواتساب</label><input type="text" id="fPhone" placeholder="مثال: 0501234567" dir="ltr"></div>
+    <div class="form-btns">
+      <button class="form-save" onclick="saveStudent()">💾 حفظ</button>
+      <button class="form-cancel" onclick="closeEdit()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var students = [];
+var activeClass  = '';
+var activeLetter = '';
+var editIdx = -1;
+
+/* ===== QUICK MESSAGES ===== */
+var quickMsgs = [
+  { label:'📅 استدعاء ولي أمر', text:'السلام عليكم ورحمة الله، نرجو تشريفنا بحضوركم إلى المدرسة للاجتماع بأحد أعضاء الإدارة المدرسية بخصوص الطالب {اسم}، وذلك في أقرب وقت ممكن. شكراً لتعاونكم.' },
+  { label:'👨‍👩‍👧 لقاء أولياء الأمور', text:'السلام عليكم ورحمة الله، يسعدنا دعوتكم لحضور لقاء أولياء الأمور مع المعلمين للاطلاع على مستوى الطالب {اسم} ومناقشة سير العملية التعليمية. سيُحدَّد الموعد لاحقاً. شكراً.' },
+  { label:'❓ استفسار عن غياب', text:'السلام عليكم ورحمة الله، نودّ الاستفسار عن سبب غياب الطالب {اسم} اليوم، نرجو إعلامنا حتى نتمكن من متابعته. شكراً لاهتمامكم.' },
+  { label:'⚠️ مخالفة سلوكية', text:'السلام عليكم ورحمة الله، نُفيدكم بأنه تم تسجيل مخالفة سلوكية على الطالب {اسم} اليوم. نرجو التواصل معنا لمناقشة الأمر واتخاذ الإجراءات المناسبة. شكراً لتعاونكم.' },
+];
+
+(function buildQuickMsgs(){
+  var grid = document.getElementById('qmsgGrid');
+  quickMsgs.forEach(function(q, i){
+    var b = document.createElement('button');
+    b.className = 'qmsg-btn';
+    b.textContent = q.label;
+    b.onclick = function(){
+      document.querySelectorAll('.qmsg-btn').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      document.getElementById('msg').value = q.text;
+      if (students.length) render();
+    };
+    grid.appendChild(b);
+  });
+})();
+
+/* ===== FILE IMPORT ===== */
+var dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('over'); if(e.dataTransfer.files[0]) parseFile(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', function(e){ if(e.target.files[0]) parseFile(e.target.files[0]); });
+
+function parseFile(file){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var lines = e.target.result.trim().split('\n');
+    students = [];
+    var start = isNaN(lines[0].split(',')[0].trim()) ? 1 : 0;
+    for(var i=start;i<lines.length;i++){
+      var c = lines[i].split(',').map(function(x){ return x.trim().replace(/^"|"$/g,''); });
+      if(c.length>=3 && c[2]) students.push({cls:c[0]||'—',name:c[1]||'—',phone:c[2]});
+    }
+    afterLoad();
+    dz.innerHTML = '<div class="ico">✅</div><p><strong>'+students.length+' طالب</strong> تم التحميل بنجاح</p>';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function afterLoad(){
+  activeLetter=''; activeClass='';
+  buildFilters();
+  render();
+  document.getElementById('tblCard').style.display='block';
+  document.getElementById('empty').style.display='none';
+}
+
+function initEmpty(){
+  document.getElementById('tblCard').style.display='block';
+  document.getElementById('empty').style.display='none';
+  openAdd();
+}
+
+/* ===== FILTERS ===== */
+function buildFilters(){
+  // Class buttons
+  var classes=[];
+  students.forEach(function(s){ if(classes.indexOf(s.cls)===-1) classes.push(s.cls); });
+  classes.sort();
+  var cb=document.getElementById('clsBtns');
+  cb.innerHTML='';
+  addFBtn(cb,'الكل','','fbtn'+(activeClass===''?' active':''),function(){ activeClass=''; activeLetter=''; syncLetterBtns(); render(); });
+  classes.forEach(function(c){
+    addFBtn(cb,c,c,'fbtn'+(activeClass===c?' active':''),function(cls){ activeClass=cls; activeLetter=''; syncLetterBtns(); render(); });
+  });
+
+  // Letter buttons
+  buildLetterBtns();
+}
+
+function buildLetterBtns(){
+  var data = activeClass ? students.filter(function(s){return s.cls===activeClass;}) : students;
+  var letters=[];
+  data.forEach(function(s){
+    var ch = s.name.trim().charAt(0);
+    if(ch && letters.indexOf(ch)===-1) letters.push(ch);
+  });
+  letters.sort();
+  var lb=document.getElementById('letterBtns');
+  lb.innerHTML='';
+  addFBtn(lb,'الكل','','lbtn'+(activeLetter===''?' active':''),function(){ activeLetter=''; render(); });
+  letters.forEach(function(l){
+    addFBtn(lb,l,l,'lbtn'+(activeLetter===l?' active':''),function(lt){ activeLetter=lt; render(); });
+  });
+}
+
+function syncLetterBtns(){ buildLetterBtns(); }
+
+function addFBtn(parent, label, val, cls, cb){
+  var b=document.createElement('button');
+  b.className=cls; b.textContent=label;
+  b.onclick=function(){
+    var btns=parent.querySelectorAll('button');
+    btns.forEach(function(x){ x.classList.remove('active'); });
+    b.classList.add('active');
+    cb(val);
+  };
+  parent.appendChild(b);
+}
+
+function filtered(){
+  return students.map(function(s,i){return {s:s,i:i};}).filter(function(x){
+    var cls = !activeClass || x.s.cls===activeClass;
+    var let_ = !activeLetter || x.s.name.trim().charAt(0)===activeLetter;
+    return cls && let_;
+  });
+}
+
+/* ===== MESSAGING ===== */
+function getMessage(s){
+  var t=document.getElementById('msg').value||'السلام عليكم';
+  return t.replace(/\{اسم\}/g,s.name);
+}
+function waPhone(p){
+  p=p.replace(/\D/g,'');
+  if(p.indexOf('971')!==0) p='971'+p.replace(/^0/,'');
+  return p;
+}
+function waURL(s){ return 'https://wa.me/'+waPhone(s.phone)+'?text='+encodeURIComponent(getMessage(s)); }
+
+/* ===== RENDER ===== */
+function render(){
+  var data=filtered();
+  document.getElementById('cnt').textContent=data.length+' طالب';
+  var tb=document.getElementById('tbody');
+  if(!data.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;padding:34px;color:#9ca3af">لا يوجد طلاب</td></tr>'; return; }
+  var html='';
+  for(var k=0;k<data.length;k++){
+    var s=data[k].s, idx=data[k].i;
+    var url=waURL(s);
+    html+='<tr>'+
+      '<td style="color:#9ca3af;font-size:.78rem">'+(k+1)+'</td>'+
+      '<td><span class="tag">'+esc(s.cls)+'</span></td>'+
+      '<td style="font-weight:600">'+esc(s.name)+'</td>'+
+      '<td><span class="ph">'+esc(s.phone)+'</span></td>'+
+      '<td><div class="acts">'+
+        '<a href="'+url+'" target="_blank" class="btn btn-wa">'+
+          '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.116.553 4.103 1.522 5.827L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-1.99 0-3.853-.537-5.455-1.473l-.391-.232-4.053 1.057 1.077-3.94-.254-.406A9.785 9.785 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg>واتساب</a>'+
+        '<button class="btn btn-qr" data-url="'+encodeURIComponent(url)+'" data-name="'+encodeURIComponent(s.name)+'" data-phone="'+esc(s.phone)+'" onclick="openQR(this)">📷 QR</button>'+
+        '<button class="btn btn-edit" onclick="openEdit('+idx+')">✏️</button>'+
+        '<button class="btn btn-del" onclick="delStudent('+idx+')">🗑️</button>'+
+      '</div></td>'+
+    '</tr>';
+  }
+  tb.innerHTML=html;
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+document.getElementById('msg').addEventListener('input',function(){ if(students.length) render(); });
+
+/* ===== SEND ALL ===== */
+function sendAll(){
+  var data=filtered();
+  if(!data.length) return;
+  if(!confirm('سيتم فتح '+data.length+' نافذة واتساب. متابعة؟')) return;
+  for(var i=0;i<data.length;i++){
+    (function(s,d){ setTimeout(function(){ window.open(waURL(s),'_blank'); },d); })(data[i].s,i*600);
+  }
+}
+
+/* ===== EXPORT ===== */
+function exportCSV(){
+  if(!students.length){ alert('لا يوجد بيانات'); return; }
+  var rows=['\uFEFFالصف,الاسم,رقم الواتساب'];
+  students.forEach(function(s){ rows.push('"'+s.cls+'","'+s.name+'","'+s.phone+'"'); });
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8;'}));
+  a.download='students_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+/* ===== ADD / EDIT ===== */
+function openAdd(){
+  editIdx=-1;
+  document.getElementById('editTitle').textContent='إضافة طالب جديد';
+  document.getElementById('fCls').value='';
+  document.getElementById('fName').value='';
+  document.getElementById('fPhone').value='';
+  document.getElementById('editOverlay').classList.add('on');
+  setTimeout(function(){ document.getElementById('fCls').focus(); },300);
+}
+function openEdit(idx){
+  editIdx=idx;
+  var s=students[idx];
+  document.getElementById('editTitle').textContent='تعديل بيانات الطالب';
+  document.getElementById('fCls').value=s.cls;
+  document.getElementById('fName').value=s.name;
+  document.getElementById('fPhone').value=s.phone;
+  document.getElementById('editOverlay').classList.add('on');
+  setTimeout(function(){ document.getElementById('fName').focus(); },300);
+}
+function saveStudent(){
+  var cls=document.getElementById('fCls').value.trim();
+  var name=document.getElementById('fName').value.trim();
+  var phone=document.getElementById('fPhone').value.trim();
+  if(!cls||!name||!phone){ alert('يرجى ملء جميع الحقول'); return; }
+  if(editIdx===-1) students.push({cls:cls,name:name,phone:phone});
+  else students[editIdx]={cls:cls,name:name,phone:phone};
+  closeEdit();
+  afterLoad();
+}
+function delStudent(idx){
+  if(!confirm('حذف '+students[idx].name+'؟')) return;
+  students.splice(idx,1);
+  buildFilters(); render();
+}
+function closeEdit(){ document.getElementById('editOverlay').classList.remove('on'); }
+document.getElementById('editOverlay').addEventListener('click',function(e){ if(e.target===this) closeEdit(); });
+
+/* ===== QR ===== */
+function openQR(btn){
+  var url=decodeURIComponent(btn.getAttribute('data-url'));
+  var name=decodeURIComponent(btn.getAttribute('data-name'));
+  var phone=btn.getAttribute('data-phone');
+  document.getElementById('mName').textContent=name;
+  document.getElementById('mPhone').textContent=phone;
+  var box=document.getElementById('qrBox');
+  box.innerHTML='<p style="color:#9ca3af;font-size:.9rem">جارٍ التحميل...</p>';
+  var img=document.createElement('img');
+  img.style.borderRadius='12px'; img.style.maxWidth='100%';
+  img.onload=function(){ box.innerHTML=''; box.appendChild(img); };
+  img.onerror=function(){ box.innerHTML='<p style="color:#e53e3e;padding:20px;font-size:.85rem">تعذّر تحميل QR<br>تأكد من الاتصال بالإنترنت</p>'; };
+  img.src='https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=10&ecc=H&data='+encodeURIComponent(url);
+  document.getElementById('qrOverlay').classList.add('on');
+}
+function closeQR(){
+  document.getElementById('qrOverlay').classList.remove('on');
+  document.getElementById('qrBox').innerHTML='<p style="color:#9ca3af">جارٍ التحميل...</p>';
+}
+document.getElementById('qrOverlay').addEventListener('click',function(e){ if(e.target===this) closeQR(); });
+
+/* ===== سحب بيانات الطلاب من بوابة الرازي الذكية ===== */
+function setSharedStatus(msg){
+  var el = document.getElementById('sharedDataStatus');
+  if(el) el.innerHTML = msg;
+}
+function pullSharedStudents(){
+  var dataUrl = null, fname = '';
+  try{
+    dataUrl = localStorage.getItem('raziSchoolDataXlsx');
+    fname = localStorage.getItem('raziSchoolDataFilename') || '';
+  }catch(e){
+    setSharedStatus('⚠️ المتصفح منع الوصول لبيانات الربط المحلي.');
+    return;
+  }
+  if(!dataUrl){
+    setSharedStatus('ℹ️ لم تُربط بيانات المدرسة بعد — افتح الصفحة الرئيسية واضغط "ربط ملف بيانات المدرسة".');
+    return;
+  }
+  try{
+    var base64 = dataUrl.split(',')[1];
+    var binary = atob(base64);
+    var bytes = new Uint8Array(binary.length);
+    for(var i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    var wb = XLSX.read(bytes.buffer, {type:'array'});
+    var ws = wb.Sheets['جميع الطلاب'];
+    if(!ws){ setSharedStatus('⚠️ لم يتم العثور على صفحة "جميع الطلاب" بالملف المرتبط.'); return; }
+    var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+    students = rows.map(function(r){
+      var code = String(r['الصف']||'').trim();
+      var cls = code.length >= 2 ? (code[0] + '/' + code.slice(1)) : code;
+      return { cls: cls || '—', name: String(r['اسم الطالب']||'').trim(), phone: String(r['رقم التواصل']||'').replace(/[^\d]/g,'') };
+    }).filter(function(s){ return s.name && s.phone; });
+    if(!students.length){ setSharedStatus('⚠️ ما فيه طلاب بأرقام تواصل بالملف المرتبط.'); return; }
+    afterLoad();
+    dz.innerHTML = '<div class="ico">✅</div><p><strong>'+students.length+' طالب</strong> تم سحبهم من بوابة الرازي</p>';
+    setSharedStatus('✅ تم السحب من الملف المرتبط' + (fname ? (' — ' + fname) : ''));
+  }catch(err){
+    setSharedStatus('⚠️ تعذّر قراءة الملف المرتبط: ' + err.message);
+  }
+}
+document.getElementById('btnPullShared').addEventListener('click', pullSharedStudents);
+pullSharedStudents();
+</script>
+</body>
+</html>
