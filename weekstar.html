@@ -530,6 +530,14 @@ table.data .cell-del{width:44px; text-align:center;}
       <h2><span class="dot"></span> بيانات الطلاب <span style="font-weight:500;font-size:.8rem;color:#6b7684;">(قابلة للتعديل)</span></h2>
       <p class="hint">يمكنك تعديل أي اسم أو صف أو رقم نجمة مباشرة، أو حذف/إضافة صف.</p>
 
+      <div class="card" style="background:#f7f4ea;border:1px dashed #c9bd9c;padding:12px 14px;margin-bottom:14px;">
+        <p class="hint" style="margin-bottom:8px;">
+          كل ما تتغيّر قوائم المدرسة (إضافة/حذف/نقل طلاب)، اضغط الزر التالي بدل ما تعدّل هذا الجدول يدوياً —
+          بيسحب أحدث أسماء وصفوف من بيانات المدرسة المرتبطة بالصفحة الرئيسية، ويحافظ على نجمة كل طالب وصورته الفردية إن كان له نجمة سابقة بنفس الاسم.
+        </p>
+        <button class="btn btn-primary" id="btnLoadUpdatedList">🔄 تحميل قائمة محدثة من بيانات المدرسة</button>
+      </div>
+
       <label class="field-label">تصفية حسب الأسبوع</label>
       <select id="importWeekFilter" style="max-width:320px;"></select>
 
@@ -855,6 +863,106 @@ function shortName(full){
 }
 
 function uid(){ return 's' + (state.nextId++); }
+
+/* ---------------- تحميل قائمة محدثة من بيانات المدرسة المرتبطة ---------------- */
+function normalizeNameWS(s){ return String(s||'').trim().replace(/\s+/g,' '); }
+/* يفصل "الاسم (الرقم)" إلى اسم نظيف — نفس الصيغة المستخدمة في عمود "اسم الطالب" ببيانات المدرسة */
+function parseStudentEntryWS(str){
+  const s = String(str||'').trim();
+  const m = s.match(/^(.*?)\s*\(([^()]+)\)$/);
+  return m ? m[1].trim() : s;
+}
+/* بيانات المدرسة تستخدم "الصف" بصيغة رقم+حرف (مثل "5أ")، وهذا البرنامج يستخدم رقم+رقم (مثل "51") —
+   نحوّل حرف الشعبة إلى رقمها المقابل. */
+const AR_SECTION_LETTER_MAP = {'أ':'1','ا':'1','إ':'1','آ':'1','ب':'2','ج':'3','د':'4','ه':'5','و':'6','ز':'7','ح':'8','ط':'9','ي':'10'};
+function classCodeFromCentral(code){
+  code = String(code||'').trim();
+  if(!code) return code;
+  const grade = code[0];
+  const rest = code.slice(1).trim();
+  if(!rest) return grade;
+  if(/^\d+$/.test(rest)) return grade + rest; // رقمية أصلاً
+  const mapped = AR_SECTION_LETTER_MAP[rest[0]];
+  return mapped ? (grade + mapped) : (grade + rest);
+}
+function loadUpdatedListFromSchoolData(){
+  let dataUrl = null, fname = '';
+  try{
+    dataUrl = localStorage.getItem('raziSchoolDataXlsx');
+    fname = localStorage.getItem('raziSchoolDataFilename') || '';
+  }catch(e){
+    alert('المتصفح منع الوصول لبيانات الربط المحلي.');
+    return;
+  }
+  if(!dataUrl){
+    alert('لم تُربط بيانات المدرسة بعد.\nافتح الصفحة الرئيسية لبوابة الرازي واضغط "🔗 ربط تلقائي" أولاً، ثم ارجع لهذه الصفحة وأعد المحاولة.');
+    return;
+  }
+  if(typeof XLSX === 'undefined'){ alert('تعذّر تحميل مكتبة قراءة إكسل — تحقق من الاتصال بالإنترنت.'); return; }
+  try{
+    const base64 = dataUrl.split(',')[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+    const wb = XLSX.read(bytes.buffer, {type:'array'});
+    const ws = wb.Sheets['جميع الطلاب'];
+    if(!ws){ alert('لم يتم العثور على صفحة "جميع الطلاب" في الملف المرتبط.'); return; }
+    const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+    // فهرسة الطلاب الحاليين بالاسم، لاسترجاع النجمة والمعرّف القديم (فيحتفظ الطالب بصورته الفردية أيضاً)
+    const oldByName = {};
+    state.students.forEach(s => {
+      const key = normalizeNameWS(s.fullName);
+      if(key && !oldByName[key]) oldByName[key] = s;
+    });
+
+    const freshStudents = [];
+    const keptIds = new Set();
+    let carriedStars = 0, newCount = 0;
+    rows.forEach(r => {
+      const code = String(r['الصف']||'').trim();
+      const rawName = String(r['اسم الطالب']||'').trim();
+      if(!code || !rawName) return;
+      const fullName = parseStudentEntryWS(rawName);
+      if(!fullName) return;
+      const classCode = classCodeFromCentral(code);
+      const key = normalizeNameWS(fullName);
+      const old = oldByName[key];
+      const star = old ? (old.star ?? null) : null;
+      if(old){ if(old.star !== null && old.star !== undefined) carriedStars++; }
+      else { newCount++; }
+      const id = old ? old.id : uid();
+      keptIds.add(id);
+      freshStudents.push({
+        id,
+        fullName,
+        classCode,
+        star,
+        displayName: (old && old.displayNameCustom) ? old.displayName : shortName(fullName),
+        displayNameCustom: old ? old.displayNameCustom : false
+      });
+    });
+
+    const removedCount = state.students.filter(s => !keptIds.has(s.id)).length;
+    // تنظيف صور/تعديلات الطلاب الذين لم يعودوا موجودين مركزياً
+    Object.keys(state.studentPhotos).forEach(id => { if(!keptIds.has(id)) delete state.studentPhotos[id]; });
+    Object.keys(state.photoTransforms).forEach(id => { if(!keptIds.has(id)) delete state.photoTransforms[id]; });
+
+    state.students = freshStudents;
+    renderDataTable();
+    renderRoundOptions();
+    document.getElementById('dataCard').style.display = 'block';
+
+    alert('✅ تم تحديث القائمة من بيانات المدرسة' + (fname ? (' — ' + fname) : '') + ':\n'
+      + '• إجمالي الطلاب الآن: ' + freshStudents.length + '\n'
+      + '• نجوم محتفَظ بها (بالاسم): ' + carriedStars + '\n'
+      + '• طلاب جدد (بدون نجمة سابقة): ' + newCount + '\n'
+      + '• طلاب لم يعودوا موجودين مركزياً وحُذفوا من القائمة: ' + removedCount);
+  }catch(err){
+    alert('تعذّر تحديث القائمة: ' + err.message);
+  }
+}
+document.getElementById('btnLoadUpdatedList').addEventListener('click', loadUpdatedListFromSchoolData);
 
 /* ---------------- tabs ---------------- */
 document.querySelectorAll('.tab-btn').forEach(btn=>{

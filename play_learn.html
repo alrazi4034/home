@@ -6164,66 +6164,110 @@ function openSchoolImportOverlay(){
   var ov = document.getElementById('schoolImportOverlay');
   var body = document.getElementById('schoolImportBody');
   if(ov) ov.style.display='flex';
-
-  var dataUrl = null, fname = '';
-  try{
-    dataUrl = localStorage.getItem('raziSchoolDataXlsx');
-    fname = localStorage.getItem('raziSchoolDataFilename') || '';
-  }catch(e){
-    body.innerHTML = '⚠️ المتصفح منع الوصول لبيانات الربط المحلي.';
-    return;
-  }
-  if(!dataUrl){
-    body.innerHTML = 'ℹ️ لم تُربط بيانات المدرسة بعد.<br>افتح الصفحة الرئيسية لبوابة الرازي واضغط "🔗 ربط ملف بيانات المدرسة" أولاً، ثم ارجع لهذه الصفحة.';
-    return;
-  }
-  if(typeof XLSX === 'undefined'){
-    body.innerHTML = '⚠️ تعذّر تحميل مكتبة قراءة إكسل (يلزم اتصال بالإنترنت عند أول استخدام).';
-    return;
-  }
-  try{
-    var base64 = dataUrl.split(',')[1];
-    var binary = atob(base64);
-    var bytes = new Uint8Array(binary.length);
-    for(var i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    var wb = XLSX.read(bytes.buffer, {type:'array'});
-    var ws = wb.Sheets['جميع الطلاب'];
-    if(!ws){ body.innerHTML = '⚠️ لم يتم العثور على صفحة "جميع الطلاب" في الملف المرتبط.'; return; }
-    var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-
-    var byClass = {};
-    rows.forEach(function(r){
-      var code = String(r['الصف']||'').trim();
-      var name = String(r['اسم الطالب']||'').trim();
-      if(!code || !name) return;
-      var display = code.length >= 2 ? (code[0] + '/' + code.slice(1)) : code;
-      if(!byClass[display]) byClass[display] = [];
-      byClass[display].push(name);
-    });
-
-    var classCodes = Object.keys(byClass).sort();
-    if(!classCodes.length){ body.innerHTML = '⚠️ لم يتم العثور على طلاب في الملف المرتبط.'; return; }
-    window._schoolImportByClass = byClass;
-
-    var html = '<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">الملف المرتبط: ' + esc(fname||'—') + '<br>اختر الصف لتحميل أسمائه في قائمة الطلاب (سيستبدل القائمة الحالية):</div>';
-    html += '<div style="display:flex;flex-direction:column;gap:6px">';
-    classCodes.forEach(function(code){
-      html += '<button onclick="loadClassRoster(\''+code.replace(/'/g,"\\'")+'\')" style="text-align:right;padding:10px 12px;border:2px solid #d0d8f5;border-radius:10px;background:#f8faff;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'#d0d8f5\'">'
-        + '<span>🏫 ' + esc(code) + '</span>'
-        + '<span style="font-size:11px;color:var(--muted)">' + byClass[code].length + ' طالب</span>'
-        + '</button>';
-    });
-    html += '</div>';
-    body.innerHTML = html;
-  }catch(err){
-    body.innerHTML = '⚠️ تعذّر قراءة الملف المرتبط: ' + esc(err.message);
-  }
+  if(body) body.innerHTML = 'جارٍ التحقق من الملف المرتبط...';
+  // نؤجّل المعالجة خطوة واحدة حتى يرسم المتصفح رسالة "جاري" فعلياً قبل بدء أي عمل ثقيل
+  setTimeout(function(){ runSchoolImport(); }, 30);
 }
+
 function closeSchoolImportOverlay(){
   var ov = document.getElementById('schoolImportOverlay');
   if(ov) ov.style.display='none';
 }
+
+function ensureXLSXLoaded(cb, triesLeft){
+  if(typeof XLSX !== 'undefined'){ cb(); return; }
+  if(triesLeft <= 0){ cb(new Error('تعذّر تحميل مكتبة قراءة إكسل — تحقّق من الاتصال بالإنترنت ثم أعد المحاولة')); return; }
+  setTimeout(function(){ ensureXLSXLoaded(cb, triesLeft-1); }, 300);
+}
+
+function runSchoolImport(){
+  var body = document.getElementById('schoolImportBody');
+  if(!body) return;
+  try{
+    var dataUrl = null, fname = '';
+    try{
+      dataUrl = localStorage.getItem('raziSchoolDataXlsx');
+      fname = localStorage.getItem('raziSchoolDataFilename') || '';
+    }catch(e){
+      body.innerHTML = '⚠️ المتصفح منع الوصول لبيانات الربط المحلي.';
+      return;
+    }
+    if(!dataUrl){
+      body.innerHTML = 'ℹ️ لم تُربط بيانات المدرسة بعد.<br>افتح الصفحة الرئيسية لبوابة الرازي واضغط "🔗 ربط تلقائي" أولاً، ثم ارجع لهذه الصفحة.';
+      return;
+    }
+    body.innerHTML = 'جارٍ تحميل مكتبة قراءة إكسل...';
+    ensureXLSXLoaded(function(err){
+      if(err){ body.innerHTML = '⚠️ ' + esc(err.message); return; }
+      body.innerHTML = 'جارٍ قراءة الملف...';
+      try{
+        var base64 = dataUrl.split(',')[1];
+        var binary = atob(base64);
+        var bytes = new Uint8Array(binary.length);
+        for(var i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        var wb = XLSX.read(bytes.buffer, {type:'array'});
+        var ws = wb.Sheets['جميع الطلاب'];
+        if(!ws){ body.innerHTML = '⚠️ لم يتم العثور على صفحة "جميع الطلاب" في الملف المرتبط.'; return; }
+        var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+        var byClass = {};
+        rows.forEach(function(r){
+          var code = String(r['الصف']||'').trim();
+          var name = String(r['اسم الطالب']||'').trim();
+          if(!code || !name) return;
+          var display = code.length >= 2 ? (code[0] + '/' + code.slice(1)) : code;
+          if(!byClass[display]) byClass[display] = [];
+          byClass[display].push(name);
+        });
+
+        var classCodes = Object.keys(byClass).sort();
+        if(!classCodes.length){ body.innerHTML = '⚠️ لم يتم العثور على طلاب في الملف المرتبط.'; return; }
+        window._schoolImportByClass = byClass;
+        window._schoolImportFileName = fname;
+        renderClassPickList();
+      }catch(err2){
+        body.innerHTML = '⚠️ تعذّر قراءة الملف المرتبط: ' + esc(err2.message);
+      }
+    }, 15);
+  }catch(outerErr){
+    body.innerHTML = '⚠️ حدث خطأ غير متوقع: ' + esc(outerErr.message);
+  }
+}
+
+/* الخطوة ١: قائمة الصفوف */
+function renderClassPickList(){
+  var body = document.getElementById('schoolImportBody');
+  if(!body) return;
+  var byClass = window._schoolImportByClass || {};
+  var fname = window._schoolImportFileName || '';
+  var classCodes = Object.keys(byClass).sort();
+  var html = '<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">الملف المرتبط: ' + esc(fname||'—') + '<br>اختر الصف لمعاينة أسمائه:</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px">';
+  classCodes.forEach(function(code){
+    html += '<button onclick="loadClassRoster(\''+code.replace(/'/g,"\\'")+'\')" style="text-align:right;padding:10px 12px;border:2px solid #d0d8f5;border-radius:10px;background:#f8faff;font-family:Tajawal,sans-serif;font-size:13px;font-weight:800;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.borderColor=\'var(--blue)\'" onmouseout="this.style.borderColor=\'#d0d8f5\'">'
+      + '<span>🏫 ' + esc(code) + '</span>'
+      + '<span style="font-size:11px;color:var(--muted)">' + byClass[code].length + ' طالب</span>'
+      + '</button>';
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+/* الخطوة ٢: معاينة أسماء الصف المختار قبل الاستيراد */
 function loadClassRoster(code){
+  var byClass = window._schoolImportByClass || {};
+  var list = byClass[code] || [];
+  var body = document.getElementById('schoolImportBody');
+  if(!list.length || !body) return;
+  var html = '<button onclick="renderClassPickList()" style="margin-bottom:10px;padding:5px 12px;border:2px solid #d0d8f5;border-radius:50px;background:#f0f4ff;font-size:12px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;color:var(--text)">→ رجوع لقائمة الصفوف</button>';
+  html += '<div style="font-weight:900;color:var(--blue);margin-bottom:8px">🏫 صف ' + esc(code) + ' — ' + list.length + ' طالب</div>';
+  html += '<div style="max-height:260px;overflow-y:auto;border:1px solid #e8eeff;border-radius:10px;padding:8px 10px;margin-bottom:12px;background:#f8faff">';
+  list.forEach(function(n, idx){ html += '<div style="padding:4px 2px;font-size:13px;border-bottom:1px solid #eef2ff">' + (idx+1) + '. ' + esc(n) + '</div>'; });
+  html += '</div>';
+  html += '<button onclick="confirmImportClassRoster(\''+code.replace(/'/g,"\\'")+'\')" style="width:100%;padding:11px;border:none;border-radius:10px;background:var(--blue);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:Tajawal,sans-serif">✅ استيراد هذه القائمة (' + list.length + ' اسم)</button>';
+  body.innerHTML = html;
+}
+function confirmImportClassRoster(code){
   var byClass = window._schoolImportByClass || {};
   var list = byClass[code] || [];
   if(!list.length) return;

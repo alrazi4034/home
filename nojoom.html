@@ -679,6 +679,7 @@ function showFileMenu(){
     <div class="flex gap-2" style="flex-wrap:wrap">
       <button class="btn btn-chip btn-ghost" onclick="markAllPresent()">✅ حضور الكل</button>
       <button class="btn btn-chip btn-ghost" onclick="markAllAbsent()" style="color:var(--absent);border-color:rgba(255,107,107,0.4)">❌ غياب الكل</button>
+      <button class="btn btn-chip btn-ghost" onclick="importAbsenceFromAttendance()" title="يجلب قائمة الغائبين من برنامج الحضور لنفس الصف والمعلم واليوم" style="color:var(--blue,#1a6ff5);border-color:rgba(26,111,245,0.4)">📥 استيراد الغياب من برنامج الحضور</button>
       <button class="btn btn-primary btn-chip" onclick="saveSession()">💾 حفظ الحصة</button>
     </div>
   </div>
@@ -2890,6 +2891,116 @@ function saveSession() {
   toast(`تم حفظ الحصة (${sessionDate}) — ${count} حاضر (+${ATTEND_POINTS} نقطة لكل منهم) 🎉`, '💾');
 }
 
+/* ===== استيراد الغياب من برنامج الحضور (نفس الصف/المعلم/اليوم) =====
+   يقرأ بيانات "برنامج الحضور" (attendanceDashboard_v3) مباشرة من ذاكرة المتصفح
+   المحلية (localStorage) على نفس الجهاز والمتصفح — لا يحتاج رفع أي ملف. */
+function normalizeClassKey(s){
+  return String(s||'').replace(/[\s\-_]/g,'').replace(/[إأآا]/g,'ا').trim();
+}
+function attDateOnly(v){
+  if(!v) return null;
+  const d = new Date(v);
+  if(isNaN(d)) return null;
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function readAttendanceAppData(){
+  try{
+    const raw = localStorage.getItem('attendanceDashboard_v3');
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+function importAbsenceFromAttendance(){
+  const cls = state.classes.find(c => c.id === state.activeClass);
+  if(!cls) return toast('اختر صفاً أولاً', '⚠️');
+  const app = readAttendanceAppData();
+  if(!app){
+    alert('لم يتم العثور على بيانات "برنامج الحضور" على هذا الجهاز.\nافتح برنامج الحضور مرة واحدة على نفس المتصفح والجهاز، ثم أعد المحاولة.');
+    return;
+  }
+  const dayCells = (app.submissionCells || {})[sessionDate];
+  if(!dayCells || !Object.keys(dayCells).length){
+    alert('لا يوجد أي تسجيل حضور في برنامج الحضور بتاريخ ' + sessionDate + '.');
+    return;
+  }
+  const myKey = normalizeClassKey(cls.name);
+  const matchedClassNames = Object.keys(dayCells).filter(cn => normalizeClassKey(cn) === myKey);
+
+  if(!matchedClassNames.length){
+    showAttendanceClassPicker(Object.keys(dayCells), dayCells, app);
+    return;
+  }
+  applyAttendanceImport(matchedClassNames, dayCells, app);
+}
+
+function showAttendanceClassPicker(classNames, dayCells, app){
+  window._attDayCells = dayCells;
+  window._attApp = app;
+  const html = `
+    <div class="modal-title">📥 استيراد الغياب</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">لم يتم إيجاد صف بنفس الاسم تلقائياً في برنامج الحضور. اختر الصف المطابق بتاريخ ${sessionDate}:</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${classNames.map(cn => {
+        const periods = Object.values(dayCells[cn]||{});
+        const teachers = [...new Set(periods.map(p=>p.teacherName).filter(Boolean))].join('، ');
+        return `<button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();applyAttendanceImport(['${cn.replace(/'/g,"\\'")}'], window._attDayCells, window._attApp)">
+          🏫 ${cn}${teachers ? ' — ' + teachers : ''}
+        </button>`;
+      }).join('')}
+      <button class="btn btn-ghost" onclick="closeModalForce()">إلغاء</button>
+    </div>`;
+  openModal(html);
+}
+
+function applyAttendanceImport(classNames, dayCells, app){
+  const cls = state.classes.find(c => c.id === state.activeClass);
+  if(!cls) return;
+  const teacherName = (state.schoolInfo && state.schoolInfo.teacher || '').trim();
+
+  let periodEntries = [];
+  classNames.forEach(cn => {
+    Object.keys(dayCells[cn]||{}).forEach(period => {
+      periodEntries.push({ className: cn, period, info: dayCells[cn][period] });
+    });
+  });
+  // فضّل حصص نفس المعلم (حسب "المعلم" في بيانات المدرسة أعلى الصفحة) إن وُجد تطابق
+  if(teacherName){
+    const filtered = periodEntries.filter(e => (e.info.teacherName||'').trim() === teacherName);
+    if(filtered.length) periodEntries = filtered;
+  }
+  if(!periodEntries.length){
+    alert('لا يوجد تسجيل حضور مطابق لهذا الصف بهذا التاريخ.');
+    return;
+  }
+
+  const absentNames = new Set();
+  (app.records||[]).forEach(r => {
+    if(attDateOnly(r.date) !== sessionDate) return;
+    const rClass = r.currentClass || r.recordedClass;
+    const hit = periodEntries.find(e => normalizeClassKey(e.className) === normalizeClassKey(rClass) && String(e.period) === String(r.period));
+    if(hit) absentNames.add(String(r.studentName||'').trim());
+  });
+
+  let matchedAbsent = 0;
+  const unmatchedAbsent = [];
+  cls.students.forEach(s => { s._todayAtt = 'present'; }); // وجود تسجيل حضور فعلي يعني أن غير المذكورين حاضرون
+  absentNames.forEach(name => {
+    const s = cls.students.find(st => normalizeClassKey(st.name) === normalizeClassKey(name));
+    if(s){ s._todayAtt = 'absent'; matchedAbsent++; }
+    else unmatchedAbsent.push(name);
+  });
+
+  renderStudentList();
+  updateSessionSummary(cls);
+  save();
+
+  let msg = `📥 تم استيراد الغياب من برنامج الحضور (${sessionDate}) — غائب: ${matchedAbsent}\nراجع القائمة ثم اضغط "💾 حفظ الحصة" لتثبيتها.`;
+  if(unmatchedAbsent.length) msg += `\n\n⚠️ لم يتم إيجاد تطابق بالاسم لهؤلاء الطلاب ضمن هذا الصف (تحقق يدوياً): ${unmatchedAbsent.join('، ')}`;
+  alert(msg);
+}
+
 // ===== PARTICIPATION =====
 function subtractPoint(classId, studentId) {
   const cls = state.classes.find(c => c.id === classId);
@@ -5041,6 +5152,14 @@ function normalizePhoneUAE(raw){
   else if(d.startsWith('0') && d.length === 10) d = '971' + d.slice(1);
   return d;
 }
+/* يفصل "الاسم (الرقم)" إلى اسم نظيف ورقم — نفس الصيغة المستخدمة في عمود "اسم الطالب" ببيانات
+   المدرسة المرتبطة وعمود "اسم ورقم" في ملف الحضور. لو ما فيه رقم بين قوسين، يرجع id فارغ. */
+function parseStudentEntry(str){
+  const s = String(str||'').trim();
+  const m = s.match(/^(.*?)\s*\(([^()]+)\)$/);
+  if(m) return { name: m[1].trim(), id: m[2].trim() };
+  return { name: s, id: '' };
+}
 
 /* ===== استيراد من بيانات المدرسة (الملف المرتبط بالصفحة الرئيسية) ===== */
 function openImportFromSchoolDataModal() {
@@ -5066,7 +5185,7 @@ function openImportFromSchoolDataModal() {
     const byClass = {};
     rows.forEach(r => {
       const code = String(r['الصف']||'').trim();
-      const name = String(r['اسم الطالب']||'').trim();
+      const { name } = parseStudentEntry(String(r['اسم الطالب']||'').trim());
       const phoneRaw = r['رقم التواصل'];
       const phone = phoneRaw !== '' ? normalizePhoneUAE(phoneRaw) : '';
       const approvedRaw = String(r['معتمد']==null ? '' : r['معتمد']).trim();
@@ -5425,13 +5544,18 @@ function importStudentsFromCSV(text) {
     ? row[idx].replace(/"/g,'').replace(/^=?"?'?/,'').replace(/"?'?$/,'').trim()
     : '';
 
-  let addedStudents = 0, updatedStudents = 0, newClasses = 0;
+  let addedStudents = 0, updatedStudents = 0, newClasses = 0, movedStudents = 0;
+  const touchedKeys = new Set();     // 'اسم الصف|اسم الطالب' لكل من ظهر في الملف الجديد
+  const touchedClassNames = new Set();
 
   for (let i = 1; i < lines.length; i++) {
     const row = smartSplitCSV(lines[i], delim);
     const clsName  = getCell(row, colMap.cls);
-    const stName   = getCell(row, colMap.name);
-    if (!clsName || !stName) continue;
+    const stNameRaw = getCell(row, colMap.name);
+    if (!clsName || !stNameRaw) continue;
+    const stName = parseStudentEntry(stNameRaw).name || stNameRaw;
+    touchedClassNames.add(clsName);
+    touchedKeys.add(clsName + '|' + stName);
 
     const phone         = normalizePhoneUAE(getCell(row, colMap.phone));
     const verifiedStr   = getCell(row, colMap.verified);
@@ -5448,7 +5572,21 @@ function importStudentsFromCSV(text) {
       newClasses++;
     }
 
-    const existing = cls.students.find(s => s.name === stName);
+    let existing = cls.students.find(s => s.name === stName);
+    if (!existing) {
+      // ابحث عن الطالب باسمه في كل الصفوف الأخرى — لو موجود، انقله لهذا الصف مع الاحتفاظ
+      // الكامل بنقاطه وملاحظاته وسجل حضوره (بدل إنشاء سجل جديد فارغ) — يحدث عادة عند نقل طالب بين الشعب
+      for (const otherCls of state.classes) {
+        if (otherCls === cls) continue;
+        const idx = otherCls.students.findIndex(s => s.name === stName);
+        if (idx !== -1) {
+          existing = otherCls.students.splice(idx, 1)[0];
+          cls.students.push(existing);
+          movedStudents++;
+          break;
+        }
+      }
+    }
     if (!existing) {
       cls.students.push({
         id: Date.now() + addedStudents + newClasses + 9000,
@@ -5485,13 +5623,75 @@ function importStudentsFromCSV(text) {
   // ترتيب أبجدي لكل الصفوف بعد الاستيراد
   state.classes.forEach(cls => { cls.students = sortStudentsAlpha(cls.students); });
 
+  // طلاب موجودون في نجوم مدرستي ضمن صفوف ظهرت بالملف الجديد، لكن أسماءهم غير موجودة بالملف —
+  // غالباً حُذفوا من بيانات المدرسة. لا نحذفهم تلقائياً (حفاظاً على نقاطهم وسجلاتهم)، فقط نُبلغ المستخدم.
+  const missingCandidates = [];
+  state.classes.forEach(cls => {
+    if (!touchedClassNames.has(cls.name)) return;
+    cls.students.forEach(s => {
+      if (!touchedKeys.has(cls.name + '|' + s.name)) missingCandidates.push({ classId: cls.id, className: cls.name, studentId: s.id, name: s.name });
+    });
+  });
+
   save(); renderClasses(); renderClassTabs(); renderStudentList(); updateLeaderboard(); updateReportSelects();
 
   let msg = `✅ تم الاستيراد:\n`;
   if (newClasses > 0) msg += `• ${newClasses} صف جديد\n`;
   if (addedStudents > 0) msg += `• ${addedStudents} طالب جديد\n`;
+  if (movedStudents > 0) msg += `• ${movedStudents} طالب تم نقله لصف آخر (مع الاحتفاظ بنقاطه وملاحظاته)\n`;
   if (updatedStudents > 0) msg += `• ${updatedStudents} طالب تم تحديث بياناته`;
-  alert(msg);
+
+  if (missingCandidates.length) {
+    alert(msg);
+    showMissingStudentsModal(missingCandidates);
+  } else {
+    alert(msg);
+  }
+}
+
+/* طلاب موجودون بصفوفهم بنجوم مدرستي لكن اختفوا من آخر ملف بيانات مستورد — على الأغلب حُذفوا مركزياً
+   أو نُقلوا لصف لم يُدرج بنفس عملية الاستيراد. نعرضهم للمراجعة اليدوية مع خيار إزالة اختياري. */
+function showMissingStudentsModal(list){
+  const html = `
+    <div class="modal-title">⚠️ طلاب غير موجودين في آخر ملف مستورد</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+      هؤلاء الطلاب موجودون حالياً في نجوم مدرستي ضمن صفوف ظهرت بالملف المستورَد، لكن أسماءهم لم تُذكر فيه —
+      على الأغلب تم حذفهم من بيانات المدرسة، أو نُقلوا لصف لم يشمله هذا الاستيراد.
+      <b>لم يتم حذف أي منهم تلقائياً</b> (نقاطهم وملاحظاتهم محفوظة) — راجعهم واختر من تريد إزالته يدوياً إن رغبت.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;margin-bottom:14px">
+      ${list.map((m,i) => `
+        <label style="display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:10px;padding:8px 12px;border:1px solid var(--border-color)">
+          <input type="checkbox" class="missing-student-chk" data-idx="${i}" style="width:16px;height:16px;accent-color:var(--accent)">
+          <span style="font-size:13px;font-weight:700">${escapeHtmlSafe(m.name)}</span>
+          <span style="font-size:11px;color:var(--text-muted)">— صف ${escapeHtmlSafe(m.className)}</span>
+        </label>`).join('')}
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" style="flex:1" onclick="removeSelectedMissingStudents()">🗑️ إزالة المحدد نهائياً</button>
+      <button class="btn btn-ghost" onclick="closeModalForce()">إبقاء الجميع (إغلاق)</button>
+    </div>`;
+  window._missingStudentsList = list;
+  openModal(html);
+}
+function escapeHtmlSafe(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function removeSelectedMissingStudents(){
+  const list = window._missingStudentsList || [];
+  const checked = Array.from(document.querySelectorAll('.missing-student-chk:checked')).map(el => parseInt(el.dataset.idx,10));
+  if (!checked.length) { closeModalForce(); return; }
+  if (!confirm(`سيتم حذف ${checked.length} طالب نهائياً مع كل نقاطهم وملاحظاتهم. هل أنت متأكد؟`)) return;
+  checked.forEach(idx => {
+    const m = list[idx];
+    if (!m) return;
+    const cls = state.classes.find(c => c.id === m.classId);
+    if (!cls) return;
+    cls.students = cls.students.filter(s => s.id !== m.studentId);
+  });
+  save(); renderClasses(); renderClassTabs(); renderStudentList(); updateLeaderboard(); updateReportSelects();
+  closeModalForce();
+  toast(`تم حذف ${checked.length} طالب`, '🗑️');
 }
 
 function downloadFile(content, filename, type) {

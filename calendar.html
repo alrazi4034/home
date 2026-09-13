@@ -551,6 +551,16 @@
 <div class="modal-overlay" id="importPreviewModal">
   <div class="modal-box" style="max-width:640px;">
     <h3>معاينة الاستيراد <button class="modal-close" data-close="importPreviewModal">×</button></h3>
+    <div style="display:flex;gap:16px;margin-bottom:14px;padding:10px;background:var(--surface2);border-inline-start:4px solid var(--clay);">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:12.5px;cursor:pointer;">
+        <input type="radio" name="importMode" id="importModeMerge" value="merge" checked>
+        🔀 دمج مع البيانات الحالية
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:12.5px;cursor:pointer;">
+        <input type="radio" name="importMode" id="importModeReplace" value="replace">
+        🔁 استبدال كامل للبيانات الحالية
+      </label>
+    </div>
     <div id="importCalSection" style="display:none;margin-bottom:14px;padding:10px;background:var(--surface2);border-inline-start:4px solid var(--clay);">
       <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px;cursor:pointer;">
         <input type="checkbox" id="importCalCheckbox">
@@ -559,7 +569,7 @@
       <div id="importCalDiffList" style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;"></div>
     </div>
     <div class="form-row" style="justify-content:space-between;align-items:center;">
-      <span style="font-size:11.5px;font-weight:700;color:var(--ink-soft);">الأحداث الجديدة المضافة:</span>
+      <span style="font-size:11.5px;font-weight:700;color:var(--ink-soft);" id="importEventsListLabel">الأحداث الجديدة المضافة:</span>
       <div style="display:flex;gap:6px;">
         <button class="btn tiny" id="importSelectAllBtn" type="button">تحديد الكل</button>
         <button class="btn tiny" id="importSelectNoneBtn" type="button">إلغاء التحديد</button>
@@ -1771,19 +1781,33 @@ document.getElementById('importFileInput').addEventListener('change', function()
     const sigOf = ev => `${ev.title}|${ev.catId}|${ev.start}|${ev.end}|${ev.timeStart||''}|${ev.timeEnd||''}`;
     const existingSigs = new Set(APP.events.map(sigOf));
     const existingIds = new Set(APP.events.map(e=> e.id));
-    const candidates = [];
+
+    // كل الأحداث المستوردة (لوضع "استبدال كامل") — منزوعة التكرار داخل الملفات المستوردة نفسها فقط،
+    // بغض النظر عن البيانات الحالية، لأن البيانات الحالية ستُستبدل أصلاً.
+    const allSigs = new Set();
+    const allEvents = [];
+    // أحداث "الدمج" — تستبعد أي حدث مطابق تماماً لحدث موجود أصلاً (لتفادي التكرار عند الإضافة)
+    const mergeCandidates = [];
+    const mergeIds = new Set(existingIds);
 
     valid.forEach(data=>{
       (data.events || []).forEach(ev=>{
         const sig = sigOf(ev);
-        if(existingSigs.has(sig)) return; // identical event already present or already queued, skip
-        existingSigs.add(sig);
-        const newEv = Object.assign({}, ev);
-        if(existingIds.has(newEv.id)){
-          newEv.id = 'e' + Date.now() + Math.floor(Math.random()*1000) + candidates.length;
+
+        if(!allSigs.has(sig)){
+          allSigs.add(sig);
+          const evAll = Object.assign({}, ev);
+          allEvents.push(evAll);
         }
-        existingIds.add(newEv.id);
-        candidates.push(newEv);
+
+        if(!existingSigs.has(sig) && !mergeCandidates.some(c => sigOf(c) === sig)){
+          const newEv = Object.assign({}, ev);
+          if(mergeIds.has(newEv.id)){
+            newEv.id = 'e' + Date.now() + Math.floor(Math.random()*1000) + mergeCandidates.length;
+          }
+          mergeIds.add(newEv.id);
+          mergeCandidates.push(newEv);
+        }
       });
     });
 
@@ -1806,50 +1830,73 @@ document.getElementById('importFileInput').addEventListener('change', function()
         if(diffs.length){ settingsCandidate = valid[i].settings; settingsDiffs = diffs; break; }
       }
     }
+    // في وضع الاستبدال، نأخذ إعدادات آخر ملف فيه settings حتى لو ما فيه فرق ظاهر عن الحالي
+    let replaceSettings = null;
+    for(let i=valid.length-1; i>=0; i--){ if(valid[i].settings){ replaceSettings = valid[i].settings; break; } }
 
-    if(!candidates.length && !settingsCandidate){
-      alert('لا توجد أحداث جديدة أو تحديثات على التقويم الأكاديمي في الملفات المحددة.');
+    if(!mergeCandidates.length && !allEvents.length && !settingsCandidate){
+      alert('لا توجد أحداث أو تحديثات على التقويم الأكاديمي في الملفات المحددة.');
       input.value = '';
       return;
     }
 
-    openImportPreview(candidates, settingsCandidate, settingsDiffs);
+    openImportPreview(mergeCandidates, allEvents, settingsCandidate, settingsDiffs, replaceSettings);
     input.value = '';
   });
 });
 
-function openImportPreview(candidates, settingsCandidate, settingsDiffs){
-  APP._importCandidates = candidates;
+function openImportPreview(mergeCandidates, allEvents, settingsCandidate, settingsDiffs, replaceSettings){
+  APP._importMergeCandidates = mergeCandidates;
+  APP._importAllEvents = allEvents;
   APP._importSettings = settingsCandidate;
-
-  const list = document.getElementById('importEventsList');
-  list.innerHTML = '';
-  if(!candidates.length){
-    list.innerHTML = '<div class="empty-note">لا توجد أحداث جديدة في الملفات المحددة.</div>';
-  } else {
-    candidates.forEach((ev, idx)=>{
-      const row = document.createElement('label');
-      row.className = 'import-ev-row';
-      row.style.borderInlineStartColor = evColor(ev);
-      row.innerHTML = `<input type="checkbox" checked data-idx="${idx}">
-        <span class="cat-dot" style="background:${evColor(ev)}"></span>
-        <span class="t">${evEmoji(ev)} ${escapeHtml(ev.title)}</span>
-        <span class="d">${dateRangeHtml(ev.start, ev.end)}</span>`;
-      list.appendChild(row);
-    });
-  }
+  APP._importReplaceSettings = replaceSettings;
 
   const calSection = document.getElementById('importCalSection');
-  if(settingsCandidate && settingsDiffs.length){
+  if((settingsCandidate && settingsDiffs.length) || replaceSettings){
     calSection.style.display = '';
-    document.getElementById('importCalDiffList').innerHTML = settingsDiffs.map(d=>`<div>• ${escapeHtml(d)}</div>`).join('');
+    document.getElementById('importCalDiffList').innerHTML = settingsDiffs.length
+      ? settingsDiffs.map(d=>`<div>• ${escapeHtml(d)}</div>`).join('')
+      : '<div>سيتم اعتماد بيانات التقويم الأكاديمي من الملف المستورد.</div>';
     document.getElementById('importCalCheckbox').checked = false;
   } else {
     calSection.style.display = 'none';
   }
 
+  document.getElementById('importModeMerge').checked = true;
+  renderImportEventsList('merge');
   openModal('importPreviewModal');
 }
+
+function renderImportEventsList(mode){
+  const list = document.getElementById('importEventsList');
+  const label = document.getElementById('importEventsListLabel');
+  const confirmBtn = document.getElementById('importConfirmBtn');
+  const evts = mode === 'replace' ? (APP._importAllEvents||[]) : (APP._importMergeCandidates||[]);
+  label.textContent = mode === 'replace' ? 'كل الأحداث في الملف المستورد (ستحل محل كل الأحداث الحالية):' : 'الأحداث الجديدة المضافة:';
+  confirmBtn.textContent = mode === 'replace' ? 'استبدال البيانات بالمحدد' : 'إضافة المحدد';
+  list.innerHTML = '';
+  if(!evts.length){
+    list.innerHTML = '<div class="empty-note">لا توجد أحداث في الملفات المحددة.</div>';
+    return;
+  }
+  evts.forEach((ev, idx)=>{
+    const row = document.createElement('label');
+    row.className = 'import-ev-row';
+    row.style.borderInlineStartColor = evColor(ev);
+    row.innerHTML = `<input type="checkbox" checked data-idx="${idx}">
+      <span class="cat-dot" style="background:${evColor(ev)}"></span>
+      <span class="t">${evEmoji(ev)} ${escapeHtml(ev.title)}</span>
+      <span class="d">${dateRangeHtml(ev.start, ev.end)}</span>`;
+    list.appendChild(row);
+  });
+  // في وضع الاستبدال، من المنطقي اعتماد إعدادات التقويم المستورَدة افتراضياً أيضاً
+  const calCb = document.getElementById('importCalCheckbox');
+  if(calCb && document.getElementById('importCalSection').style.display !== 'none'){
+    calCb.checked = (mode === 'replace');
+  }
+}
+document.getElementById('importModeMerge').addEventListener('change', ()=> renderImportEventsList('merge'));
+document.getElementById('importModeReplace').addEventListener('change', ()=> renderImportEventsList('replace'));
 
 document.getElementById('importSelectAllBtn').onclick = ()=>{
   document.querySelectorAll('#importEventsList input[type=checkbox]').forEach(cb=> cb.checked = true);
@@ -1859,24 +1906,33 @@ document.getElementById('importSelectNoneBtn').onclick = ()=>{
 };
 
 document.getElementById('importConfirmBtn').onclick = ()=>{
+  const mode = document.getElementById('importModeReplace').checked ? 'replace' : 'merge';
+  const sourceEvents = mode === 'replace' ? (APP._importAllEvents||[]) : (APP._importMergeCandidates||[]);
   const checked = [];
   document.querySelectorAll('#importEventsList input[type=checkbox]:checked').forEach(cb=>{
-    checked.push(APP._importCandidates[Number(cb.dataset.idx)]);
+    checked.push(sourceEvents[Number(cb.dataset.idx)]);
   });
-  APP.events = APP.events.concat(checked);
+
+  if(mode === 'replace'){
+    if(!confirm('سيتم حذف كل الأحداث الحالية بالتقويم واستبدالها بالمحدد من الملف المستورد. هل أنت متأكد؟')) return;
+    APP.events = checked;
+  } else {
+    APP.events = APP.events.concat(checked);
+  }
   saveEvents(APP.events);
 
   const calCb = document.getElementById('importCalCheckbox');
-  const applyCal = calCb && calCb.checked && APP._importSettings;
+  const importedSettings = mode === 'replace' ? (APP._importReplaceSettings || APP._importSettings) : APP._importSettings;
+  const applyCal = calCb && calCb.checked && importedSettings;
   if(applyCal){
     APP.settings = Object.assign({}, APP.settings, {
-      schoolName: APP._importSettings.schoolName || APP.settings.schoolName,
-      principalName: APP._importSettings.principalName || APP.settings.principalName,
-      yearStart: APP._importSettings.yearStart || APP.settings.yearStart,
-      yearEnd: APP._importSettings.yearEnd || APP.settings.yearEnd,
-      terms: APP._importSettings.terms || APP.settings.terms,
-      holidays: APP._importSettings.holidays || APP.settings.holidays,
-      examSchedule: APP._importSettings.examSchedule || APP.settings.examSchedule
+      schoolName: importedSettings.schoolName || APP.settings.schoolName,
+      principalName: importedSettings.principalName || APP.settings.principalName,
+      yearStart: importedSettings.yearStart || APP.settings.yearStart,
+      yearEnd: importedSettings.yearEnd || APP.settings.yearEnd,
+      terms: importedSettings.terms || APP.settings.terms,
+      holidays: importedSettings.holidays || APP.settings.holidays,
+      examSchedule: importedSettings.examSchedule || APP.settings.examSchedule
     });
     saveSettings(APP.settings);
   }

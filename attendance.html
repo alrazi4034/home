@@ -1167,18 +1167,44 @@ function findHeaderRowIndex(rows, requiredHeaders){
 }
 
 /* بيانات الطلاب القادمة من "بيانات المدرسة" المرتبطة بالصفحة الرئيسية (بوابة الرازي الذكية).
-   عند وجود اسم الطالب في كل من ملف الحضور المرفوع وبيانات المدرسة، تُستخدم بيانات
-   المدرسة دائماً كمصدر أساسي للاسم/الصف/رقم التواصل — انظر applySharedNamesToRoster(). */
-let sharedStudentMap = new Map(); // normalizedName -> {studentName, className, phone}
+   عمود "اسم الطالب" في بيانات المدرسة قد يحوي الاسم والرقم معاً بصيغة "الاسم (الرقم)" — تماماً
+   كصيغة عمود "اسم ورقم" في ملف الحضور — نستخرج الرقم من بين القوسين (عبر parseStudentEntry) ونطابق
+   به عند توفره؛ لو غير متوفر لبعض الطلاب، نرجع للمطابقة بالاسم فقط لهم. */
+let sharedStudentMap = new Map(); // 'id:<رقم>' أو 'name:<اسم مُطبَّع>' -> {studentId, studentName, className, phone}
+let sharedHasIds = false;
 function normalizeNameKey(s){ return String(s||'').trim().replace(/\s+/g,' '); }
 function applySharedNamesToRoster(rosterMap){
   if(!sharedStudentMap.size) return;
   rosterMap.forEach(entry => {
-    const shared = sharedStudentMap.get(normalizeNameKey(entry.studentName));
+    let shared = entry.studentId ? sharedStudentMap.get('id:'+entry.studentId) : null;
+    if(!shared) shared = sharedStudentMap.get('name:'+normalizeNameKey(entry.studentName));
     if(!shared) return;
     entry.studentName = shared.studentName || entry.studentName;
     if(shared.className){ entry.className = shared.className; entry.grade = gradeFromClassName(shared.className); }
     if(shared.phone) entry.phone = shared.phone;
+  });
+}
+/* مزامنة كاملة للروستر (إضافة الطلاب الجدد + حذف من لم يعد موجوداً مركزياً) — تعمل فقط عند توفر
+   أرقام طلاب موثوقة في بيانات المدرسة المرتبطة (sharedHasIds)، لتفادي حذف/تكرار خاطئ بالاعتماد على الاسم فقط. */
+function syncRosterWithSharedData(rosterMap){
+  if(!sharedHasIds || !sharedStudentMap.size) return;
+  const sharedIds = new Set();
+  sharedStudentMap.forEach((v,k) => { if(k.startsWith('id:')) sharedIds.add(k.slice(3)); });
+
+  // إضافة الطلاب الموجودين مركزياً وغير موجودين بروستر ملف الحضور الحالي
+  sharedStudentMap.forEach((shared, key) => {
+    if(!key.startsWith('id:')) return;
+    if(rosterMap.has(shared.studentId)) return;
+    rosterMap.set(shared.studentId, {
+      studentId: shared.studentId, studentName: shared.studentName,
+      englishName: '', classCode: null, className: shared.className,
+      grade: gradeFromClassName(shared.className), order: null, phone: shared.phone || ''
+    });
+  });
+
+  // حذف من كان موجوداً بروستر ملف الحضور ولم يعد موجوداً مركزياً (تم حذفه/نقله بشكل لا يمكن تتبعه)
+  Array.from(rosterMap.keys()).forEach(id => {
+    if(!sharedIds.has(id)) rosterMap.delete(id);
   });
 }
 
@@ -1331,7 +1357,8 @@ function parseTermConfigSheet(rows){
 function buildAppData(absRows, rosterRows){
   const { col, classCols } = parseAbsenceHeader(absRows[0] || []);
   const { roster, hasPhone } = parseRoster(rosterRows || [[]]);
-  applySharedNamesToRoster(roster); // الأولوية لبيانات المدرسة المرتبطة عند تطابق الاسم
+  applySharedNamesToRoster(roster); // الأولوية لبيانات المدرسة المرتبطة عند تطابق الاسم/الرقم
+  syncRosterWithSharedData(roster); // إضافة/حذف كامل عند توفر أرقام طلاب موثوقة مركزياً
   const records = [];          // سجلات غياب على مستوى الحصة (بعد اعتماد آخر إدخال فقط لكل صف/حصة/يوم)
   const allSubmissions = [];   // كل عملية رصد حضور معتمدة (بعد الاعتماد على الأحدث عند التكرار)
   const teacherActivityLog = []; // كل محاولات الإدخال الخام (تشمل التكرار) - تُستخدم لتقرير المعلمين
@@ -4149,23 +4176,39 @@ function loadSharedSchoolData(){
     if(studentsSheet){
       const studentRows = XLSX.utils.sheet_to_json(studentsSheet, {defval:''});
       sharedStudentMap = new Map();
+      sharedHasIds = false;
       studentRows.forEach(r => {
-        const name = String(r['اسم الطالب']||'').trim();
-        if(!name) return;
+        const raw = String(r['اسم الطالب']||'').trim();
+        if(!raw) return;
+        // عمود "اسم الطالب" قد يحوي الاسم والرقم معاً بصيغة "الاسم (الرقم)" — نفس صيغة عمود
+        // "اسم ورقم" في ملف الحضور. نعتمد هذا كأساس المطابقة، مع رجوع للاسم فقط لو الرقم غير موجود.
+        const { name, id: rawId } = parseStudentEntry(raw);
+        const studentId = rawId ? normalizeDigits(rawId) : '';
+        const cleanName = name || raw;
         const code = String(r['الصف']||'').trim();
         const className = code ? normalizeClassName(classCodeToName(code) || code) : '';
-        sharedStudentMap.set(normalizeNameKey(name), {
-          studentName: name,
-          className,
-          phone: String(r['رقم التواصل']||'').trim()
-        });
+        const entry = { studentId, studentName: cleanName, className, phone: String(r['رقم التواصل']||'').trim() };
+        if(studentId){ sharedHasIds = true; sharedStudentMap.set('id:'+studentId, entry); }
+        sharedStudentMap.set('name:'+normalizeNameKey(cleanName), entry);
       });
-      sharedStudentsCount = sharedStudentMap.size;
-      // إن كان ملف الحضور مُحمَّلاً مسبقاً، أعد بناءه الآن لتطبيق أسماء بيانات المدرسة عليه فوراً
+      sharedStudentsCount = studentRows.length;
+      // إن كان ملف الحضور مُحمَّلاً مسبقاً، أعد بناءه الآن لتطبيق أسماء/مزامنة بيانات المدرسة عليه فوراً
       if(lastAttendanceWb) rebuildAppFromLoadedWorkbooks();
     }
 
-    setSharedDataStatus('✅ بيانات المدرسة مرتبطة' + (fname ? (' — ' + fname) : '') + (sharedStudentsCount ? (' — عدد الطلاب: ' + sharedStudentsCount) : ''));
+    // لو بيانات المدرسة فيها "رقم الطالب"، صار الروستر يُزامَن بالكامل تلقائياً (إضافة وحذف) — لا حاجة لتنبيه.
+    // بدون أرقام، المطابقة بالاسم فقط ولا تُضيف/تحذف — نتحقق ونُنبّه هنا بدلاً من ذلك.
+    let staleNote = '';
+    if(!sharedHasIds && sharedStudentMap.size && APP.loaded && APP.roster && APP.roster.size){
+      const staleCount = Array.from(APP.roster.values()).filter(r => !sharedStudentMap.has('name:'+normalizeNameKey(r.studentName))).length;
+      if(staleCount > 0){
+        staleNote = ` — ⚠️ ${staleCount} طالب في جدول الحضور الحالي غير موجودين في بيانات المدرسة المرتبطة (قد يكونون محذوفين أو منقولين مركزياً). ملاحظة: بيانات المدرسة لا تحتوي رقماً بين قوسين أمام اسم الطالب، فالمزامنة التلقائية للإضافة/الحذف غير مفعّلة — أعد رفع/ربط ملف حضور محدَّث لتحديث القائمة يدوياً.`;
+      }
+    } else if(sharedHasIds){
+      staleNote = ' — 🔗 مزامنة تلقائية كاملة (بالرقم)';
+    }
+
+    setSharedDataStatus('✅ بيانات المدرسة مرتبطة' + (fname ? (' — ' + fname) : '') + (sharedStudentsCount ? (' — عدد الطلاب: ' + sharedStudentsCount) : '') + staleNote);
   }catch(err){
     setSharedDataStatus('⚠️ تعذّرت قراءة بيانات المدرسة المرتبطة: ' + err.message);
   }
@@ -4181,7 +4224,7 @@ loadSharedSchoolData();
    نفس هذا المتغيّر والتعليق موجودان بنفس الصيغة في كل ملفات
    البرامج الأخرى — غيّرها بكل ملف على حدة عند النشر.
    ============================================================ */
-const TEST_MODE = true;
+const TEST_MODE = false;
 const TEST_ATTENDANCE_B64 = "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";
 
 function loadTestDataAttendance(){
