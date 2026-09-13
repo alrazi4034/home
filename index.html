@@ -597,7 +597,7 @@ function handleFile(e){
   reader.onload = function(ev){
     try{
       loadWorkbookFromArrayBuffer(ev.target.result, file.name);
-      afterWorkbookLoaded(file.name, null);
+      afterWorkbookLoaded(file.name, null, ev.target.result);
     }catch(err){
       setStatus('❌ تعذّرت قراءة الملف: ' + err.message);
       return;
@@ -1541,12 +1541,19 @@ function exportWorkbook(){
 /* ---------- الربط التلقائي (File System Access API عبر datalink.js) ---------- */
 let linkedHandle = null;
 
-function afterWorkbookLoaded(fileName, handle){
+function afterWorkbookLoaded(fileName, handle, buf){
   linkedHandle = handle || null;
   const label = handle
     ? '🔗 متصل تلقائياً بملف: <b>' + fileName + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>'
     : '✅ تم تحميل الملف: <b>' + fileName + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>';
-  setStatus(label);
+  let sharedNote = '';
+  if(buf){
+    const shared = shareToOtherPrograms(buf, fileName);
+    sharedNote = shared
+      ? ' — تمت مشاركتها مع باقي البرامج تلقائياً.'
+      : ' — ⚠️ تعذّرت مشاركتها مع باقي البرامج (الملف كبير على مساحة المتصفح المحلية).';
+  }
+  setStatus(label + sharedNote);
   showView('management');
   document.getElementById('exportBtn').style.display = '';
   document.getElementById('exportBtn').disabled = false;
@@ -1554,6 +1561,29 @@ function afterWorkbookLoaded(fileName, handle){
     document.getElementById('saveToLinkBtn').style.display = '';
     document.getElementById('unlinkBtn').style.display = '';
     document.getElementById('linkBtn').textContent = '🔗 إعادة ربط';
+  }
+}
+
+/* يكتب نسخة من ملف البيانات في localStorage بنفس الصيغة والمفتاح اللي
+   تتوقعه كل برامج المدرسة الأخرى (attendance.html, behavior.html,
+   whatsapp.html, nojoom.html, play_learn.html...) عشان تقدر تسحبها
+   تلقائياً بدون ما يُطلب من المستخدم رفع الملف من جديد في كل صفحة. */
+function shareToOtherPrograms(arrayBuffer, fileName){
+  try{
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunk = 0x8000;
+    for(let i=0; i<bytes.length; i += chunk){
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
+    }
+    const base64 = btoa(binary);
+    const dataUrl = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + base64;
+    localStorage.setItem('raziSchoolDataXlsx', dataUrl);
+    localStorage.setItem('raziSchoolDataFilename', fileName || '');
+    return true;
+  }catch(err){
+    console.warn('shareToOtherPrograms failed:', err);
+    return false;
   }
 }
 
@@ -1568,7 +1598,7 @@ async function onLinkBtnClick(){
     (buf, fileName, handle) => {
       try{
         loadWorkbookFromArrayBuffer(buf, fileName);
-        afterWorkbookLoaded(fileName, handle);
+        afterWorkbookLoaded(fileName, handle, buf);
       }catch(err){
         setStatus('❌ تعذّرت قراءة الملف: ' + err.message);
       }
@@ -1596,7 +1626,8 @@ async function saveToLinkedFile(){
     const wb = buildWorkbook();
     const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
     await RaziLink.writeToLinkedFile(linkedHandle, buf);
-    setStatus('✅ تم حفظ التحديثات مباشرة في الملف المرتبط.');
+    shareToOtherPrograms(buf, state.fileName || 'بيانات المدرسة.xlsx');
+    setStatus('✅ تم حفظ التحديثات مباشرة في الملف المرتبط، وتمت مشاركتها مع باقي البرامج.');
   }catch(err){
     setStatus('❌ تعذّر الحفظ في الملف المرتبط: ' + err.message);
   }
@@ -1649,7 +1680,7 @@ async function initAutoLink(){
   const result = await RaziLink.tryAutoLink((buf, fileName, handle) => {
     try{
       loadWorkbookFromArrayBuffer(buf, fileName);
-      afterWorkbookLoaded(fileName, handle);
+      afterWorkbookLoaded(fileName, handle, buf);
     }catch(err){
       setStatus('❌ تعذّرت قراءة الملف المرتبط: ' + err.message);
     }
