@@ -4,21 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مرسال واتساب – أولياء الأمور</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=El+Messiri:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --green:#25D366;--dark:#128C7E;--light:#dcf8c6;
-  --bg:#f0f4f0;--white:#fff;--text:#1a1a2e;
+  --green:#2563EB;--dark:#1D4ED8;--light:#DCE8FC;
+  --bg:#F2F2F0;--white:#fff;--text:#1a1a2e;
   --muted:#6b7280;--border:#e2e8f0;
-  --shadow:0 4px 24px rgba(18,140,126,0.10);--r:16px;
+  --shadow:0 4px 24px rgba(37,99,235,0.10);--r:16px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);direction:rtl;min-height:100vh;}
-header{background:linear-gradient(135deg,var(--dark),var(--green));color:#fff;padding:22px 36px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(18,140,126,0.3);}
-.logo{width:48px;height:48px;background:rgba(255,255,255,0.18);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:24px;}
-header h1{font-size:1.5rem;font-weight:900;}
-header p{font-size:.85rem;opacity:.85;margin-top:2px;}
+header{background:#fff;color:var(--text);padding:16px 36px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);}
+.logo{width:52px;height:52px;background:var(--green);color:#fff;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:26px;}
+header h1{font-family:'El Messiri',sans-serif;font-size:1.05rem;font-weight:600;color:var(--text);}
+header p{font-size:.78rem;color:var(--muted);opacity:1;margin-top:2px;}
 .wrap{max-width:1100px;margin:0 auto;padding:24px 16px;}
 .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:22px 24px;margin-bottom:20px;}
 .card-title{font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
@@ -352,10 +352,20 @@ function getMessage(s){
   var t=document.getElementById('msg').value||'السلام عليكم';
   return t.replace(/\{اسم\}/g,s.name);
 }
+/* تطبيع رقم الهاتف الإماراتي إلى صيغة 9715xxxxxxxx مهما كانت صيغته الأصلية
+   (05xxxxxxxx / 5xxxxxxxx / 00971... / +9715... / بمسافات أو شرطات) */
+function normalizePhoneUAE(raw){
+  var d = String(raw||'').replace(/[^0-9]/g,'');
+  if(!d) return '';
+  if(d.indexOf('00971')===0) d = d.slice(2);
+  else if(d.indexOf('971')===0){ /* بالصيغة الصحيحة أصلاً */ }
+  else if(d.indexOf('05')===0) d = '971' + d.slice(1);
+  else if(/^5\d{8}$/.test(d)) d = '971' + d;
+  else if(d.indexOf('0')===0 && d.length===10) d = '971' + d.slice(1);
+  return d;
+}
 function waPhone(p){
-  p=p.replace(/\D/g,'');
-  if(p.indexOf('971')!==0) p='971'+p.replace(/^0/,'');
-  return p;
+  return normalizePhoneUAE(p);
 }
 function waURL(s){ return 'https://wa.me/'+waPhone(s.phone)+'?text='+encodeURIComponent(getMessage(s)); }
 
@@ -433,7 +443,7 @@ function openEdit(idx){
 function saveStudent(){
   var cls=document.getElementById('fCls').value.trim();
   var name=document.getElementById('fName').value.trim();
-  var phone=document.getElementById('fPhone').value.trim();
+  var phone=normalizePhoneUAE(document.getElementById('fPhone').value.trim());
   if(!cls||!name||!phone){ alert('يرجى ملء جميع الحقول'); return; }
   if(editIdx===-1) students.push({cls:cls,name:name,phone:phone});
   else students[editIdx]={cls:cls,name:name,phone:phone};
@@ -500,7 +510,7 @@ function pullSharedStudents(){
     students = rows.map(function(r){
       var code = String(r['الصف']||'').trim();
       var cls = code.length >= 2 ? (code[0] + '/' + code.slice(1)) : code;
-      return { cls: cls || '—', name: String(r['اسم الطالب']||'').trim(), phone: String(r['رقم التواصل']||'').replace(/[^\d]/g,'') };
+      return { cls: cls || '—', name: String(r['اسم الطالب']||'').trim(), phone: normalizePhoneUAE(r['رقم التواصل']) };
     }).filter(function(s){ return s.name && s.phone; });
     if(!students.length){ setSharedStatus('⚠️ ما فيه طلاب بأرقام تواصل بالملف المرتبط.'); return; }
     afterLoad();

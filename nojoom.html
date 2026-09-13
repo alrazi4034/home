@@ -1878,7 +1878,7 @@ function saveParentPhone(classId, studentId) {
   const cls = state.classes.find(c => c.id === classId);
   const s = cls?.students.find(st => st.id === studentId);
   if (!s) return;
-  const newPhone = document.getElementById('m-parent-phone').value.trim();
+  const newPhone = normalizePhoneUAE(document.getElementById('m-parent-phone').value.trim());
   if (newPhone !== s.parentPhone) s.phoneVerified = false;
   s.parentPhone = newPhone;
   save(); closeModalForce(); renderClasses();
@@ -5010,6 +5010,18 @@ function showImportExportMenu() {
     </div>`);
 }
 
+/* ===== تطبيع أرقام الهواتف الإماراتية إلى صيغة 9715xxxxxxxx ===== */
+function normalizePhoneUAE(raw){
+  let d = String(raw||'').replace(/[^0-9]/g,'');
+  if(!d) return '';
+  if(d.startsWith('00971')) d = d.slice(2);
+  else if(d.startsWith('971')){ /* بالصيغة الصحيحة أصلاً */ }
+  else if(d.startsWith('05')) d = '971' + d.slice(1);
+  else if(/^5\d{8}$/.test(d)) d = '971' + d;
+  else if(d.startsWith('0') && d.length === 10) d = '971' + d.slice(1);
+  return d;
+}
+
 /* ===== استيراد من بيانات المدرسة (الملف المرتبط بالصفحة الرئيسية) ===== */
 function openImportFromSchoolDataModal() {
   let dataUrl = null, fname = '';
@@ -5026,7 +5038,7 @@ function openImportFromSchoolDataModal() {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const wb = XLSX.read(bytes.buffer, {type:'array'});
+    const wb = XLSX.read(bytes.buffer, {type:'array', cellDates:true});
     const ws = wb.Sheets['جميع الطلاب'];
     if (!ws) { alert('لم يتم العثور على صفحة "جميع الطلاب" في الملف المرتبط.'); return; }
     const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
@@ -5035,16 +5047,20 @@ function openImportFromSchoolDataModal() {
     rows.forEach(r => {
       const code = String(r['الصف']||'').trim();
       const name = String(r['اسم الطالب']||'').trim();
-      const phone = String(r['رقم التواصل']||'').replace(/[^\d]/g,'');
+      const phoneRaw = r['رقم التواصل'];
+      const phone = phoneRaw !== '' ? normalizePhoneUAE(phoneRaw) : '';
+      const approvedRaw = String(r['معتمد']==null ? '' : r['معتمد']).trim();
+      const approved = approvedRaw === '1' || approvedRaw.toLowerCase() === 'true' || approvedRaw === 'معتمد';
       if (!code || !name) return;
       const display = code.length >= 2 ? (code[0] + '/' + code.slice(1)) : code;
       if (!byClass[display]) byClass[display] = [];
-      byClass[display].push({ name, phone });
+      byClass[display].push({ name, phone, approved });
     });
 
     const classCodes = Object.keys(byClass).sort();
     if (!classCodes.length) { alert('لم يتم العثور على طلاب في الملف المرتبط.'); return; }
     window._schoolDataByClass = byClass;
+    window._schoolDataInfo = readSchoolInfoFromWorkbook(wb);
 
     const existingNames = new Set(state.classes.flatMap(c => c.students.map(s => s.name)));
     const rowsHtml = classCodes.map(code => {
@@ -5057,12 +5073,18 @@ function openImportFromSchoolDataModal() {
       </label>`;
     }).join('');
 
+    const info = window._schoolDataInfo;
+    const infoLine = info.schoolName
+      ? `المدرسة: <b>${info.schoolName}</b>${info.principal ? ' — المديرة: <b>'+info.principal+'</b>' : ''}${info.termStart ? ' — الفصل الدراسي: <b>'+info.termStart+' → '+info.termEnd+'</b>' : ''}<br>`
+      : '';
+
     openModal(`
       <div class="modal-title">🏫 استيراد من بيانات المدرسة</div>
       <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:10px;line-height:1.8">
         الملف المرتبط: ${fname || '—'}<br>
+        ${infoLine}
         حدد الصفوف التي تريد استيرادها. الطلاب الموجودون مسبقاً بالاسم (بأي صف) لن يُكرَّروا.
-        أرقام التواصل المستوردة ستُعتبر <b>معتمدة</b> تلقائياً.
+        أرقام التواصل التي عليها علامة <b>معتمد</b> في ملف المدرسة تُستورد كمعتمدة، والباقي غير معتمد حتى يُؤكَّد يدوياً.
       </div>
       <div style="max-height:320px;overflow-y:auto;margin-bottom:10px">${rowsHtml}</div>
       <div class="modal-actions">
@@ -5072,6 +5094,60 @@ function openImportFromSchoolDataModal() {
   } catch(err) {
     alert('تعذّر قراءة الملف المرتبط: ' + err.message);
   }
+}
+
+/* يقرأ اسم المدرسة، اسم المديرة، والفصل الدراسي الحالي (بداية/نهاية) من صفحة "التقويم المدرسي" */
+function readSchoolInfoFromWorkbook(wb) {
+  const out = { schoolName:'', principal:'', academicYear:'', termStart:'', termEnd:'' };
+  const wsCal = wb.Sheets['التقويم المدرسي'];
+  if (!wsCal) return out;
+  const grid = XLSX.utils.sheet_to_json(wsCal, {header:1, defval:''});
+  let infoHeaderRow = -1, termHeaderRow = -1;
+  grid.forEach((row,i) => {
+    if (row.includes('اسم المدرسة')) infoHeaderRow = i;
+    if (row.some(c => String(c).includes('الفصل الدراسي الأول'))) termHeaderRow = i;
+  });
+  if (infoHeaderRow >= 0) {
+    const headers = grid[infoHeaderRow].filter(h => h);
+    const vals = grid[infoHeaderRow+1] || [];
+    const info = {};
+    headers.forEach((h,idx) => info[h] = vals[idx] ?? '');
+    out.schoolName   = String(info['اسم المدرسة'] || '').trim();
+    out.principal    = String(info['اسم مديرة المدرسة'] || '').trim();
+    out.academicYear = String(info['العام الدراسي'] || '').trim();
+  }
+  if (termHeaderRow >= 0) {
+    const termHeaders = grid[termHeaderRow];
+    const rawRows = [];
+    for (let i = termHeaderRow+1; i < grid.length; i++) {
+      const row = grid[i];
+      if (!row || row.every(c => c === '' || c === undefined)) continue;
+      rawRows.push(row);
+    }
+    const toDate = v => {
+      if (v instanceof Date) return v;
+      if (typeof v === 'number') return new Date(Math.round((v - 25569) * 86400 * 1000));
+      const d = new Date(v);
+      return isNaN(d) ? null : d;
+    };
+    const segments = [0,1,2].map(ti => {
+      const wCol = ti*2, dCol = ti*2+1;
+      const weeks = rawRows
+        .map(row => toDate(row[dCol]))
+        .filter(Boolean)
+        .sort((a,b) => a - b);
+      return weeks.length ? { start: weeks[0], end: weeks[weeks.length-1] } : null;
+    }).filter(Boolean);
+    if (segments.length) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      // الفصل الحالي = آخر فصل بدأ قبل اليوم أو يساويه، وإلا أول فصل
+      let current = segments.filter(s => s.start <= today).pop() || segments[0];
+      const fmt = d => d.toISOString().slice(0,10);
+      out.termStart = fmt(current.start);
+      out.termEnd   = fmt(current.end);
+    }
+  }
+  return out;
 }
 
 function confirmImportFromSchoolData() {
@@ -5096,13 +5172,27 @@ function confirmImportFromSchoolData() {
         id: Date.now() + ci * 1000 + i, name: s.name,
         points:0, present:0, absent:0, participation:0, absenceDates:[],
         _todayAtt:'unmarked', _prevAtt:{}, parentPhone: s.phone || '',
-        phoneVerified: !!s.phone, behaviorNotes:[], _manualBonus:0
+        phoneVerified: !!(s.phone && s.approved), behaviorNotes:[], _manualBonus:0
       });
       existingNames.add(s.name);
       addedStudents++;
     });
     cls.students = sortStudentsAlpha(cls.students);
   });
+
+  // سحب بيانات المدرسة والمديرة والفصل الدراسي (بدون الكتابة فوق حقول أُدخلت يدوياً)
+  const info = window._schoolDataInfo;
+  if (info) {
+    if (!state.schoolInfo) state.schoolInfo = {};
+    if (info.schoolName && !state.schoolInfo.schoolName) state.schoolInfo.schoolName = info.schoolName;
+    if (info.principal  && !state.schoolInfo.principal)  state.schoolInfo.principal  = info.principal;
+    if (info.academicYear && !state.schoolInfo.term)     state.schoolInfo.term      = info.academicYear;
+    if (info.termStart  && !state.schoolInfo.termStart)  state.schoolInfo.termStart = info.termStart;
+    if (info.termEnd    && !state.schoolInfo.termEnd)    state.schoolInfo.termEnd   = info.termEnd;
+    const schoolTitleEl = document.getElementById('school-title');
+    if (schoolTitleEl) schoolTitleEl.textContent = state.schoolInfo.schoolName ? ' | المدرسة: ' + state.schoolInfo.schoolName : '';
+    renderSchoolInfoBar(state.schoolInfo.subject, state.schoolInfo.teacher, state.schoolInfo.schoolName);
+  }
 
   save(); closeModalForce();
   renderClassTabs(); renderStudentList(); renderClasses(); updateLeaderboard(); updateReportSelects();
@@ -5194,7 +5284,7 @@ function doExportCSV() {
         const bonusPoints = s._manualBonus || 0;
         const posNotes = (s.behaviorNotes||[]).filter(n=>n.type==='positive').length;
         const negNotes = (s.behaviorNotes||[]).filter(n=>n.type!=='positive').length;
-        const phoneStatus = !s.parentPhone ? '' : s.phoneVerified ? 'معتمد' : 'غير معتمد';
+        const phoneStatus = !s.parentPhone ? '' : s.phoneVerified ? '1' : '0';
         let row = `"${cls.name}","${savedDatesStr}","${s.name}","'${s.parentPhone||''}","${phoneStatus}","${govUser}","${govPass}","${alifUser}","${alifPass}",${s.points||0},${bonusPoints}`;
         // درجات التقييمات
         assessments.forEach(a => {
@@ -5319,9 +5409,9 @@ function importStudentsFromCSV(text) {
     const stName   = getCell(row, colMap.name);
     if (!clsName || !stName) continue;
 
-    const phone         = getCell(row, colMap.phone);
+    const phone         = normalizePhoneUAE(getCell(row, colMap.phone));
     const verifiedStr   = getCell(row, colMap.verified);
-    const isVerified    = verifiedStr === 'معتمد';
+    const isVerified    = verifiedStr === '1' || verifiedStr === 'معتمد';
     const govUser  = getCell(row, colMap.govUser);
     const govPass  = getCell(row, colMap.govPass);
     const alifUser = getCell(row, colMap.alifUser);
