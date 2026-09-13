@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="./datalink.js"></script>
 <style>
   :root{
     --bg: #F2F2F0;
@@ -252,8 +253,10 @@
       </div>
     </div>
     <div class="h-actions">
-      <button class="link-btn" title="ربط ملف بيانات المدرسة" onclick="document.getElementById('fileInput').click()">🔗</button>
-      <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)">
+      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة" onclick="onLinkBtnClick()">🔗 ربط تلقائي</button>
+      <button class="link-btn" id="unlinkBtn" title="فك الربط" onclick="onUnlinkBtnClick()" style="display:none;">✖ فك الربط</button>
+      <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
+      <button class="btn btn-primary" id="saveToLinkBtn" onclick="saveToLinkedFile()" style="display:none;">💾 حفظ في الملف المرتبط</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
     </div>
   </header>
@@ -332,6 +335,7 @@
   <button class="tab" data-tab="students">الطلاب</button>
   <button class="tab" data-tab="admins">الإداريون</button>
   <button class="tab" data-tab="teachers">المعلمون والجداول</button>
+  <button class="tab" data-tab="schedule">جدول المدرسة</button>
 </div>
 
 <main>
@@ -365,8 +369,8 @@
       <button class="btn" onclick="openPasswordBulkModal()">🔑 إضافة باسووردات سريع</button>
       <button class="btn" onclick="openPhoneBulkModal()">📱 إضافة أرقام هواتف جماعياً</button>
     </div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">الطلاب مرتّبون تلقائياً أبجدياً داخل كل صف. اضغط على أي طالب لعرض كامل بياناته وتعديلها أو نقله أو حذفه.</p>
-    <div class="table-wrap"><table id="studentsTable"></table></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">الطلاب مرتّبون تلقائياً أبجدياً داخل كل شعبة (وليس بترتيب المسلسل في ملف الإكسل)، مع ترقيم مسلسل تلقائي حسب هذا الترتيب. كل شعبة قابلة للطي والتمدد. اضغط على أي طالب لعرض كامل بياناته وتعديلها أو نقله أو حذفه.</p>
+    <div id="studentsContainer"></div>
   </div>
 
   <div class="panel" id="panel-admins">
@@ -383,6 +387,12 @@
       <button class="btn" onclick="addTeacherRow()">+ إضافة معلم</button>
     </div>
     <div id="teachersList"></div>
+  </div>
+
+  <div class="panel" id="panel-schedule">
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">جدول المدرسة الكامل — الأعمدة الأيام والحصص (الاثنين–الخميس ٨ حصص، الجمعة ٤)، والصفوف (الأسطر) بأسماء المعلمين ومرتّبة حسب المادة مع خط فاصل بين كل مادة وأخرى.</p>
+    <div id="scheduleAlert" style="margin-bottom:14px;"></div>
+    <div class="table-wrap" id="masterScheduleWrap" style="overflow-x:auto;"></div>
   </div>
 
 </main>
@@ -587,8 +597,7 @@ function handleFile(e){
   reader.onload = function(ev){
     try{
       loadWorkbookFromArrayBuffer(ev.target.result, file.name);
-      setStatus('✅ تم تحميل الملف: <b>' + file.name + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>');
-      showView('management');
+      afterWorkbookLoaded(file.name, null);
     }catch(err){
       setStatus('❌ تعذّرت قراءة الملف: ' + err.message);
       return;
@@ -613,6 +622,8 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   if(wsStudents){
     const rows = XLSX.utils.sheet_to_json(wsStudents, {defval:''});
     state.studentHeaders = rows.length ? Object.keys(rows[0]) : [];
+    if(!state.studentHeaders.includes('معتمد')) state.studentHeaders.push('معتمد');
+    rows.forEach(r => { if(r['معتمد'] === '' || r['معتمد'] === undefined || r['معتمد'] === null) r['معتمد'] = '1'; else r['معتمد'] = String(r['معتمد']) === '1' ? '1' : '0'; });
     state.students = rows;
     sortStudentsArr();
   }
@@ -689,6 +700,7 @@ function renderAll(){
   renderStudents();
   renderAdmins();
   renderTeachers();
+  renderMasterSchedule();
 }
 
 /* ---------- بيانات المدرسة ---------- */
@@ -736,9 +748,11 @@ function addClassCode(){
   else alert('الصف ' + g + '/' + s + ' موجود مسبقاً.');
 }
 function addSection(g){
-  const s = prompt('رقم الشعبة الجديدة للصف ' + g);
-  if(!s || !/^[0-9]$/.test(s.trim())) return;
-  const code = g + s.trim();
+  const map = classesToMap(state.schoolClasses);
+  const existing = (map[g]||[]).map(s => parseInt(s,10)).filter(n => !isNaN(n));
+  const next = existing.length ? Math.max(...existing) + 1 : 1;
+  if(next > 9){ alert('لا يمكن إضافة أكثر من 9 شعب للصف الواحد.'); return; }
+  const code = g + next;
   if(!state.schoolClasses.includes(code)){ state.schoolClasses.push(code); renderClassManagerBody(); }
 }
 function removeSection(g,s){ state.schoolClasses = state.schoolClasses.filter(c => c !== (g+s)); renderClassManagerBody(); }
@@ -760,27 +774,70 @@ function renderCalendar(){
   const box = document.getElementById('termsContainer');
   box.innerHTML = '';
   (state.terms || []).forEach((term, ti) => {
+    if(term.collapsed === undefined) term.collapsed = false;
+    if(term.weeksCount === undefined) term.weeksCount = term.weeks.length || '';
+    if(term.startDate === undefined) term.startDate = fmtDate(term.weeks[0] ? term.weeks[0].date : '');
     const section = document.createElement('div');
     section.className = 'schedule-card';
     section.innerHTML = `
-      <div class="schedule-head">
-        <h3>${term.weekLabel}</h3>
-        <button class="btn" onclick="addWeekRow(${ti})">+ إضافة أسبوع</button>
+      <div class="schedule-head" style="cursor:pointer" onclick="toggleTerm(${ti})">
+        <h3>${term.weekLabel} <span style="font-size:12px;color:var(--ink-soft);font-weight:400">(${term.weeks.length} أسبوع)</span></h3>
+        <span style="font-size:14px;color:var(--ink-soft)">${term.collapsed ? '▸' : '▾'}</span>
       </div>
-      <div class="table-wrap"><table id="calendarTable-${ti}"></table></div>
+      <div style="display:${term.collapsed ? 'none' : 'block'}">
+        <div class="form-grid" style="margin-bottom:14px;">
+          <div class="field">
+            <label>عدد الأسابيع</label>
+            <input type="number" min="1" value="${term.weeksCount}" onclick="event.stopPropagation()" oninput="state.terms[${ti}].weeksCount=parseInt(this.value)||0">
+          </div>
+          <div class="field">
+            <label>تاريخ بداية الأسبوع الأول</label>
+            <input type="date" value="${term.startDate}" onclick="event.stopPropagation()" oninput="state.terms[${ti}].startDate=this.value">
+          </div>
+          <div class="field" style="justify-content:flex-end">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" onclick="event.stopPropagation();generateTermWeeks(${ti})">⟳ توليد الأسابيع تلقائياً</button>
+          </div>
+        </div>
+        <div class="toolbar" style="justify-content:flex-end">
+          <button class="btn" onclick="event.stopPropagation();addWeekRow(${ti})">+ إضافة أسبوع يدوياً</button>
+        </div>
+        <div class="table-wrap"><table id="calendarTable-${ti}"></table></div>
+      </div>
     `;
     box.appendChild(section);
     renderTermTable(ti);
   });
 }
+function toggleTerm(ti){
+  state.terms[ti].collapsed = !state.terms[ti].collapsed;
+  renderCalendar();
+}
+function generateTermWeeks(ti){
+  const term = state.terms[ti];
+  const count = parseInt(term.weeksCount, 10) || 0;
+  if(count <= 0){ alert('أدخل عدد أسابيع صحيح.'); return; }
+  if(!term.startDate){ alert('أدخل تاريخ بداية الأسبوع الأول أولاً.'); return; }
+  const start = new Date(term.startDate + 'T00:00:00');
+  if(isNaN(start.getTime())){ alert('تاريخ البداية غير صحيح.'); return; }
+  const weeks = [];
+  for(let i = 0; i < count; i++){
+    const d = new Date(start.getTime());
+    d.setDate(d.getDate() + i * 7);
+    weeks.push({ week: 'الأسبوع ' + (i+1), date: d.toISOString().slice(0,10) });
+  }
+  term.weeks = weeks;
+  renderCalendar();
+}
 function renderTermTable(ti){
   const term = state.terms[ti];
   const t = document.getElementById('calendarTable-'+ti);
+  if(!t) return;
   let html = `<thead><tr><th>${term.weekLabel}</th><th>${term.dateLabel}</th><th></th></tr></thead><tbody>`;
   term.weeks.forEach((w, i) => {
     html += `<tr>
       <td><input value="${w.week}" oninput="state.terms[${ti}].weeks[${i}].week=this.value"></td>
-      <td><input value="${fmtDate(w.date)}" oninput="state.terms[${ti}].weeks[${i}].date=this.value"></td>
+      <td><input type="date" value="${fmtDate(w.date)}" oninput="state.terms[${ti}].weeks[${i}].date=this.value"></td>
       <td><button class="btn btn-danger" onclick="state.terms[${ti}].weeks.splice(${i},1);renderTermTable(${ti})">حذف</button></td>
     </tr>`;
   });
@@ -810,22 +867,52 @@ function populateClassFilter(){
   sel.innerHTML = '<option value="">كل الصفوف</option>' + classes.map(c=>`<option value="${c}">${codeToDisplay(c)}</option>`).join('');
 }
 function renderStudents(){
-  const table = document.getElementById('studentsTable');
-  if(!state.studentHeaders.length){ table.innerHTML=''; return; }
+  const container = document.getElementById('studentsContainer');
+  if(!state.studentHeaders.length){ container.innerHTML=''; return; }
   const q = (document.getElementById('studentSearch').value||'').trim();
-  const cls = document.getElementById('classFilter').value;
-  let html = '<thead><tr><th>م</th><th>الصف</th><th>اسم الطالب</th><th>رقم التواصل</th></tr></thead><tbody>';
-  state.students.forEach((s, i) => {
-    if(cls && String(s['الصف']) !== cls) return;
-    if(q && !Object.values(s).some(v => String(v).includes(q))) return;
-    html += `<tr onclick="openStudentModal(${i})" style="cursor:pointer">
-      <td>${s['م'] ?? ''}</td>
-      <td>${codeToDisplay(s['الصف'])}</td>
-      <td>${s['اسم الطالب'] || s['NAME IN ARABIC'] || ''}</td>
-      <td>${s['رقم التواصل'] || ''}</td>
-    </tr>`;
+  const clsFilter = document.getElementById('classFilter').value;
+
+  const classesInData = [...new Set(state.students.map(s => String(s['الصف'])))];
+  let orderedClasses = state.schoolClasses.length ? state.schoolClasses.slice() : [];
+  classesInData.forEach(c => { if(c && !orderedClasses.includes(c)) orderedClasses.push(c); });
+
+  state._classCollapse = state._classCollapse || {};
+
+  let html = '';
+  orderedClasses.forEach(cls => {
+    if(clsFilter && cls !== clsFilter) return;
+    const rows = state.students
+      .map((s, i) => ({s, i}))
+      .filter(({s}) => String(s['الصف']) === cls)
+      .filter(({s}) => !q || Object.values(s).some(v => String(v).includes(q)));
+    if(!rows.length) return;
+    const collapsed = !!state._classCollapse[cls];
+    html += `<div class="schedule-card">
+      <div class="schedule-head" style="cursor:pointer" onclick="toggleClassGroup('${cls}')">
+        <h3>الصف ${codeToDisplay(cls)} <span style="font-size:12px;color:var(--ink-soft);font-weight:400">(${rows.length} طالب)</span></h3>
+        <span style="font-size:14px;color:var(--ink-soft)">${collapsed ? '▸' : '▾'}</span>
+      </div>
+      <div style="display:${collapsed ? 'none' : 'block'}">
+        <table class="grid-table" style="text-align:right;width:100%">
+          <thead><tr><th>م</th><th>اسم الطالب</th><th>رقم التواصل</th><th>الحالة</th></tr></thead>
+          <tbody>
+            ${rows.map(({s,i}) => `<tr onclick="openStudentModal(${i})" style="cursor:pointer">
+              <td>${s['م'] ?? ''}</td>
+              <td>${s['اسم الطالب'] || s['NAME IN ARABIC'] || ''}</td>
+              <td>${s['رقم التواصل'] || ''}</td>
+              <td>${String(s['معتمد'])==='0' ? '❌ غير معتمد' : '✅ معتمد'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
   });
-  table.innerHTML = html + '</tbody>';
+  container.innerHTML = html || '<p style="color:var(--ink-soft);font-size:13px;">لا يوجد طلاب مطابقون.</p>';
+}
+function toggleClassGroup(cls){
+  state._classCollapse = state._classCollapse || {};
+  state._classCollapse[cls] = !state._classCollapse[cls];
+  renderStudents();
 }
 
 let currentStudentIdx = -1;
@@ -840,6 +927,13 @@ function openStudentModal(idx){
       if(!isNew && s[h]) opts = state.schoolClasses.filter(c => c[0] === String(s[h])[0]);
       const optHtml = opts.map(c => `<option value="${c}" ${String(s[h])===c ? 'selected':''}>${codeToDisplay(c)}</option>`).join('');
       return `<div class="field"><label>${h} (نقل لشعبة أخرى من نفس المرحلة)</label><select data-h="${h}">${optHtml}</select></div>`;
+    }
+    if(h === 'معتمد'){
+      const val = String(s[h] ?? '1') === '0' ? '0' : '1';
+      return `<div class="field"><label>${h}</label><select data-h="${h}">
+        <option value="1" ${val==='1'?'selected':''}>معتمد</option>
+        <option value="0" ${val==='0'?'selected':''}>غير معتمد</option>
+      </select></div>`;
     }
     return `<div class="field"><label>${h}</label><input data-h="${h}" value="${s[h] ?? ''}"></div>`;
   }).join('');
@@ -1103,73 +1197,148 @@ function applyPhoneBulk(){
 }
 
 /* ---------- الإداريون ---------- */
+const JOB_TITLES = ['مديرة المدرسة','رئيس وحدة الشؤون الاكاديمية','رئيس وحدة شؤون الطلاب','رئيس وحدة شؤون الخدمات','المرشد الاكاديمي'];
 function renderAdmins(){
   const table = document.getElementById('adminsTable');
   if(!state.adminHeaders.length){ table.innerHTML=''; return; }
   let html = '<thead><tr>' + state.adminHeaders.map(h=>`<th>${h}</th>`).join('') + '<th></th></tr></thead><tbody>';
   state.admins.forEach((a, i) => {
-    html += '<tr>' + state.adminHeaders.map(h =>
-      `<td><input value="${a[h] ?? ''}" oninput="state.admins[${i}]['${h}']=this.value"></td>`
-    ).join('') + `<td><button class="btn btn-danger" onclick="state.admins.splice(${i},1);renderAdmins()">حذف</button></td></tr>`;
+    html += '<tr>' + state.adminHeaders.map(h => {
+      if(h === 'الوظيفة'){
+        const val = a[h] ?? '';
+        const known = JOB_TITLES.includes(val);
+        const opts = JOB_TITLES.map(j => `<option value="${j}" ${val===j?'selected':''}>${j}</option>`).join('')
+          + (val && !known ? `<option value="${val}" selected>${val}</option>` : '')
+          + `<option value="__other__">+ إضافة وظيفة أخرى...</option>`;
+        return `<td><select onchange="handleAdminJobChange(${i}, this)">${opts}</select></td>`;
+      }
+      return `<td><input value="${a[h] ?? ''}" oninput="state.admins[${i}]['${h}']=this.value"></td>`;
+    }).join('') + `<td><button class="btn btn-danger" onclick="state.admins.splice(${i},1);renderAdmins()">حذف</button></td></tr>`;
   });
   table.innerHTML = html + '</tbody>';
+}
+function handleAdminJobChange(i, sel){
+  if(sel.value === '__other__'){
+    const custom = prompt('أدخل مسمى الوظيفة الجديد');
+    if(custom && custom.trim()) state.admins[i]['الوظيفة'] = custom.trim();
+    renderAdmins();
+    return;
+  }
+  state.admins[i]['الوظيفة'] = sel.value;
 }
 function addAdminRow(){ const row={}; state.adminHeaders.forEach(h=>row[h]=''); state.admins.push(row); renderAdmins(); }
 
 /* ---------- المعلمون والجداول ---------- */
+const SUBJECTS = ['التربية الاسلامية','اللغة العربية','اللغة الانجليزية','الرياضيات','العلوم','الدراسات الاجتماعية','الذكاء الاصطناعي والتكنولوجيا','التربية الرياضية','الفنون السمعية','الفنون البصرية','الدراما','معلم التربية الخاصة','مدرب الجيوجتسو','اختصاصي مصادر التعلم'];
+
+function renderScheduleTable(t, ti, classesForTeacher, readOnly){
+  return `<table class="grid-table">
+    <thead><tr><th>اليوم</th>${!readOnly ? '<th>إدخال سريع</th>' : ''}${PERIOD_LABELS_FULL.map(l=>`<th>${l}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${DAYS.map(d => {
+        const isFri = d === 'الجمعة';
+        const maxP = isFri ? 4 : 8;
+        return `<tr>
+          <th>${d}</th>
+          ${!readOnly ? `<td>
+            <input class="quick-input" id="quick-${ti}-${d}" placeholder="مثال: 51520510">
+            <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="applyQuickSchedule(${ti},'${d}',${maxP})">تطبيق</button>
+          </td>` : ''}
+          ${Array.from({length:8}, (_, pIdx) => {
+            if(pIdx >= maxP) return '<td style="color:var(--line)">—</td>';
+            const val = t['_'+d][pIdx] || '0';
+            if(readOnly){
+              return `<td>${val==='0' ? '—' : codeToDisplay(val)}</td>`;
+            }
+            const opts = ['<option value="0">فراغ</option>'].concat(
+              classesForTeacher.map(c => `<option value="${c}" ${val===c?'selected':''}>${codeToDisplay(c)}</option>`)
+            );
+            return `<td><select onchange="updateSchedule(${ti},'${d}',${pIdx},this.value)">${opts.join('')}</select></td>`;
+          }).join('')}
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
 function renderTeachers(){
   const box = document.getElementById('teachersList');
   box.innerHTML = '';
   state.teachers.forEach((t, ti) => {
     if(!t._classes) t._classes = classesFromString(t['الصفوف']);
     DAYS.forEach(d => { if(!t['_'+d]) t['_'+d] = Array(8).fill('0'); });
-    const baseFields = state.teacherHeaders.filter(h => !DAYS.includes(h) && h !== 'الصفوف');
+    if(t._editing === undefined) t._editing = false;
+    if(t._collapsed === undefined) t._collapsed = true;
+    const baseFields = state.teacherHeaders.filter(h => !DAYS.includes(h) && h !== 'الصفوف' && h !== 'مادة التدريس');
     const classesForTeacher = t._classes.length ? t._classes : state.schoolClasses;
+
+    const headerHtml = `
+      <div class="schedule-head" style="cursor:pointer" onclick="toggleTeacherCollapse(${ti})">
+        <h3><span class="tname">${t['اسم المعلم'] || 'معلم جديد'}</span> <span class="tsubject" style="font-size:12px;color:var(--ink-soft);font-weight:400">${t['مادة التدريس'] ? '— ' + t['مادة التدريس'] : ''}</span></h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn" title="تعديل" onclick="event.stopPropagation();toggleTeacherEdit(${ti})">${t._editing ? '👁 عرض' : '✏️ تعديل'}</button>
+          <button class="btn btn-danger" onclick="event.stopPropagation();state.teachers.splice(${ti},1);renderTeachers()">حذف</button>
+          <span style="font-size:14px;color:var(--ink-soft)">${t._collapsed ? '▸' : '▾'}</span>
+        </div>
+      </div>
+    `;
+
+    let bodyHtml = '';
+    if(t._collapsed && !t._editing){
+      bodyHtml = '';
+    } else if(!t._editing){
+      bodyHtml = `
+        <div class="chip-row" style="margin-bottom:12px;">
+          ${t._classes.length ? t._classes.map(c=>`<span class="chip">${codeToDisplay(c)}</span>`).join('') : '<span class="chip" style="opacity:.6">لا صفوف محددة</span>'}
+        </div>
+        ${renderScheduleTable(t, ti, classesForTeacher, true)}
+      `;
+    } else {
+      bodyHtml = `
+        <div class="form-grid" style="margin-bottom:12px;">
+          ${baseFields.map(h => `<div class="field"><label>${h}</label><input value="${t[h] ?? ''}" oninput="state.teachers[${ti}]['${h}']=this.value;${h==='اسم المعلم' ? `this.closest('.schedule-card').querySelector('.tname').textContent=this.value||'معلم جديد';` : ''}"></div>`).join('')}
+          <div class="field">
+            <label>مادة التدريس</label>
+            <select onchange="state.teachers[${ti}]['مادة التدريس']=this.value;renderTeachers()">
+              <option value="">— اختر —</option>
+              ${SUBJECTS.map(sub => `<option value="${sub}" ${t['مادة التدريس']===sub?'selected':''}>${sub}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:6px;">الصفوف التي يدرّسها</label>
+          <div class="chip-row">
+            ${t._classes.length ? t._classes.map(c=>`<span class="chip">${codeToDisplay(c)}</span>`).join('') : '<span class="chip" style="opacity:.6">لا صفوف محددة</span>'}
+            <button class="btn" style="padding:5px 12px;font-size:12px;" onclick="openTeacherClassesModal(${ti})">تعديل الصفوف</button>
+          </div>
+        </div>
+        ${renderScheduleTable(t, ti, classesForTeacher, false)}
+        <div style="margin-top:14px;text-align:left">
+          <button class="btn btn-primary" onclick="saveTeacherEdit(${ti})">💾 حفظ</button>
+        </div>
+      `;
+    }
 
     const card = document.createElement('div');
     card.className = 'schedule-card';
-    card.innerHTML = `
-      <div class="schedule-head">
-        <h3>${t['اسم المعلم'] || 'معلم جديد'}</h3>
-        <button class="btn btn-danger" onclick="state.teachers.splice(${ti},1);renderTeachers()">حذف المعلم</button>
-      </div>
-      <div class="form-grid" style="margin-bottom:12px;">
-        ${baseFields.map(h => `<div class="field"><label>${h}</label><input value="${t[h] ?? ''}" oninput="state.teachers[${ti}]['${h}']=this.value;${h==='اسم المعلم' ? `this.closest('.schedule-card').querySelector('h3').textContent=this.value||'معلم';` : ''}"></div>`).join('')}
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:12px;color:var(--ink-soft);display:block;margin-bottom:6px;">الصفوف التي يدرّسها</label>
-        <div class="chip-row">
-          ${t._classes.length ? t._classes.map(c=>`<span class="chip">${codeToDisplay(c)}</span>`).join('') : '<span class="chip" style="opacity:.6">لا صفوف محددة</span>'}
-          <button class="btn" style="padding:5px 12px;font-size:12px;" onclick="openTeacherClassesModal(${ti})">تعديل الصفوف</button>
-        </div>
-      </div>
-      <table class="grid-table">
-        <thead><tr><th>اليوم</th><th>إدخال سريع</th>${PERIOD_LABELS_FULL.map(l=>`<th>${l}</th>`).join('')}</tr></thead>
-        <tbody>
-          ${DAYS.map(d => {
-            const isFri = d === 'الجمعة';
-            const maxP = isFri ? 4 : 8;
-            return `<tr>
-              <th>${d}</th>
-              <td>
-                <input class="quick-input" id="quick-${ti}-${d}" placeholder="مثال: 51520510">
-                <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="applyQuickSchedule(${ti},'${d}',${maxP})">تطبيق</button>
-              </td>
-              ${Array.from({length:8}, (_, pIdx) => {
-                if(pIdx >= maxP) return '<td style="color:var(--line)">—</td>';
-                const val = t['_'+d][pIdx] || '0';
-                const opts = ['<option value="0">فراغ</option>'].concat(
-                  classesForTeacher.map(c => `<option value="${c}" ${val===c?'selected':''}>${codeToDisplay(c)}</option>`)
-                );
-                return `<td><select onchange="updateSchedule(${ti},'${d}',${pIdx},this.value)">${opts.join('')}</select></td>`;
-              }).join('')}
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    `;
+    card.innerHTML = headerHtml + `<div>${bodyHtml}</div>`;
     box.appendChild(card);
   });
+  renderMasterSchedule();
+}
+function toggleTeacherCollapse(ti){
+  state.teachers[ti]._collapsed = !state.teachers[ti]._collapsed;
+  renderTeachers();
+}
+function toggleTeacherEdit(ti){
+  state.teachers[ti]._editing = !state.teachers[ti]._editing;
+  if(state.teachers[ti]._editing) state.teachers[ti]._collapsed = false;
+  renderTeachers();
+}
+function saveTeacherEdit(ti){
+  state.teachers[ti]._editing = false;
+  renderTeachers();
+  setStatus('✅ تم حفظ بيانات المعلم: <b>' + (state.teachers[ti]['اسم المعلم']||'') + '</b>');
 }
 function updateSchedule(ti, day, pIdx, val){
   if(!state.teachers[ti]['_'+day]) state.teachers[ti]['_'+day] = Array(8).fill('0');
@@ -1186,6 +1355,8 @@ function applyQuickSchedule(ti, day, maxPeriods){
 function addTeacherRow(){
   const row = {}; state.teacherHeaders.forEach(h => row[h] = '');
   row._classes = [];
+  row._editing = true;
+  row._collapsed = false;
   DAYS.forEach(d => row['_'+d] = Array(8).fill('0'));
   state.teachers.push(row);
   renderTeachers();
@@ -1218,6 +1389,104 @@ function saveTeacherClasses(){
   state.teachers[currentTeacherModalIdx]._classes = Array.from(checks).map(c => c.value);
   closeModal('teacherClassesModal');
   renderTeachers();
+}
+
+/* ---------- جدول المدرسة الكامل ---------- */
+function renderMasterSchedule(){
+  const box = document.getElementById('masterScheduleWrap');
+  const alertBox = document.getElementById('scheduleAlert');
+  if(!box || !alertBox) return;
+  if(!state.teachers.length){ box.innerHTML=''; alertBox.innerHTML=''; return; }
+
+  const sorted = state.teachers
+    .map((t, ti) => ({t, ti}))
+    .sort((a,b) => {
+      const sa = a.t['مادة التدريس'] || '', sb = b.t['مادة التدريس'] || '';
+      if(sa !== sb) return sa.localeCompare(sb, 'ar');
+      return String(a.t['اسم المعلم']||'').localeCompare(String(b.t['اسم المعلم']||''), 'ar');
+    });
+
+  let thead = '<thead><tr><th rowspan="2" style="min-width:170px">المعلم / المادة</th>';
+  DAYS.forEach(d => {
+    const count = d === 'الجمعة' ? 4 : 8;
+    thead += `<th colspan="${count}">${d}</th>`;
+  });
+  thead += '</tr><tr>';
+  DAYS.forEach(d => {
+    const count = d === 'الجمعة' ? 4 : 8;
+    for(let p=1;p<=count;p++) thead += `<th style="font-size:10px">${p}</th>`;
+  });
+  thead += '</tr></thead>';
+
+  let tbody = '<tbody>';
+  let prevSubject = null;
+  sorted.forEach(({t}) => {
+    const subject = t['مادة التدريس'] || '—';
+    const sepStyle = (prevSubject !== null && subject !== prevSubject) ? 'border-top:3px solid var(--ink);' : '';
+    prevSubject = subject;
+    tbody += `<tr style="${sepStyle}"><td style="text-align:right;white-space:nowrap;"><b>${t['اسم المعلم']||''}</b><br><span style="font-size:11px;color:var(--ink-soft)">${subject}</span></td>`;
+    DAYS.forEach(d => {
+      const count = d === 'الجمعة' ? 4 : 8;
+      const arr = t['_'+d] || Array(8).fill('0');
+      for(let p=0;p<count;p++){
+        const val = arr[p] || '0';
+        tbody += `<td>${val==='0' ? '' : codeToDisplay(val)}</td>`;
+      }
+    });
+    tbody += '</tr>';
+  });
+  tbody += '</tbody>';
+
+  box.innerHTML = `<table class="grid-table" style="min-width:1400px">${thead}${tbody}</table>`;
+
+  const slotMap = {};
+  state.teachers.forEach(t => {
+    DAYS.forEach(d => {
+      const count = d === 'الجمعة' ? 4 : 8;
+      const arr = t['_'+d] || Array(8).fill('0');
+      for(let p=0;p<count;p++){
+        const cls = arr[p];
+        if(cls && cls !== '0'){
+          const key = cls+'|'+d+'|'+p;
+          (slotMap[key] = slotMap[key]||[]).push(t['اسم المعلم']||'معلم');
+        }
+      }
+    });
+  });
+
+  const conflicts = [];
+  Object.keys(slotMap).forEach(key => {
+    if(slotMap[key].length > 1){
+      const [cls, d, p] = key.split('|');
+      conflicts.push(`الصف ${codeToDisplay(cls)} — ${d} — الحصة ${parseInt(p,10)+1}: (${slotMap[key].join(' / ')})`);
+    }
+  });
+
+  let missingCount = 0;
+  const classes = state.schoolClasses.length ? state.schoolClasses : [...new Set(state.teachers.flatMap(t => t._classes||[]))];
+  classes.forEach(cls => {
+    DAYS.forEach(d => {
+      const count = d === 'الجمعة' ? 4 : 8;
+      for(let p=0;p<count;p++){
+        const key = cls+'|'+d+'|'+p;
+        if(!slotMap[key] || !slotMap[key].length) missingCount++;
+      }
+    });
+  });
+
+  if(conflicts.length){
+    alertBox.innerHTML = `<div style="border:1px solid var(--danger);background:rgba(220,38,38,.08);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--danger)">
+      ⚠️ يوجد تعارض في الجدول (${conflicts.length} حالة):<br>${conflicts.slice(0,25).map(c=>'• '+c).join('<br>')}${conflicts.length>25?'<br>...':''}
+    </div>`;
+  } else if(missingCount > 0){
+    alertBox.innerHTML = `<div style="border:1px solid var(--accent);background:rgba(37,99,235,.08);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--accent)">
+      ⚠️ الجدول غير مكتمل — يوجد ${missingCount} حصة فارغة (بدون معلم) عبر الصفوف.
+    </div>`;
+  } else {
+    alertBox.innerHTML = `<div style="border:1px solid var(--primary);background:rgba(37,99,235,.08);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--primary)">
+      ✅ الجدول مكتمل ولا يوجد أي تعارض.
+    </div>`;
+  }
 }
 
 /* ---------- تصدير نسخة جديدة ---------- */
@@ -1268,6 +1537,131 @@ function exportWorkbook(){
 
   setStatus('تم تنزيل نسخة محدثة: <b>' + outName + '</b>');
 }
+
+/* ---------- الربط التلقائي (File System Access API عبر datalink.js) ---------- */
+let linkedHandle = null;
+
+function afterWorkbookLoaded(fileName, handle){
+  linkedHandle = handle || null;
+  const label = handle
+    ? '🔗 متصل تلقائياً بملف: <b>' + fileName + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>'
+    : '✅ تم تحميل الملف: <b>' + fileName + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>';
+  setStatus(label);
+  showView('management');
+  document.getElementById('exportBtn').style.display = '';
+  document.getElementById('exportBtn').disabled = false;
+  if(handle){
+    document.getElementById('saveToLinkBtn').style.display = '';
+    document.getElementById('unlinkBtn').style.display = '';
+    document.getElementById('linkBtn').textContent = '🔗 إعادة ربط';
+  }
+}
+
+async function onLinkBtnClick(){
+  if(!window.RaziLink || !RaziLink.fsaSupported()){
+    // متصفح لا يدعم الربط التلقائي (مثل Safari) — رجوع لاختيار ملف عادي
+    document.getElementById('fileInput').click();
+    return;
+  }
+  setStatus('جاري فتح منتقي الملفات...');
+  await RaziLink.linkFile(
+    (buf, fileName, handle) => {
+      try{
+        loadWorkbookFromArrayBuffer(buf, fileName);
+        afterWorkbookLoaded(fileName, handle);
+      }catch(err){
+        setStatus('❌ تعذّرت قراءة الملف: ' + err.message);
+      }
+    },
+    (err) => {
+      if(err && err.message === 'unsupported') return;
+      setStatus('❌ تعذّر ربط الملف: ' + (err && err.message ? err.message : err));
+    }
+  );
+}
+
+async function onUnlinkBtnClick(){
+  if(window.RaziLink) await RaziLink.unlink();
+  linkedHandle = null;
+  document.getElementById('saveToLinkBtn').style.display = 'none';
+  document.getElementById('unlinkBtn').style.display = 'none';
+  document.getElementById('linkBtn').textContent = '🔗 ربط تلقائي';
+  setStatus('تم فك الربط التلقائي. اختر ملفاً من جديد للمتابعة.');
+}
+
+async function saveToLinkedFile(){
+  if(!linkedHandle){ setStatus('❌ لا يوجد ملف مرتبط حالياً.'); return; }
+  try{
+    setStatus('جاري الحفظ في الملف المرتبط...');
+    const wb = buildWorkbook();
+    const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    await RaziLink.writeToLinkedFile(linkedHandle, buf);
+    setStatus('✅ تم حفظ التحديثات مباشرة في الملف المرتبط.');
+  }catch(err){
+    setStatus('❌ تعذّر الحفظ في الملف المرتبط: ' + err.message);
+  }
+}
+
+/* يبني workbook من state الحالية (نفس منطق exportWorkbook لكن بدون تنزيل) */
+function buildWorkbook(){
+  const wb = XLSX.utils.book_new();
+  const wsStudents = XLSX.utils.json_to_sheet(state.students, {header: state.studentHeaders});
+  XLSX.utils.book_append_sheet(wb, wsStudents, 'جميع الطلاب');
+  const wsAdmins = XLSX.utils.json_to_sheet(state.admins, {header: state.adminHeaders});
+  XLSX.utils.book_append_sheet(wb, wsAdmins, 'الاداريين');
+  const teacherRows = state.teachers.map(t => {
+    const row = {};
+    state.teacherHeaders.forEach(h => {
+      if(DAYS.includes(h)) row[h] = (t['_'+h] || Array(8).fill('0')).join('-');
+      else if(h === 'الصفوف') row[h] = (t._classes || []).slice().sort().join('-');
+      else row[h] = t[h];
+    });
+    return row;
+  });
+  const wsTeachers = XLSX.utils.json_to_sheet(teacherRows, {header: state.teacherHeaders});
+  XLSX.utils.book_append_sheet(wb, wsTeachers, 'المعلمين والجداول');
+
+  state.schoolInfo['صفوف المدرسة'] = state.schoolClasses.slice().sort().join('-');
+  const aoa = [];
+  aoa.push(['بيانات المدرسة']);
+  aoa.push(state.infoHeaders);
+  aoa.push(state.infoHeaders.map(h => state.schoolInfo[h] ?? ''));
+  aoa.push([]);
+  aoa.push(['بيانات الفصول الدراسية']);
+  aoa.push(state.termHeaders || [' الفصل الدراسي الأول','تاريخ البداية1',' الفصل الدراسي الثاني','تاريخ البداية2',' الفصل الدراسي الثالث','تاريخ البداية3']);
+  const maxWeeks = Math.max(0, ...state.terms.map(t => t.weeks.length));
+  for(let i = 0; i < maxWeeks; i++){
+    const row = [];
+    state.terms.forEach(term => {
+      row.push(term.weeks[i] ? term.weeks[i].week : '');
+      row.push(term.weeks[i] ? term.weeks[i].date : '');
+    });
+    aoa.push(row);
+  }
+  const wsCal = XLSX.utils.aoa_to_sheet(aoa);
+  XLSX.utils.book_append_sheet(wb, wsCal, 'التقويم المدرسي');
+  return wb;
+}
+
+async function initAutoLink(){
+  if(!window.RaziLink || !RaziLink.fsaSupported()) return; // متصفح لا يدعم — يبقى زر الاختيار العادي
+  setStatus('جاري التحقق من الملف المرتبط سابقاً...');
+  const result = await RaziLink.tryAutoLink((buf, fileName, handle) => {
+    try{
+      loadWorkbookFromArrayBuffer(buf, fileName);
+      afterWorkbookLoaded(fileName, handle);
+    }catch(err){
+      setStatus('❌ تعذّرت قراءة الملف المرتبط: ' + err.message);
+    }
+  });
+  if(result === 'needs-gesture'){
+    setStatus('🔗 يوجد ملف مرتبط سابقاً — اضغط زر "ربط تلقائي" لإعادة الاتصال (نقرة واحدة فقط، ثم لن يُطلب منك ذلك مجدداً).');
+  } else if(result === 'none' || result === 'unsupported'){
+    setStatus('لم يتم تحميل أي ملف بيانات بعد.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initAutoLink);
 
 </script>
 
