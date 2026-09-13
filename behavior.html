@@ -559,11 +559,17 @@ const monthNames = {1:'يناير',2:'فبراير',3:'مارس',4:'أبريل',
 const MARHALA_PALETTE = ['#6B8C5A','#5F7A57','#D9A438','#A8402E','#C97B5A','#4C6B8A','#6B4E23','#5C7A99','#8A5A44','#3F6B52','#7C9A72','#B08628','#5F7A57'];
 
 const LS_RECORDS='behaviorDash_records_v2', LS_FILENAME='behaviorDash_filename_v2', LS_ROSTER='behaviorDash_roster_v2',
-      LS_TERM='behaviorDash_term_v3', LS_PLAINDATE='behaviorDash_plaindate_v2', LS_SCHOOLINFO='behaviorDash_schoolinfo_v1';
+      LS_TERM='behaviorDash_term_v3', LS_PLAINDATE='behaviorDash_plaindate_v2', LS_SCHOOLINFO='behaviorDash_schoolinfo_v1',
+      LS_FILE_ROSTER='behaviorDash_fileRoster_v1', LS_SHARED_ROSTER='behaviorDash_sharedRoster_v1';
 
 let allRecords = [];
 let filtered = [];
 let roster = [];
+/* roster النهائية = دمج fileRoster (من ملف المخالفات المرفوع) مع sharedRoster (من بيانات المدرسة
+   المرتبطة بالصفحة الرئيسية). عند تطابق اسم الطالب في المصدرين، بيانات المدرسة لها الأولوية دائماً —
+   انظر rebuildRoster() أدناه. */
+let fileRoster = [];
+let sharedRoster = [];
 let fileNameLabel = '';
 let termConfig = null; // {segments:[{label,start,end,weeks:[{localIndex,start,end}]}], year}
 let filters = { grades:new Set(), sections:new Set(), degrees:new Set(), recorder:'', student:'', dateFrom:null, dateTo:null, search:'' };
@@ -608,11 +614,22 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 });
 
 /* ================= Persistence ================= */
+/* يدمج قائمتي الطلاب (من ملف المخالفات ومن بيانات المدرسة المرتبطة) في roster
+   النهائية المستخدمة بكل مكان في البرنامج. بيانات المدرسة (sharedRoster) لها
+   الأولوية دائماً عند تطابق اسم الطالب — لأنها تُعالَج بعد fileRoster فتطغى عليه. */
+function rebuildRoster(){
+  const byName = {};
+  (fileRoster||[]).forEach(r => { if(r && r.studentName) byName[r.studentName] = r; });
+  (sharedRoster||[]).forEach(r => { if(r && r.studentName) byName[r.studentName] = r; });
+  roster = Object.values(byName);
+}
 function persistRecords(){
   try{
     localStorage.setItem(LS_RECORDS, JSON.stringify(allRecords.map(r=>({...r, date: r.date? r.date.toISOString(): null}))));
     localStorage.setItem(LS_FILENAME, fileNameLabel);
     localStorage.setItem(LS_ROSTER, JSON.stringify(roster));
+    localStorage.setItem(LS_FILE_ROSTER, JSON.stringify(fileRoster));
+    localStorage.setItem(LS_SHARED_ROSTER, JSON.stringify(sharedRoster));
   }catch(e){
     console.warn('persist failed', e);
     alert('تنبيه: تعذّر حفظ البيانات في ذاكرة المتصفح. ستحتاج لإعادة رفع الملف عند إعادة فتح الصفحة.');
@@ -649,8 +666,18 @@ function initFromStorage(){
     if(rawRecords){
       allRecords = JSON.parse(rawRecords).map(r=>({...r, date: r.date? new Date(r.date): null}));
       fileNameLabel = localStorage.getItem(LS_FILENAME) || '';
-      const rawRoster = localStorage.getItem(LS_ROSTER);
-      roster = rawRoster ? JSON.parse(rawRoster) : [];
+      const rawFileRoster = localStorage.getItem(LS_FILE_ROSTER);
+      const rawSharedRoster = localStorage.getItem(LS_SHARED_ROSTER);
+      if(rawFileRoster || rawSharedRoster){
+        fileRoster = rawFileRoster ? JSON.parse(rawFileRoster) : [];
+        sharedRoster = rawSharedRoster ? JSON.parse(rawSharedRoster) : [];
+        rebuildRoster();
+      } else {
+        // توافق مع بيانات محفوظة قبل هذا التحديث — لا يوجد تفريق مصدرين بعد
+        const rawRoster = localStorage.getItem(LS_ROSTER);
+        fileRoster = rawRoster ? JSON.parse(rawRoster) : [];
+        roster = fileRoster;
+      }
       if(!termConfig){
         const rawPD = localStorage.getItem(LS_PLAINDATE);
         if(rawPD){ const pd=JSON.parse(rawPD); if(pd.dateFrom) filters.dateFrom=new Date(pd.dateFrom); if(pd.dateTo) filters.dateTo=new Date(pd.dateTo); }
@@ -921,7 +948,7 @@ function processRows(rows, fname, sheetName, rosterRows){
     return;
   }
 
-  roster = [];
+  fileRoster = [];
   if(rosterRows && rosterRows.length){
     const rsample = rosterRows.find(r=>Object.keys(r).length>0) || rosterRows[0];
     // Always search specifically for a column literally named "اسم الطالب" regardless of its position
@@ -931,7 +958,7 @@ function processRows(rows, fname, sheetName, rosterRows){
     const rPhoneKey = findKey(rsample, ['رقم التواصل','رقم الجوال','رقم الهاتف']);
     const safeStr = (v)=> (v==null || v instanceof Date) ? '' : String(v).trim();
     if(rNameKey){
-      roster = rosterRows.map(r=>({
+      fileRoster = rosterRows.map(r=>({
         studentName: safeStr(r[rNameKey]),
         grade: rGradeKey? safeStr(r[rGradeKey]) : '',
         section: rSectionKey? safeStr(r[rSectionKey]) : '',
@@ -939,6 +966,7 @@ function processRows(rows, fname, sheetName, rosterRows){
       })).filter(r=>r.studentName);
     }
   }
+  rebuildRoster(); // دمج قائمة الملف مع بيانات المدرسة المرتبطة (الأولوية لبيانات المدرسة)
 
   fileNameLabel = fname + ' — شيت: ' + sheetName;
   persistRecords();
@@ -2711,8 +2739,9 @@ function loadSharedSchoolData(){
         };
       }).filter(r => r.studentName);
       if(newRoster.length){
-        roster = newRoster;
+        sharedRoster = newRoster;
         studentsCount = newRoster.length;
+        rebuildRoster(); // بيانات المدرسة تطغى على أي اسم مطابق موجود في ملف المخالفات
         persistRecords();
       }
     }

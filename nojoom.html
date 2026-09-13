@@ -629,10 +629,10 @@ body.light-mode .leader-name-3 { color: #92400e !important; }
         <button class="tab-btn" onclick="showPage('absence',this)" data-i18n="nav_absence">📅 سجل الغياب</button>
         <button class="tab-btn" onclick="showPage('stats',this)">📈 الإحصائيات</button>
         <div style="width:1px;background:rgba(255,255,255,0.2);margin:0 4px"></div>
-        <button onclick="exportToExcel()" class="btn btn-success btn-sm" data-i18n="btn_export">📤 تصدير</button>
-        <button onclick="document.getElementById('importFile').click()" class="btn btn-import btn-sm" data-i18n="btn_import">📥 استيراد</button>
+        <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="استيراد / تصدير / تصفير البيانات">📁 الملف</button>
         <input type="file" id="importFile" style="display:none" accept=".csv,.json" onchange="importFromExcel(event)">
-        <button onclick="clearAllData()" class="btn btn-danger btn-sm">🗑️ تصفير</button>
+        <button onclick="onLinkJsonBtnClick()" id="btnLinkJson" class="btn btn-ghost btn-sm" title="ربط تلقائي بملف JSON على الجهاز (قراءة وكتابة تلقائية)">🔗 ربط تلقائي</button>
+        <span id="linkJsonStatus" style="font-size:10px;color:var(--text-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
         <button onclick="toggleTheme()" class="btn btn-ghost btn-sm" id="theme-btn">🌓</button>
         <button onclick="showGuideModal()" class="btn btn-ghost btn-sm" title="دليل الاستخدام" style="color:#5fd8e8;border-color:rgba(95,216,232,0.35);font-size:15px">📖</button>
         <button onclick="showAboutModal()" class="btn btn-ghost btn-sm" title="حول البرنامج">ℹ️</button>
@@ -640,6 +640,25 @@ body.light-mode .leader-name-3 { color: #92400e !important; }
     </div>
   </div>
 </div>
+
+<script>
+function showFileMenu(){
+  openModal(`
+    <div class="modal-title">📁 الملف</div>
+    <div class="modal-actions" style="flex-direction:column;gap:10px">
+      <button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();document.getElementById('importFile').click()">
+        📥 استيراد بيانات<br><span style="font-size:11px;font-weight:400;opacity:.8">من نسخة احتياطية JSON أو ملف CSV</span>
+      </button>
+      <button class="btn btn-success" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();exportToExcel()">
+        📤 تصدير بيانات<br><span style="font-size:11px;font-weight:400;opacity:.8">نسخة احتياطية JSON أو جداول CSV</span>
+      </button>
+      <button class="btn btn-danger" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();clearAllData()">
+        🗑️ تصفير بيانات<br><span style="font-size:11px;font-weight:400;opacity:.8">مسح الحضور/المشاركات/الملاحظات/التقييمات</span>
+      </button>
+      <button class="btn btn-ghost" onclick="closeModalForce()">إلغاء</button>
+    </div>`);
+}
+</script>
 
 <div class="container">
 
@@ -898,6 +917,7 @@ let state = buildDefaultState();
 // ===== حفظ وتحميل =====
 function save() {
   localStorage.setItem('nojomi_v4', JSON.stringify(state));
+  syncToLinkedFileDebounced();
 }
 
 function load() {
@@ -5216,39 +5236,43 @@ function exportToExcel() {
     </div>`);
 }
 
+function buildBackupData() {
+  const info = getSchoolInfo();
+  return {
+    version: 7, exportDate: new Date().toISOString(),
+    schoolInfo: state.schoolInfo || {},
+    schoolName: info.schoolName,
+    principal:  info.principal,
+    teacher:    info.teacher,
+    subject:    info.subject,
+    term:       info.term,
+    termStart:  info.termStart,
+    termEnd:    info.termEnd,
+    assessments: state.assessments || [],
+    classes: state.classes.map(cls => ({
+      id: cls.id, name: cls.name, _savedDates: cls._savedDates||[],
+      students: cls.students.map(s => ({
+        id: s.id, name: s.name,
+        points: s.points||0, present: s.present||0, absent: s.absent||0,
+        participation: s.participation||0, absenceDates: s.absenceDates||[],
+        _prevAtt: s._prevAtt||{}, parentPhone: s.parentPhone||'',
+        behaviorNotes: s.behaviorNotes||[],
+        govAccount: s.govAccount||null,
+        alifAccount: s.alifAccount||null,
+        _manualBonus: s._manualBonus||0,
+        phoneVerified: s.phoneVerified||false,
+        pointsLog: s.pointsLog||[],
+        _dailyPart:   s._dailyPart   || {},
+        _dailyDeduct: s._dailyDeduct || {}
+      }))
+    })),
+    sessions: state.sessions||[]
+  };
+}
+
 function doExportJSON() {
   try {
-    const info = getSchoolInfo();
-    const data = {
-      version: 7, exportDate: new Date().toISOString(),
-      schoolInfo: state.schoolInfo || {},
-      schoolName: info.schoolName,
-      principal:  info.principal,
-      teacher:    info.teacher,
-      subject:    info.subject,
-      term:       info.term,
-      termStart:  info.termStart,
-      termEnd:    info.termEnd,
-      assessments: state.assessments || [],
-      classes: state.classes.map(cls => ({
-        id: cls.id, name: cls.name, _savedDates: cls._savedDates||[],
-        students: cls.students.map(s => ({
-          id: s.id, name: s.name,
-          points: s.points||0, present: s.present||0, absent: s.absent||0,
-          participation: s.participation||0, absenceDates: s.absenceDates||[],
-          _prevAtt: s._prevAtt||{}, parentPhone: s.parentPhone||'',
-          behaviorNotes: s.behaviorNotes||[],
-          govAccount: s.govAccount||null,
-          alifAccount: s.alifAccount||null,
-          _manualBonus: s._manualBonus||0,
-          phoneVerified: s.phoneVerified||false,
-          pointsLog: s.pointsLog||[],
-          _dailyPart:   s._dailyPart   || {},
-          _dailyDeduct: s._dailyDeduct || {}
-        }))
-      })),
-      sessions: state.sessions||[]
-    };
+    const data = buildBackupData();
     downloadFile(JSON.stringify(data,null,2), `nojomi_backup_${todayStr()}.json`, 'application/json;charset=utf-8;');
     toast('تم التصدير ✅','💾');
   } catch(e) { alert('خطأ: '+e.message); }
@@ -7198,6 +7222,215 @@ renderStudentList();
 renderClasses();
 updateLeaderboard();
 updateReportSelects();
+
+/* ================= الربط التلقائي بملف JSON على الجهاز (قراءة وكتابة تلقائية) ================= */
+const LJ_DB_NAME = 'nojomiFileLinkDB';
+const LJ_STORE = 'handles';
+const LJ_KEY = 'linkedJSON';
+const ljFsApiSupported = typeof window.showSaveFilePicker === 'function' && typeof window.showOpenFilePicker === 'function';
+
+let linkedJsonHandle = null;
+let linkedJsonFileName = '';
+let ljSyncTimer = null;
+
+function ljOpenDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(LJ_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(LJ_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function ljSaveHandle(handle){
+  const db = await ljOpenDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(LJ_STORE, 'readwrite');
+    tx.objectStore(LJ_STORE).put(handle, LJ_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function ljLoadHandle(){
+  const db = await ljOpenDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(LJ_STORE, 'readonly');
+    const req = tx.objectStore(LJ_STORE).get(LJ_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => resolve(null);
+  });
+}
+async function ljClearHandle(){
+  try{
+    const db = await ljOpenDB();
+    const tx = db.transaction(LJ_STORE, 'readwrite');
+    tx.objectStore(LJ_STORE).delete(LJ_KEY);
+  }catch(e){ /* تجاهل */ }
+}
+
+function setLinkJsonStatus(text){
+  const el = document.getElementById('linkJsonStatus');
+  if(el) el.textContent = text;
+}
+
+async function writeStateToHandle(){
+  if(!linkedJsonHandle) return false;
+  try{
+    const perm = await linkedJsonHandle.queryPermission({mode:'readwrite'});
+    if(perm !== 'granted'){
+      setLinkJsonStatus('⚠️ يحتاج إعادة الربط لتفعيل الحفظ التلقائي');
+      return false;
+    }
+    const writable = await linkedJsonHandle.createWritable();
+    await writable.write(JSON.stringify(buildBackupData(), null, 2));
+    await writable.close();
+    setLinkJsonStatus('🔗 ' + linkedJsonFileName + ' — آخر حفظ ' + new Date().toLocaleTimeString('ar'));
+    return true;
+  }catch(e){
+    console.warn('تعذّر الحفظ في الملف المرتبط', e);
+    setLinkJsonStatus('⚠️ تعذّر الحفظ التلقائي — قد يكون الملف نُقل أو حُذف');
+    return false;
+  }
+}
+
+/* مزامنة مؤجَّلة (debounce) — لتفادي كتابة الملف عشرات المرات أثناء عمليات متتالية سريعة */
+function syncToLinkedFileDebounced(){
+  if(!linkedJsonHandle) return;
+  if(ljSyncTimer) clearTimeout(ljSyncTimer);
+  ljSyncTimer = setTimeout(writeStateToHandle, 700);
+}
+
+async function readHandleText(handle){
+  const file = await handle.getFile();
+  return await file.text();
+}
+
+async function pickAndLinkJson(){
+  if(!ljFsApiSupported){
+    alert('ميزة الربط التلقائي مدعومة فقط في متصفحي Chrome أو Edge على الحاسوب. استخدم زر "📁 الملف" للاستيراد والتصدير اليدوي بدلاً من ذلك.');
+    return;
+  }
+  try{
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'nojomi_data.json',
+      types: [{ description:'ملف بيانات نجوم مدرستي', accept: {'application/json':['.json']} }]
+    });
+    let existingText = '';
+    try{ existingText = await readHandleText(handle); }catch(e){ existingText = ''; }
+
+    linkedJsonHandle = handle;
+    linkedJsonFileName = handle.name;
+    await ljSaveHandle(handle);
+
+    let hasData = false;
+    if(existingText && existingText.trim()){
+      try{
+        const parsed = JSON.parse(existingText);
+        hasData = !!(parsed && parsed.classes && parsed.classes.length);
+      }catch(e){ hasData = false; }
+    }
+
+    if(hasData){
+      const wantsImport = confirm('الملف المرتبط يحتوي على بيانات محفوظة سابقاً.\n\nاضغط "موافق" لاستيراد بياناته إلى المتصفح (سيتم دمجها مع البيانات الحالية حسب أسماء الطلاب).\nاضغط "إلغاء" للإبقاء على بيانات المتصفح الحالية وحفظها في الملف بدلاً منها.');
+      if(wantsImport){
+        importFromJSON(existingText);
+        toast('تم استيراد البيانات من الملف المرتبط ✅', '🔗');
+      } else {
+        await writeStateToHandle();
+        toast('تم حفظ بيانات المتصفح في الملف المرتبط ✅', '🔗');
+      }
+    } else {
+      await writeStateToHandle();
+      toast('تم ربط الملف — سيُحفَظ تلقائياً من الآن ✅', '🔗');
+    }
+
+    document.getElementById('btnLinkJson').textContent = '🔗 مرتبط';
+    setLinkJsonStatus('🔗 ' + linkedJsonFileName);
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    console.error(err);
+    alert('تعذّر ربط الملف: ' + err.message);
+  }
+}
+
+async function manualSyncNow(){
+  const ok = await writeStateToHandle();
+  if(ok) toast('تمت المزامنة مع الملف المرتبط ✅', '🔄');
+}
+
+async function unlinkJsonFile(){
+  await ljClearHandle();
+  linkedJsonHandle = null;
+  linkedJsonFileName = '';
+  document.getElementById('btnLinkJson').textContent = '🔗 ربط تلقائي';
+  setLinkJsonStatus('');
+  toast('تم فك الربط التلقائي', '✖');
+}
+
+async function onLinkJsonBtnClick(){
+  if(!ljFsApiSupported){
+    alert('ميزة الربط التلقائي مدعومة فقط في متصفحي Chrome أو Edge على الحاسوب. استخدم زر "📁 الملف" للاستيراد والتصدير اليدوي بدلاً من ذلك.');
+    return;
+  }
+  if(!linkedJsonHandle){
+    pickAndLinkJson();
+    return;
+  }
+  const perm = await linkedJsonHandle.queryPermission({mode:'readwrite'});
+  if(perm !== 'granted'){
+    try{
+      const reqPerm = await linkedJsonHandle.requestPermission({mode:'readwrite'});
+      if(reqPerm === 'granted'){
+        document.getElementById('btnLinkJson').textContent = '🔗 مرتبط';
+        const text = await readHandleText(linkedJsonHandle);
+        if(text && text.trim()){
+          try{ const parsed = JSON.parse(text); if(parsed && parsed.classes) importFromJSON(text); }catch(e){ /* تجاهل */ }
+        }
+        setLinkJsonStatus('🔗 ' + linkedJsonFileName + ' — متصل');
+        toast('تم إعادة تفعيل الربط التلقائي ✅', '🔗');
+      } else {
+        setLinkJsonStatus('⚠️ لم تُمنح الصلاحية');
+      }
+    }catch(e){ console.warn(e); }
+    return;
+  }
+  openModal(`
+    <div class="modal-title">🔗 الربط التلقائي</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">مرتبط حالياً بملف: <b>${linkedJsonFileName}</b></p>
+    <div class="modal-actions" style="flex-direction:column;gap:10px">
+      <button class="btn btn-primary" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();manualSyncNow()">🔄 مزامنة الآن</button>
+      <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();pickAndLinkJson()">📂 تغيير الملف المرتبط</button>
+      <button class="btn btn-danger" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();unlinkJsonFile()">✖ فك الربط</button>
+      <button class="btn btn-ghost" onclick="closeModalForce()">إغلاق</button>
+    </div>`);
+}
+
+async function initLinkedFileOnLoad(){
+  if(!ljFsApiSupported) return;
+  try{
+    const handle = await ljLoadHandle();
+    if(!handle) return;
+    linkedJsonHandle = handle;
+    linkedJsonFileName = handle.name;
+    const perm = await handle.queryPermission({mode:'readwrite'});
+    if(perm === 'granted'){
+      document.getElementById('btnLinkJson').textContent = '🔗 مرتبط';
+      const text = await readHandleText(handle);
+      if(text && text.trim()){
+        try{
+          const parsed = JSON.parse(text);
+          if(parsed && parsed.classes){
+            importFromJSON(text);
+          }
+        }catch(e){ /* ملف غير صالح — تجاهل القراءة والاستمرار بالبيانات المحلية */ }
+      }
+      setLinkJsonStatus('🔗 ' + linkedJsonFileName + ' — متصل');
+    } else {
+      document.getElementById('btnLinkJson').textContent = '🔓 إعادة تفعيل الربط';
+      setLinkJsonStatus('اضغط لإعادة تفعيل الربط بـ: ' + linkedJsonFileName);
+    }
+  }catch(e){ console.warn('تعذّرت استعادة الربط التلقائي', e); }
+}
+initLinkedFileOnLoad();
 </script>
 </body>
 </html>

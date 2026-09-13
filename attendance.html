@@ -1166,6 +1166,22 @@ function findHeaderRowIndex(rows, requiredHeaders){
   return -1;
 }
 
+/* بيانات الطلاب القادمة من "بيانات المدرسة" المرتبطة بالصفحة الرئيسية (بوابة الرازي الذكية).
+   عند وجود اسم الطالب في كل من ملف الحضور المرفوع وبيانات المدرسة، تُستخدم بيانات
+   المدرسة دائماً كمصدر أساسي للاسم/الصف/رقم التواصل — انظر applySharedNamesToRoster(). */
+let sharedStudentMap = new Map(); // normalizedName -> {studentName, className, phone}
+function normalizeNameKey(s){ return String(s||'').trim().replace(/\s+/g,' '); }
+function applySharedNamesToRoster(rosterMap){
+  if(!sharedStudentMap.size) return;
+  rosterMap.forEach(entry => {
+    const shared = sharedStudentMap.get(normalizeNameKey(entry.studentName));
+    if(!shared) return;
+    entry.studentName = shared.studentName || entry.studentName;
+    if(shared.className){ entry.className = shared.className; entry.grade = gradeFromClassName(shared.className); }
+    if(shared.phone) entry.phone = shared.phone;
+  });
+}
+
 function parseRoster(rows){
   const headerIdx = findHeaderRowIndex(rows, ['الصف']);
   if(headerIdx === -1) return { roster: new Map(), hasPhone: false };
@@ -1315,6 +1331,7 @@ function parseTermConfigSheet(rows){
 function buildAppData(absRows, rosterRows){
   const { col, classCols } = parseAbsenceHeader(absRows[0] || []);
   const { roster, hasPhone } = parseRoster(rosterRows || [[]]);
+  applySharedNamesToRoster(roster); // الأولوية لبيانات المدرسة المرتبطة عند تطابق الاسم
   const records = [];          // سجلات غياب على مستوى الحصة (بعد اعتماد آخر إدخال فقط لكل صف/حصة/يوم)
   const allSubmissions = [];   // كل عملية رصد حضور معتمدة (بعد الاعتماد على الأحدث عند التكرار)
   const teacherActivityLog = []; // كل محاولات الإدخال الخام (تشمل التكرار) - تُستخدم لتقرير المعلمين
@@ -4126,7 +4143,29 @@ function loadSharedSchoolData(){
         rebuildTermFilterUI();
       }
     }
-    setSharedDataStatus('✅ بيانات المدرسة مرتبطة' + (fname ? (' — ' + fname) : ''));
+
+    let sharedStudentsCount = 0;
+    const studentsSheet = findSheet(wb, ['جميع الطلاب'], ['طلاب']);
+    if(studentsSheet){
+      const studentRows = XLSX.utils.sheet_to_json(studentsSheet, {defval:''});
+      sharedStudentMap = new Map();
+      studentRows.forEach(r => {
+        const name = String(r['اسم الطالب']||'').trim();
+        if(!name) return;
+        const code = String(r['الصف']||'').trim();
+        const className = code ? normalizeClassName(classCodeToName(code) || code) : '';
+        sharedStudentMap.set(normalizeNameKey(name), {
+          studentName: name,
+          className,
+          phone: String(r['رقم التواصل']||'').trim()
+        });
+      });
+      sharedStudentsCount = sharedStudentMap.size;
+      // إن كان ملف الحضور مُحمَّلاً مسبقاً، أعد بناءه الآن لتطبيق أسماء بيانات المدرسة عليه فوراً
+      if(lastAttendanceWb) rebuildAppFromLoadedWorkbooks();
+    }
+
+    setSharedDataStatus('✅ بيانات المدرسة مرتبطة' + (fname ? (' — ' + fname) : '') + (sharedStudentsCount ? (' — عدد الطلاب: ' + sharedStudentsCount) : ''));
   }catch(err){
     setSharedDataStatus('⚠️ تعذّرت قراءة بيانات المدرسة المرتبطة: ' + err.message);
   }
