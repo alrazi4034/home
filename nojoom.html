@@ -134,7 +134,7 @@ body::before {
 }
 body.light-mode .header { background: #1e293b !important; border-bottom: 3px solid var(--accent); }
 .header-inner {
-  max-width: 1400px;
+  width: 90%;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -2929,24 +2929,36 @@ function importAbsenceFromAttendance(){
   const matchedClassNames = Object.keys(dayCells).filter(cn => normalizeClassKey(cn) === myKey);
 
   if(!matchedClassNames.length){
-    showAttendanceClassPicker(Object.keys(dayCells), dayCells, app);
+    alert('لم يتم إيجاد صف "' + cls.name + '" في برنامج الحضور بتاريخ ' + sessionDate + '.\nتأكد أن اسم الصف في "نجوم مدرستي" مطابق تماماً لاسمه في برنامج الحضور.');
     return;
   }
-  applyAttendanceImport(matchedClassNames, dayCells, app);
+
+  // كل الحصص (المعلمين) المسجَّلة لهذا الصف تحديداً في هذا اليوم
+  let periodEntries = [];
+  matchedClassNames.forEach(cn => {
+    Object.keys(dayCells[cn]||{}).forEach(period => {
+      periodEntries.push({ className: cn, period, info: dayCells[cn][period] });
+    });
+  });
+  if(!periodEntries.length){
+    alert('لا يوجد تسجيل حضور لصفك بهذا التاريخ.');
+    return;
+  }
+
+  showAttendanceTeacherPicker(cls, periodEntries, app);
 }
 
-function showAttendanceClassPicker(classNames, dayCells, app){
-  window._attDayCells = dayCells;
+function showAttendanceTeacherPicker(cls, periodEntries, app){
   window._attApp = app;
+  window._attPeriodEntries = periodEntries;
   const html = `
-    <div class="modal-title">📥 استيراد الغياب</div>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">لم يتم إيجاد صف بنفس الاسم تلقائياً في برنامج الحضور. اختر الصف المطابق بتاريخ ${sessionDate}:</p>
+    <div class="modal-title">📥 استيراد الغياب — ${cls.name}</div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">المعلمون الذين سجّلوا حضوراً لهذا الصف بتاريخ ${sessionDate} — اختر الحصة المطلوب استيراد غيابها:</p>
     <div style="display:flex;flex-direction:column;gap:8px">
-      ${classNames.map(cn => {
-        const periods = Object.values(dayCells[cn]||{});
-        const teachers = [...new Set(periods.map(p=>p.teacherName).filter(Boolean))].join('، ');
-        return `<button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();applyAttendanceImport(['${cn.replace(/'/g,"\\'")}'], window._attDayCells, window._attApp)">
-          🏫 ${cn}${teachers ? ' — ' + teachers : ''}
+      ${periodEntries.map((e,i) => {
+        const teacher = (e.info && e.info.teacherName) ? e.info.teacherName : 'بدون اسم معلم';
+        return `<button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();applyAttendanceImport([window._attPeriodEntries[${i}]], window._attApp)">
+          👤 ${teacher} — الحصة ${e.period}
         </button>`;
       }).join('')}
       <button class="btn btn-ghost" onclick="closeModalForce()">إلغاء</button>
@@ -2954,23 +2966,10 @@ function showAttendanceClassPicker(classNames, dayCells, app){
   openModal(html);
 }
 
-function applyAttendanceImport(classNames, dayCells, app){
+function applyAttendanceImport(periodEntries, app){
   const cls = state.classes.find(c => c.id === state.activeClass);
   if(!cls) return;
-  const teacherName = (state.schoolInfo && state.schoolInfo.teacher || '').trim();
-
-  let periodEntries = [];
-  classNames.forEach(cn => {
-    Object.keys(dayCells[cn]||{}).forEach(period => {
-      periodEntries.push({ className: cn, period, info: dayCells[cn][period] });
-    });
-  });
-  // فضّل حصص نفس المعلم (حسب "المعلم" في بيانات المدرسة أعلى الصفحة) إن وُجد تطابق
-  if(teacherName){
-    const filtered = periodEntries.filter(e => (e.info.teacherName||'').trim() === teacherName);
-    if(filtered.length) periodEntries = filtered;
-  }
-  if(!periodEntries.length){
+  if(!periodEntries || !periodEntries.length){
     alert('لا يوجد تسجيل حضور مطابق لهذا الصف بهذا التاريخ.');
     return;
   }

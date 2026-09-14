@@ -150,12 +150,45 @@
     await clearHandle();
   }
 
+  /**
+   * يعيد الاتصال بالملف المرتبط سابقاً (المحفوظ بـ IndexedDB) بطلب صلاحية
+   * فقط — بدون فتح منتقي ملفات جديد. يحتاج نقرة زر من المستخدم (لأن
+   * requestPermission يتطلب إيماءة مستخدم). onError تُستدعى إن لم يوجد
+   * ملف مرتبط أصلاً (لتتيح للمستدعي الرجوع لـ linkFile كبديل).
+   */
+  async function reconnect(onData, onError) {
+    if (!fsaSupported()) {
+      if (onError) onError(new Error('unsupported'));
+      return;
+    }
+    let handle;
+    try {
+      handle = await loadHandle();
+    } catch (e) {
+      handle = null;
+    }
+    if (!handle) {
+      if (onError) onError(new Error('no-stored-handle'));
+      return;
+    }
+    try {
+      const ok = await ensurePermission(handle, 'readwrite');
+      if (!ok) { if (onError) onError(new Error('permission-denied')); return; }
+      const file = await handle.getFile();
+      const buf = await file.arrayBuffer();
+      if (onData) onData(buf, file.name, handle);
+    } catch (err) {
+      if (onError) onError(err);
+    }
+  }
+
   global.RaziLink = {
     fsaSupported,
     tryAutoLink,
     linkFile,
     writeToLinkedFile,
     unlink,
-    loadHandle
+    loadHandle,
+    reconnect
   };
 })(window);
