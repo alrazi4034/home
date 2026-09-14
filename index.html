@@ -263,6 +263,7 @@
     </div>
     <div class="h-actions">
       <button class="link-btn" id="linkBtn" title="تسجيل الدخول بحساب Google" onclick="onLinkBtnClick()">🔐 تسجيل الدخول</button>
+      <button class="link-btn" id="importBtn" title="استيراد ملف بيانات من جهازك" onclick="document.getElementById('fileInput').click()">📂 استيراد ملف</button>
       <button class="link-btn" id="refreshNowBtn" title="التحقق من تحديثات بالملف المرتبط الآن" onclick="manualRefreshNow()" style="display:none;">🔄 تحديث الآن</button>
       <button class="link-btn" id="unlinkBtn" title="تسجيل الخروج" onclick="onUnlinkBtnClick()" style="display:none;">🚪 تسجيل الخروج</button>
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
@@ -757,7 +758,7 @@ function handleFile(e){
   reader.onload = function(ev){
     try{
       loadWorkbookFromArrayBuffer(ev.target.result, file.name);
-      afterWorkbookLoaded(file.name, null, ev.target.result);
+      afterWorkbookLoaded(file.name, window.RaziCurrentUserEmail ? 'firebase' : null, ev.target.result);
     }catch(err){
       setStatus('❌ تعذّرت قراءة الملف: ' + err.message);
       return;
