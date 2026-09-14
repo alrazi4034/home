@@ -535,7 +535,10 @@ table.data .cell-del{width:44px; text-align:center;}
           كل ما تتغيّر قوائم المدرسة (إضافة/حذف/نقل طلاب)، اضغط الزر التالي بدل ما تعدّل هذا الجدول يدوياً —
           بيسحب أحدث أسماء وصفوف من بيانات المدرسة المرتبطة بالصفحة الرئيسية، ويحافظ على نجمة كل طالب وصورته الفردية إن كان له نجمة سابقة بنفس الاسم.
         </p>
-        <button class="btn btn-primary" id="btnLoadUpdatedList">🔄 تحميل قائمة محدثة من بيانات المدرسة</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btnLoadUpdatedList">🔄 تحديث القائمة وفق بيانات المدرسة</button>
+          <button class="btn btn-outline" id="btnDownloadUpdatedList">⬇ تنزيل القائمة المحدثة (إكسل)</button>
+        </div>
       </div>
 
       <label class="field-label">تصفية حسب الأسبوع</label>
@@ -963,6 +966,23 @@ function loadUpdatedListFromSchoolData(){
   }
 }
 document.getElementById('btnLoadUpdatedList').addEventListener('click', loadUpdatedListFromSchoolData);
+
+/* تنزيل القائمة الحالية (بعد أي تحديث/تعديل) كملف إكسل — بنفس أعمدة الاستيراد الأصلية
+   (اسم الطالب الكامل، الصف، نجم الأسبوع) حتى تصلح لإعادة الاستيراد لاحقاً لو احتجت */
+function downloadUpdatedListExcel(){
+  if(!state.students.length){ alert('لا توجد بيانات طلاب لتصديرها.'); return; }
+  const rows = state.students.map(s => ({
+    'اسم الطالب الكامل': s.fullName,
+    'الصف': s.classCode,
+    'نجم الأسبوع': s.star ?? ''
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, 'نجوم الأسبوع');
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'قائمة_نجوم_الأسبوع_' + today + '.xlsx');
+}
+document.getElementById('btnDownloadUpdatedList').addEventListener('click', downloadUpdatedListExcel);
 
 /* ---------------- tabs ---------------- */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
