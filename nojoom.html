@@ -603,7 +603,7 @@ body.light-mode .leader-name-3 { color: #92400e !important; }
   <div class="header-inner">
     <!-- اليسار: اللوغو -->
     <div class="logo">
-      <span class="logo-star" style="font-size:34px;filter:drop-shadow(0 0 8px rgba(247,201,72,0.6))">🌟</span>
+      <span class="logo-star" onclick="location.href='index.html'" title="الرجوع إلى الرئيسية" style="font-size:34px;filter:drop-shadow(0 0 8px rgba(247,201,72,0.6));cursor:pointer">🌟</span>
       <div class="logo-text">
         <!-- السطر الأول: العنوان فقط -->
         <h1 style="font-size:28px;font-weight:900;background:linear-gradient(135deg,#ffd700 0%,#ffb347 40%,#ff8c00 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.3;margin:0 0 1px 0;padding-bottom:3px;letter-spacing:1px;font-family:'Tajawal',sans-serif;overflow:visible;display:inline-block">نجوم مدرستي</h1>
@@ -619,7 +619,7 @@ body.light-mode .leader-name-3 { color: #92400e !important; }
       </div>
     </div>
     <!-- اليمين: شريط التنقل + زر التقييم -->
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;flex-direction:column;align-items:stretch;gap:2px">
       <div class="header-nav">
         <button class="tab-btn active" onclick="showPage('attendance',this)" data-i18n="nav_attendance">📋 الحضور</button>
         <button class="tab-btn" onclick="showPage('leaderboard',this)" data-i18n="nav_leaderboard">🏆 المتصدرون</button>
@@ -629,14 +629,13 @@ body.light-mode .leader-name-3 { color: #92400e !important; }
         <button class="tab-btn" onclick="showPage('absence',this)" data-i18n="nav_absence">📅 سجل الغياب</button>
         <button class="tab-btn" onclick="showPage('stats',this)">📈 الإحصائيات</button>
         <div style="width:1px;background:rgba(255,255,255,0.2);margin:0 4px"></div>
-        <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="استيراد / تصدير / تصفير البيانات">📁 الملف</button>
+        <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="استيراد / تصدير / تصفير البيانات">📁</button>
         <input type="file" id="importFile" style="display:none" accept=".csv,.json" onchange="importFromExcel(event)">
-        <button onclick="onLinkJsonBtnClick()" id="btnLinkJson" class="btn btn-ghost btn-sm" title="ربط تلقائي بملف JSON على الجهاز (قراءة وكتابة تلقائية)">🔗 ربط تلقائي</button>
-        <span id="linkJsonStatus" style="font-size:10px;color:var(--text-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <button onclick="onLinkJsonBtnClick()" id="btnLinkJson" class="btn btn-ghost btn-sm" title="ربط تلقائي بملف JSON على الجهاز (قراءة وكتابة تلقائية)">🔗</button>
         <button onclick="toggleTheme()" class="btn btn-ghost btn-sm" id="theme-btn">🌓</button>
-        <button onclick="showGuideModal()" class="btn btn-ghost btn-sm" title="دليل الاستخدام" style="color:#5fd8e8;border-color:rgba(95,216,232,0.35);font-size:15px">📖</button>
         <button onclick="showAboutModal()" class="btn btn-ghost btn-sm" title="حول البرنامج">ℹ️</button>
       </div>
+      <span id="linkJsonStatus" style="font-size:10px;color:var(--text-muted);text-align:left;white-space:normal;min-height:12px"></span>
     </div>
   </div>
 </div>
@@ -2894,8 +2893,18 @@ function saveSession() {
 /* ===== استيراد الغياب من برنامج الحضور (نفس الصف/المعلم/اليوم) =====
    يقرأ بيانات "برنامج الحضور" (attendanceDashboard_v3) مباشرة من ذاكرة المتصفح
    المحلية (localStorage) على نفس الجهاز والمتصفح — لا يحتاج رفع أي ملف. */
+/* يحوّل أسماء الصفوف بالأرقام العربية الترتيبية (مثل "السادس") إلى رقم (6)
+   حتى يتطابق اسم الصف بين برنامج الحضور ("السادس/2") ونجوم مدرستي ("6/2") */
+const CLASS_ORDINAL_WORDS = [
+  [/الحادي\s*عشر/g, '11'], [/الثاني\s*عشر/g, '12'], [/الثالث\s*عشر/g, '13'],
+  [/الاول/g, '1'], [/الثاني/g, '2'], [/الثالث/g, '3'], [/الرابع/g, '4'],
+  [/الخامس/g, '5'], [/السادس/g, '6'], [/السابع/g, '7'], [/الثامن/g, '8'],
+  [/التاسع/g, '9'], [/العاشر/g, '10']
+];
 function normalizeClassKey(s){
-  return String(s||'').replace(/[\s\-_]/g,'').replace(/[إأآا]/g,'ا').trim();
+  let str = String(s||'').replace(/[إأآا]/g,'ا').trim();
+  CLASS_ORDINAL_WORDS.forEach(([re, num]) => { str = str.replace(re, num); });
+  return str.replace(/[\s\-_]/g,'');
 }
 function attDateOnly(v){
   if(!v) return null;
@@ -7092,191 +7101,6 @@ function saveNoteAndShowQR(studentId, studentName, parentPhone) {
   });
 }
 
-// ===== GUIDE MODAL =====
-function showGuideModal() {
-  openModal(`
-    <div style="max-height:80vh;overflow-y:auto;padding-left:4px" id="guide-body">
-
-      <!-- عنوان الدليل -->
-      <div style="text-align:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(95,216,232,0.2)">
-        <div style="font-size:28px;margin-bottom:6px">📖</div>
-        <div style="font-size:17px;font-weight:900;color:#5fd8e8">دليل استخدام نجوم مدرستي</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">كل ما تحتاجه للبدء والاستخدام الاحترافي</div>
-      </div>
-
-      <!-- فهرس سريع -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px">
-        ${['🚀 البدء السريع','⭐ نظام النقاط','📤 التصدير والاستيراد','📱 واتساب وQR','❓ أسئلة شائعة'].map((t,i)=>`
-          <button onclick="document.getElementById('gs-${i+1}').scrollIntoView({behavior:'smooth',block:'start'})"
-            style="padding:5px 12px;border-radius:20px;border:1px solid rgba(95,216,232,0.3);background:rgba(95,216,232,0.08);color:#5fd8e8;font-family:Tajawal,sans-serif;font-size:12px;font-weight:700;cursor:pointer">
-            ${t}
-          </button>`).join('')}
-      </div>
-
-      <!-- ===== 1: البدء السريع ===== -->
-      <div id="gs-1" style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
-          <span style="background:linear-gradient(135deg,#5fd8e8,#00b4d8);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">1</span>
-          <span style="font-size:14px;font-weight:800;color:#5fd8e8">🚀 البدء السريع</span>
-        </div>
-        ${[
-          {n:'1',t:'افتح الملف في المتصفح',d:'انقر مرتين على ملف nojomi.html — يفتح في Chrome أو Edge مباشرة بدون تثبيت.'},
-          {n:'2',t:'أدخل بيانات المدرسة',d:'اضغط على اسم المدرسة أو زر ✏️ في الهيدر لإدخال اسم المدرسة والمعلم والمادة والفصل الدراسي وتاريخ البداية والنهاية للفصل.'},
-          {n:'3',t:'أضف صفوفك',d:'اذهب لـ "🏫 إدارة الصفوف" ← "➕ إضافة صف" ← اكتب اسم الصف.'},
-          {n:'4',t:'أضف الطلاب',d:'اضغط "➕ طالب" داخل الصف. يمكنك الإضافة الفردية أو لصق قائمة أسماء دفعة واحدة (كل اسم في سطر).'},
-          {n:'5',t:'سجّل الحضور',d:'اذهب لـ "📋 الحضور" ← اختر الصف ← اضغط ✅ أو ❌ لكل طالب ← اضغط "💾 حفظ الحصة".'},
-          {n:'6',t:'احفظ نسخة احتياطية',d:'اضغط "📤 تصدير" في الهيدر لحفظ ملف JSON يحتوي كل بياناتك. افعل ذلك أسبوعياً.'},
-        ].map(s=>`
-          <div style="display:flex;gap:10px;margin-bottom:10px;background:var(--surface2);border-radius:10px;padding:10px 13px;border:1px solid rgba(255,255,255,0.05)">
-            <span style="background:rgba(95,216,232,0.15);color:#5fd8e8;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;margin-top:1px">${s.n}</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;margin-bottom:3px">${s.t}</div>
-              <div style="font-size:12px;color:var(--text-muted);line-height:1.6">${s.d}</div>
-            </div>
-          </div>`).join('')}
-      </div>
-
-      <!-- ===== 2: نظام النقاط ===== -->
-      <div id="gs-2" style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
-          <span style="background:linear-gradient(135deg,#f7c948,#ff9f43);color:#1a1530;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">2</span>
-          <span style="font-size:14px;font-weight:800;color:var(--accent)">⭐ نظام النقاط — كيف يُحتسب الرصيد؟</span>
-        </div>
-
-        <div style="background:var(--surface2);border-radius:12px;overflow:hidden;margin-bottom:12px;border:1px solid rgba(247,201,72,0.15)">
-          <div style="padding:10px 14px;background:rgba(247,201,72,0.08);font-size:12px;font-weight:800;color:var(--accent);border-bottom:1px solid rgba(247,201,72,0.1)">
-            معادلة الرصيد = حضور + مشاركة + تقييمات + ملاحظات + مكافآت يدوية
-          </div>
-          ${[
-            {icon:'✅',label:'الحضور',val:'+2 نقطة',detail:'لكل حصة يحضرها الطالب',color:'var(--present)'},
-            {icon:'✋',label:'المشاركة',val:'+1 نقطة',detail:'لكل ضغطة على زر المشاركة في الحصة',color:'#a29bfe'},
-            {icon:'📝',label:'التقييمات',val:'نسبة × النقاط',detail:'مثال: 80% من تقييم بـ 10 نقاط = 8 نقاط',color:'#5fd8e8'},
-            {icon:'🌟',label:'ملاحظة إيجابية',val:'+1 إلى +5',detail:'يختار المعلم عدد النقاط عند إضافة الملاحظة',color:'var(--present)'},
-            {icon:'⚠️',label:'ملاحظة سلبية',val:'-1 إلى -5',detail:'يختار المعلم عدد النقاط المخصومة',color:'var(--absent)'},
-            
-            {icon:'➖',label:'خصم يدوي',val:'-1 نقطة',detail:'زر ➖ بجانب كل طالب في صفحة الحضور',color:'var(--absent)'},
-          ].map(r=>`
-            <div style="display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;gap:10px">
-              <span style="font-size:18px;flex-shrink:0">${r.icon}</span>
-              <div style="flex:1;font-weight:600">${r.label}</div>
-              <div style="font-weight:900;color:${r.color};min-width:90px;text-align:center">${r.val}</div>
-              <div style="color:var(--text-muted);flex:1;text-align:right;font-size:11px">${r.detail}</div>
-            </div>`).join('')}
-          <div style="padding:10px 14px;background:rgba(247,201,72,0.06);font-size:12px;color:var(--text-muted);line-height:1.7">
-            💡 <strong style="color:var(--accent)">مثال:</strong> طالب حضر 12 حصة (+24) وشارك 8 مرات (+8) وأخذ تقييماً 40/50 بنقاط مخصصة 10 (+8) وعنده ملاحظة إيجابية (+3) وملاحظة سلبية (-2) = <strong style="color:var(--accent)">41 نقطة</strong>
-          </div>
-        </div>
-
-        <div style="background:rgba(78,205,196,0.07);border:1px solid rgba(78,205,196,0.2);border-radius:10px;padding:11px 14px;font-size:12px;color:var(--text-muted);line-height:1.7">
-          🔄 <strong style="color:var(--present)">إعادة الحساب تلقائية:</strong> عند أي تغيير (حفظ حصة، إضافة ملاحظة، تعديل درجة) يُعيد البرنامج حساب رصيد الطالب تلقائياً ويُحدّث جميع الصفحات.
-        </div>
-      </div>
-
-      <!-- ===== 3: التصدير والاستيراد ===== -->
-      <div id="gs-3" style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
-          <span style="background:linear-gradient(135deg,#55efc4,#00b894);color:#1a1530;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">3</span>
-          <span style="font-size:14px;font-weight:800;color:var(--present)">📤 التصدير والاستيراد</span>
-        </div>
-
-        ${[
-          {
-            icon:'📤',title:'تصدير نسخة احتياطية (JSON)',
-            color:'var(--present)',bg:'rgba(78,205,196,0.07)',border:'rgba(78,205,196,0.2)',
-            steps:['اضغط "📤 تصدير" في الهيدر','اختر "تصدير JSON (نسخة احتياطية)"','يُحفظ ملف nojomi_backup_التاريخ.json','احفظه في Google Drive أو USB'],
-            note:'⚠️ يحتوي على جميع البيانات: الطلاب، الحضور، النقاط، التقييمات، الملاحظات، والتقارير.'
-          },
-          {
-            icon:'📥',title:'استيراد نسخة احتياطية (JSON)',
-            color:'var(--present)',bg:'rgba(78,205,196,0.07)',border:'rgba(78,205,196,0.2)',
-            steps:['اضغط "📥 استيراد" في الهيدر','اختر الملف nojomi_backup.json','سيُحدَّث البرنامج بكل البيانات المحفوظة','ستُسألك إضافة الطلاب الجدد إن وُجدوا'],
-            note:'✅ استخدمه للنقل بين أجهزة أو استعادة بيانات بعد مسح المتصفح.'
-          },
-          {
-            icon:'📊',title:'تصدير بيانات الطلاب (CSV)',
-            color:'#5fd8e8',bg:'rgba(95,216,232,0.07)',border:'rgba(95,216,232,0.2)',
-            steps:['اذهب لـ "🏫 إدارة الصفوف"','اضغط "📤 تصدير بيانات الطلاب"','يُحفظ ملف Excel يحتوي الأسماء والأرقام والدرجات'],
-            note:'💡 مفيد لمشاركة القائمة مع الإدارة أو فتحها في Excel.'
-          },
-          {
-            icon:'📥',title:'استيراد قائمة طلاب (CSV أو JSON)',
-            color:'#5fd8e8',bg:'rgba(95,216,232,0.07)',border:'rgba(95,216,232,0.2)',
-            steps:['اذهب لـ "🏫 إدارة الصفوف"','اضغط "📥 استيراد بيانات الطلاب"','اختر ملف CSV بتنسيق: الصف، الاسم، الرقم','أو ملف JSON من تصدير سابق'],
-            note:'📋 تنسيق CSV المطلوب: عمود الصف، عمود الاسم، عمود رقم التواصل (اختياري).'
-          },
-        ].map(s=>`
-          <div style="background:${s.bg};border:1px solid ${s.border};border-radius:12px;padding:13px 15px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:800;color:${s.color};margin-bottom:9px">${s.icon} ${s.title}</div>
-            <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
-              ${s.steps.map((st,i)=>`<div style="display:flex;gap:7px;font-size:12px"><span style="color:${s.color};font-weight:800;flex-shrink:0">${i+1}.</span><span style="color:var(--text);line-height:1.5">${st}</span></div>`).join('')}
-            </div>
-            <div style="font-size:11px;color:var(--text-muted);background:rgba(0,0,0,0.15);border-radius:7px;padding:6px 10px;line-height:1.6">${s.note}</div>
-          </div>`).join('')}
-      </div>
-
-      <!-- ===== 4: واتساب وQR ===== -->
-      <div id="gs-4" style="margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
-          <span style="background:linear-gradient(135deg,#25d366,#128C7E);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">4</span>
-          <span style="font-size:14px;font-weight:800;color:#25d366">📱 التواصل مع أولياء الأمور</span>
-        </div>
-
-        ${[
-          {icon:'📱',title:'إضافة رقم ولي الأمر',steps:['اذهب لـ "🏫 إدارة الصفوف"','اضغط زر 📱 بجانب اسم الطالب','أدخل الرقم مع رمز الدولة (بدون +) مثال: 971501234567','اضغط "💾 حفظ"'],color:'#25d366',bg:'rgba(37,211,102,0.07)',border:'rgba(37,211,102,0.2)'},
-          {icon:'✅',title:'تأكيد واعتماد الرقم',steps:['بعد إضافة الرقم اضغط "إرسال رسالة التأكيد"','سيفتح واتساب برسالة رسمية جاهزة','بعد التأكيد اضغط "✅ اعتماد الرقم"','الزر سيتحول للون الأخضر ✅ معتمد'],color:'#25d366',bg:'rgba(37,211,102,0.07)',border:'rgba(37,211,102,0.2)'},
-          {icon:'📝',title:'إرسال ملاحظة سلوكية',steps:['في صفحة الحضور اضغط زر 📝 بجانب الطالب','اختر نوع الملاحظة: إيجابية أو سلبية','حدد النقاط المضافة أو المخصومة','اضغط "📱 حفظ + واتساب" لإرسالها مباشرة لولي الأمر'],color:'#a29bfe',bg:'rgba(162,155,254,0.07)',border:'rgba(162,155,254,0.2)'},
-          {icon:'📲',title:'QR Code للتواصل السريع',steps:['في صفحة التقارير اضغط "📲 QR اتصال"','اعرض الـ QR للمعلمين الآخرين أو في الاجتماعات','المسح يفتح محادثة واتساب أو يتصل مباشرة'],color:'#5fd8e8',bg:'rgba(95,216,232,0.07)',border:'rgba(95,216,232,0.2)'},
-        ].map(s=>`
-          <div style="background:${s.bg};border:1px solid ${s.border};border-radius:12px;padding:13px 15px;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:800;color:${s.color};margin-bottom:9px">${s.icon} ${s.title}</div>
-            ${s.steps.map((st,i)=>`<div style="display:flex;gap:7px;font-size:12px;margin-bottom:5px"><span style="color:${s.color};font-weight:800;flex-shrink:0">${i+1}.</span><span style="color:var(--text);line-height:1.5">${st}</span></div>`).join('')}
-          </div>`).join('')}
-      </div>
-
-      <!-- ===== 5: أسئلة شائعة ===== -->
-      <div id="gs-5" style="margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
-          <span style="background:linear-gradient(135deg,#fd79a8,#e84393);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0">5</span>
-          <span style="font-size:14px;font-weight:800;color:#fd79a8">❓ أسئلة هامة</span>
-        </div>
-        ${[
-          {q:'ماذا يحدث لو مسحت بيانات المتصفح؟',a:'ستُفقد جميع البيانات! الحل: صدّر نسخة JSON أسبوعياً من زر "📤 تصدير" في الهيدر. احفظها في Google Drive أو مجلد آمن.'},
-          {q:'هل يعمل على الجوال والآيباد؟',a:'نعم، متجاوب مع جميع الشاشات. افتح الملف في Safari أو Chrome على أي جهاز.'},
-          {q:'كيف أستخدمه لأكثر من مادة؟',a:'انسخ الملف وأعد تسميته لكل مادة. مثال: nojomi_علوم.html — كل ملف له بيانات مستقلة.'},
-          {q:'كيف أنقل البيانات لجهاز آخر؟',a:'صدّر JSON من الجهاز الأول ← انقله بالبريد أو USB ← استورده من الجهاز الثاني.'},
-          {q:'هل البيانات خاصة وآمنة؟',a:'نعم، كل البيانات محفوظة فقط على جهازك. لا يوجد خادم خارجي ولا إرسال لأي جهة.'},
-          {q:'كيف أبدأ فصلاً دراسياً جديداً؟',a:'اضغط زر "🗑️ تصفير" في الهيدر. ستظهر نافذة تتيح اختيار ما تريد تصفيره: الحضور، المشاركات، الملاحظات، أو التقييمات — مع الاحتفاظ بأسماء الطلاب وأرقام التواصل.'},
-          {q:'لماذا لا تظهر النقاط محدّثة في صفحة المتصدرين؟',a:'اضغط على تبويب "🏆 المتصدرين" من جديد — الصفحة تُحدَّث تلقائياً عند فتحها. أو احفظ الحصة أولاً من زر "💾 حفظ الحصة".'},
-          {q:'ما الفرق بين تصدير JSON وتصدير CSV؟',a:'JSON = نسخة احتياطية كاملة لكل البيانات (موصى به). CSV = جدول أسماء وأرقام يمكن فتحه في Excel (للمشاركة فقط).'},
-        ].map((qa,i)=>`
-          <div style="margin-bottom:9px;border:1px solid rgba(255,255,255,0.07);border-radius:10px;overflow:hidden">
-            <div style="padding:10px 14px;font-size:13px;font-weight:700;display:flex;gap:10px;align-items:flex-start">
-              <span style="color:#fd79a8;flex-shrink:0;font-size:14px">Q</span>
-              <span>${qa.q}</span>
-            </div>
-            <div style="padding:8px 14px 11px 14px;font-size:12px;color:var(--text-muted);line-height:1.7;border-top:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.02)">
-              <span style="color:var(--present);font-weight:800;margin-left:6px">A</span>${qa.a}
-            </div>
-          </div>`).join('')}
-      </div>
-
-      <!-- زر الإغلاق -->
-      <div style="text-align:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07)">
-        <button onclick="closeModalForce()" style="background:rgba(95,216,232,0.1);border:1px solid rgba(95,216,232,0.3);color:#5fd8e8;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;padding:8px 24px;border-radius:10px;cursor:pointer">
-          إغلاق الدليل
-        </button>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:8px"><span class="cert-cr-text"></span></div>
-      </div>
-
-    </div>
-  `);
-  // كبّر النافذة قليلاً
-  setTimeout(() => {
-    const m = document.getElementById('modal-content');
-    if (m) { m.style.maxWidth = '580px'; m.style.width = '100%'; }
-  }, 10);
-}
-
 // ===== ABOUT MODAL =====
 // ===== XOR — بيانات المطوّر =====
 function _ad(a){return a.map(n=>String.fromCharCode(n^61)).join('');}
@@ -7471,6 +7295,17 @@ function setLinkJsonStatus(text){
   if(el) el.textContent = text;
 }
 
+/* آخر عملية قراءة أو كتابة على الملف المرتبط — لعرضها في شريط الحالة */
+let ljLastAction = null; // {type:'read'|'write', time: Date}
+function ljRecordAction(type){
+  ljLastAction = { type, time: new Date() };
+}
+function ljLastActionText(){
+  if(!ljLastAction) return '';
+  const label = ljLastAction.type === 'write' ? 'آخر كتابة' : 'آخر قراءة';
+  return ' — ' + label + ' ' + ljLastAction.time.toLocaleTimeString('ar');
+}
+
 async function writeStateToHandle(){
   if(!linkedJsonHandle) return false;
   try{
@@ -7482,7 +7317,8 @@ async function writeStateToHandle(){
     const writable = await linkedJsonHandle.createWritable();
     await writable.write(JSON.stringify(buildBackupData(), null, 2));
     await writable.close();
-    setLinkJsonStatus('🔗 ' + linkedJsonFileName + ' — آخر حفظ ' + new Date().toLocaleTimeString('ar'));
+    ljRecordAction('write');
+    setLinkJsonStatus('🔗 ' + linkedJsonFileName + ljLastActionText());
     return true;
   }catch(e){
     console.warn('تعذّر الحفظ في الملف المرتبط', e);
@@ -7500,7 +7336,9 @@ function syncToLinkedFileDebounced(){
 
 async function readHandleText(handle){
   const file = await handle.getFile();
-  return await file.text();
+  const text = await file.text();
+  ljRecordAction('read');
+  return text;
 }
 
 async function pickAndLinkJson(){
@@ -7542,8 +7380,10 @@ async function pickAndLinkJson(){
       toast('تم ربط الملف — سيُحفَظ تلقائياً من الآن ✅', '🔗');
     }
 
-    document.getElementById('btnLinkJson').textContent = '🔗 مرتبط';
-    setLinkJsonStatus('🔗 ' + linkedJsonFileName);
+    const btn = document.getElementById('btnLinkJson');
+    btn.textContent = '🔗';
+    btn.title = 'مرتبط بملف: ' + linkedJsonFileName + ' — اضغط لخيارات الربط';
+    setLinkJsonStatus('🔗 ' + linkedJsonFileName + ljLastActionText());
   }catch(err){
     if(err && err.name === 'AbortError') return;
     console.error(err);
@@ -7560,7 +7400,10 @@ async function unlinkJsonFile(){
   await ljClearHandle();
   linkedJsonHandle = null;
   linkedJsonFileName = '';
-  document.getElementById('btnLinkJson').textContent = '🔗 ربط تلقائي';
+  ljLastAction = null;
+  const btn = document.getElementById('btnLinkJson');
+  btn.textContent = '🔗';
+  btn.title = 'ربط تلقائي بملف JSON على الجهاز (قراءة وكتابة تلقائية)';
   setLinkJsonStatus('');
   toast('تم فك الربط التلقائي', '✖');
 }
@@ -7579,12 +7422,14 @@ async function onLinkJsonBtnClick(){
     try{
       const reqPerm = await linkedJsonHandle.requestPermission({mode:'readwrite'});
       if(reqPerm === 'granted'){
-        document.getElementById('btnLinkJson').textContent = '🔗 مرتبط';
+        const btn = document.getElementById('btnLinkJson');
+        btn.textContent = '🔗';
+        btn.title = 'مرتبط بملف: ' + linkedJsonFileName + ' — اضغط لخيارات الربط';
         const text = await readHandleText(linkedJsonHandle);
         if(text && text.trim()){
           try{ const parsed = JSON.parse(text); if(parsed && parsed.classes) importFromJSON(text); }catch(e){ /* تجاهل */ }
         }
-        setLinkJsonStatus('🔗 ' + linkedJsonFileName + ' — متصل');
+        setLinkJsonStatus('🔗 ' + linkedJsonFileName + ljLastActionText());
         toast('تم إعادة تفعيل الربط التلقائي ✅', '🔗');
       } else {
         setLinkJsonStatus('⚠️ لم تُمنح الصلاحية');
@@ -7611,8 +7456,10 @@ async function initLinkedFileOnLoad(){
     linkedJsonHandle = handle;
     linkedJsonFileName = handle.name;
     const perm = await handle.queryPermission({mode:'readwrite'});
+    const btn = document.getElementById('btnLinkJson');
     if(perm === 'granted'){
-      document.getElementById('btnLinkJson').textContent = '🔗 مرتبط';
+      btn.textContent = '🔗';
+      btn.title = 'مرتبط بملف: ' + linkedJsonFileName + ' — اضغط لخيارات الربط';
       const text = await readHandleText(handle);
       if(text && text.trim()){
         try{
@@ -7622,9 +7469,10 @@ async function initLinkedFileOnLoad(){
           }
         }catch(e){ /* ملف غير صالح — تجاهل القراءة والاستمرار بالبيانات المحلية */ }
       }
-      setLinkJsonStatus('🔗 ' + linkedJsonFileName + ' — متصل');
+      setLinkJsonStatus('🔗 ' + linkedJsonFileName + ljLastActionText());
     } else {
-      document.getElementById('btnLinkJson').textContent = '🔓 إعادة تفعيل الربط';
+      btn.textContent = '🔓';
+      btn.title = 'اضغط لإعادة تفعيل الربط بـ: ' + linkedJsonFileName;
       setLinkJsonStatus('اضغط لإعادة تفعيل الربط بـ: ' + linkedJsonFileName);
     }
   }catch(e){ console.warn('تعذّرت استعادة الربط التلقائي', e); }
