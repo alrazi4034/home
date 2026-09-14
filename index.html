@@ -554,7 +554,6 @@ function downloadEmptyTemplate(){
   const adminHeaders = ['اسم الموظف','رقم الاوراكل','الوظيفة'];
   const adminExamples = [
     {'اسم الموظف':'بدرية الظنحاني','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
-    {'اسم الموظف':'محمود شحادة','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adminExamples, {header: adminHeaders}), 'الاداريين');
 
