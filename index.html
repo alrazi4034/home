@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="./datalink.js"></script>
+<script type="module" src="./firebase-link.js"></script>
 <style>
   :root{
     --bg: #F2F2F0;
@@ -262,9 +262,9 @@
       </div>
     </div>
     <div class="h-actions">
-      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة" onclick="onLinkBtnClick()">🔗 ربط تلقائي</button>
+      <button class="link-btn" id="linkBtn" title="تسجيل الدخول بحساب Google" onclick="onLinkBtnClick()">🔐 تسجيل الدخول</button>
       <button class="link-btn" id="refreshNowBtn" title="التحقق من تحديثات بالملف المرتبط الآن" onclick="manualRefreshNow()" style="display:none;">🔄 تحديث الآن</button>
-      <button class="link-btn" id="unlinkBtn" title="فك الربط" onclick="onUnlinkBtnClick()" style="display:none;">✖ فك الربط</button>
+      <button class="link-btn" id="unlinkBtn" title="تسجيل الخروج" onclick="onUnlinkBtnClick()" style="display:none;">🚪 تسجيل الخروج</button>
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
       <button class="btn btn-primary" id="saveToLinkBtn" onclick="saveToLinkedFile()" style="display:none;">💾 حفظ في الملف المرتبط</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
@@ -340,9 +340,17 @@
         <p>التحكم الكامل ببيانات المدرسة: الطلاب، الإداريون، المعلمون والجداول، والتقويم — من ملف إكسل واحد قابل للتعديل والتصدير</p>
       </a>
 
+      <a class="card utility" href="javascript:void(0)" onclick="showView('guide')">
+        <span class="icon">📖</span>
+        <h3>دليل الاستخدام</h3>
+        <p>شرح خطوة بخطوة لتعبئة ملف بيانات المدرسة، مع نموذج إكسل فارغ جاهز، وأمثلة على الإدخال، ونبذة عن كل برنامج</p>
+      </a>
+
     </div>
   </main>
   </div>
+
+  <div id="guideView" style="display:none;"></div>
 
   <div id="managementView">
 <div style="padding:14px clamp(16px,5vw,50px) 0;">
@@ -523,16 +531,144 @@ const TEST_WORKBOOK_B64 = "UEsDBBQABgAIAAAAIQBoloM5pAEAACgKAAATAAgCW0NvbnRlbnRfV
 function showView(view){
   const portal = document.getElementById('portalView');
   const mgmt = document.getElementById('managementView');
+  const guide = document.getElementById('guideView');
   const exportBtn = document.getElementById('exportBtn');
-  if(view === 'management'){
-    portal.style.display = 'none';
-    mgmt.style.display = 'block';
-    exportBtn.style.display = 'inline-block';
-  } else {
-    portal.style.display = 'block';
-    mgmt.style.display = 'none';
-    exportBtn.style.display = 'none';
-  }
+  portal.style.display = view === 'portal' ? 'block' : 'none';
+  mgmt.style.display = view === 'management' ? 'block' : 'none';
+  guide.style.display = view === 'guide' ? 'block' : 'none';
+  exportBtn.style.display = view === 'management' ? 'inline-block' : 'none';
+  if(view === 'guide' && !guide.dataset.built){ buildGuideView(); guide.dataset.built = '1'; }
+}
+
+/* ================= دليل الاستخدام ================= */
+function downloadEmptyTemplate(){
+  const wb = XLSX.utils.book_new();
+
+  const studentHeaders = ['م','اسم الطالب','الصف','رقم التواصل','معتمد','LMS EMAIL','LMS PASSWORD','ALEF EMAIL','ALEF PASSWORD'];
+  const studentExamples = [
+    {'م':1,'اسم الطالب':'أحمد محمد علي (10234)','الصف':'5أ','رقم التواصل':'0501234567','معتمد':'1','LMS EMAIL':'ahmed.m@moe.gov.ae','LMS PASSWORD':'Ax7#2025','ALEF EMAIL':'ahmed.m@alef.education','ALEF PASSWORD':'Zq9!2025'},
+    {'م':2,'اسم الطالب':'سالم خالد الكتبي (10235)','الصف':'5أ','رقم التواصل':'0559876543','معتمد':'1','LMS EMAIL':'','LMS PASSWORD':'','ALEF EMAIL':'','ALEF PASSWORD':''}
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentExamples, {header: studentHeaders}), 'جميع الطلاب');
+
+  const adminHeaders = ['اسم الموظف','رقم الاوراكل','الوظيفة'];
+  const adminExamples = [
+    {'اسم الموظف':'بدرية الظنحاني','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
+    {'اسم الموظف':'محمود شحادة','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adminExamples, {header: adminHeaders}), 'الاداريين');
+
+  const teacherHeaders = ['اسم المعلم','رقم الاوراكل','مادة التدريس','الصفوف', ...DAYS];
+  const blankDays = Object.fromEntries(DAYS.map(d => [d, '']));
+  const teacherExamples = [
+    Object.assign({'اسم المعلم':'خالد سعيد الحمادي','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'5أ-5ب-6أ'}, blankDays),
+    Object.assign({'اسم المعلم':'مريم عبدالله','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'7أ-7ب-8أ-8ب'}, blankDays)
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(teacherExamples, {header: teacherHeaders}), 'المعلمين والجداول');
+
+  const aoa = [];
+  aoa.push(['بيانات المدرسة']);
+  aoa.push(['اسم المدرسة','صفوف المدرسة']);
+  aoa.push(['مدرسة الرازي للبنين','5أ-5ب-6أ-6ب-7أ-7ب-8أ-8ب']);
+  aoa.push([]);
+  aoa.push(['بيانات الفصول الدراسية']);
+  aoa.push([' الفصل الدراسي الأول','تاريخ البداية1',' الفصل الدراسي الثاني','تاريخ البداية2',' الفصل الدراسي الثالث','تاريخ البداية3']);
+  aoa.push(['الأسبوع 1','2025-08-24','الأسبوع 1','2026-01-04','الأسبوع 1','2026-04-05']);
+  aoa.push(['الأسبوع 2','2025-08-31','الأسبوع 2','2026-01-11','الأسبوع 2','2026-04-12']);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'التقويم المدرسي');
+
+  XLSX.writeFile(wb, 'نموذج_بيانات_المدرسة_فارغ.xlsx');
+}
+
+function buildGuideView(){
+  const el = document.getElementById('guideView');
+  const sheetSection = (title, desc, rows) => {
+    const headers = Object.keys(rows[0]);
+    return `<div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px;">
+      <h4 style="margin:0 0 6px;font-size:15px;">${title}</h4>
+      <p style="margin:0 0 10px;font-size:13px;color:var(--ink-soft);line-height:1.8;">${desc}</p>
+      <div style="overflow-x:auto;">
+      <table style="border-collapse:collapse;font-size:12px;white-space:nowrap;">
+        <thead><tr>${headers.map(h=>`<th style="border:1px solid var(--line);padding:5px 9px;background:var(--bg-alt);text-align:right;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r=>`<tr>${headers.map(h=>`<td style="border:1px solid var(--line);padding:5px 9px;">${r[h]===''?'<span style=\"color:var(--ink-soft)\">—</span>':r[h]}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+      </div>
+    </div>`;
+  };
+
+  const programCard = (icon, name, desc) => `
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
+      <span style="font-size:24px;">${icon}</span>
+      <div><b style="font-size:14px;">${name}</b><p style="margin:4px 0 0;font-size:12.5px;color:var(--ink-soft);line-height:1.8;">${desc}</p></div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="padding:14px clamp(16px,5vw,50px) 50px;max-width:900px;margin:0 auto;">
+      <a href="javascript:void(0)" onclick="showView('portal')" style="font-size:13px;color:var(--ink-soft);text-decoration:none;">→ الرئيسية</a>
+      <h2 style="margin:14px 0 4px;">📖 دليل الاستخدام</h2>
+      <p style="color:var(--ink-soft);font-size:14px;margin-bottom:20px;line-height:1.9;">
+        كل برامج بوابة الرازي الذكية تعتمد على ملف إكسل واحد — <b>ملف بيانات المدرسة</b> — تعبّئه مرة من هنا (تبويب "إدارة البيانات")
+        وتربطه، وبعدها كل البرامج الأخرى (الحضور، السلوك، التواصل، نجوم مدرستي، نجوم الأسبوع...) تسحب منه تلقائياً بدون ما تعيد كتابة أي بيانات.
+      </p>
+
+      <div style="background:rgba(37,99,235,.07);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:22px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;">
+        <div>
+          <b style="font-size:14px;">📥 نموذج إكسل فارغ جاهز</b>
+          <p style="margin:4px 0 0;font-size:12.5px;color:var(--ink-soft);">بنفس الصفحات والأعمدة المطلوبة بالضبط، مع صفين مثال بكل صفحة توضح طريقة التعبئة الصحيحة.</p>
+        </div>
+        <button class="btn btn-primary" onclick="downloadEmptyTemplate()">⬇ تحميل النموذج</button>
+      </div>
+
+      <h3 style="font-size:16px;margin-bottom:10px;">شرح صفحات الملف الأربع</h3>
+
+      ${sheetSection('1) جميع الطلاب', 'صف واحد لكل طالب. عمود "اسم الطالب" الأفضل يكون بصيغة <b>"الاسم الكامل (رقم الطالب)"</b> — كل البرامج تعتمد على الرقم بين القوسين للمطابقة الدقيقة حتى لو تكرر اسمين. "معتمد" تكون 1 (مفعّل) أو 0 (موقوف). أعمدة الحسابات اختيارية — أي عمود يحتوي كلمة LMS أو ALEF يُكتشف تلقائياً (عمود الإيميل بدون كلمة PASS، وعمود كلمة المرور يحتوي PASS بالاسم).',
+        [
+          {'م':1,'اسم الطالب':'أحمد محمد علي (10234)','الصف':'5أ','رقم التواصل':'0501234567','معتمد':'1','LMS EMAIL':'ahmed.m@moe.gov.ae','LMS PASSWORD':'Ax7#2025'},
+          {'م':2,'اسم الطالب':'سالم خالد الكتبي (10235)','الصف':'5أ','رقم التواصل':'0559876543','معتمد':'1','LMS EMAIL':'','LMS PASSWORD':''}
+        ])}
+
+      ${sheetSection('2) الاداريين', 'موظفو الإدارة المدرسية. عمود "الوظيفة" الأفضل يكون من الألقاب المعتمدة (مديرة المدرسة، رئيس وحدة الشؤون الاكاديمية، رئيس وحدة شؤون الطلاب، رئيس وحدة شؤون الخدمات، المرشد الاكاديمي) حتى تظهر صح بالطباعة والتقارير.',
+        [
+          {'اسم الموظف':'بدرية الظنحاني','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
+          {'اسم الموظف':'محمود شحادة','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
+        ])}
+
+      ${sheetSection('3) المعلمين والجداول', 'عمود "الصفوف" يحتوي كل رموز الصفوف اللي يدرّسها المعلم مفصولة بشرطة (مثل 5أ-5ب-6أ). أعمدة أيام الأسبوع (الاثنين...الجمعة) اتركها فارغة بالملف — الجدول التفصيلي (كل حصة) يُبنى من داخل البرنامج نفسه بعد ربط الملف، مو بالكتابة اليدوية بالإكسل.',
+        [
+          {'اسم المعلم':'خالد سعيد الحمادي','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'5أ-5ب-6أ'},
+          {'اسم المعلم':'مريم عبدالله','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'7أ-7ب-8أ-8ب'}
+        ])}
+
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px;">
+        <h4 style="margin:0 0 6px;font-size:15px;">4) التقويم المدرسي</h4>
+        <p style="margin:0 0 10px;font-size:13px;color:var(--ink-soft);line-height:1.8;">
+          هذي الصفحة شكلها مختلف عن الباقي (مو جدول عادي بعمود لكل حقل) — فيها قسمين: بيانات عامة عن المدرسة (اسمها وصفوفها)،
+          وبعدها جدول أسابيع الفصول الثلاثة. <b>الأسهل والأضمن إنك تعدّلها من داخل البرنامج</b> (تبويبي "بيانات المدرسة" و"التقويم الدراسي" بعد ربط الملف)
+          بدل التعديل المباشر بالإكسل — النموذج المُحمَّل أعلاه يجيك بها مبنية صح مسبقاً وبس تستبدل القيم بالأمثلة الظاهرة فيها.
+        </p>
+      </div>
+
+      <h3 style="font-size:16px;margin:26px 0 10px;">خطوات البدء</h3>
+      <ol style="font-size:13.5px;color:var(--ink-soft);line-height:2.1;padding-inline-start:20px;">
+        <li>حمّل النموذج الفارغ أعلاه، وعبّي فيه بيانات مدرستك الحقيقية (نفس شكل الأمثلة بالضبط).</li>
+        <li>ارجع لـ"إدارة البيانات" بالصفحة الرئيسية، واضغط "🔐 تسجيل الدخول" بحساب Google المصرّح له.</li>
+        <li>من هذي اللحظة، افتح أي برنامج ثاني (الحضور، السلوك، التواصل...) — بياناتك تكون جاهزة فيه تلقائياً بدون أي استيراد يدوي.</li>
+        <li>أي تعديل مستقبلي (طالب جديد، نقل صف...) عدّله من "إدارة البيانات" واضغط "💾 حفظ في الملف المرتبط" — يوصل لكل البرامج تلقائياً.</li>
+      </ol>
+
+      <h3 style="font-size:16px;margin:26px 0 10px;">نبذة عن كل برنامج</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+        ${programCard('📋','الحضور','تسجيل حضور وغياب الطلاب يومياً، مع مزامنة تلقائية لأسماء وصفوف الطلاب من بيانات المدرسة.')}
+        ${programCard('⚠️','المخالفات السلوكية','تسجيل المخالفات وإصدار نماذجها الرسمية، مع روستر طلاب محدَّث تلقائياً من بيانات المدرسة.')}
+        ${programCard('💬','التواصل السريع','رسائل واتساب جاهزة لأولياء الأمور (استدعاء، استفسار غياب، مخالفة، أو حسابات LMS وألف) بضغطة واحدة لكل طالب.')}
+        ${programCard('⭐','نجوم مدرستي','نظام نقاط ومكافآت لكل صف، مع ربط تلقائي بملف حفظ دائم (JSON) يحتفظ ببياناتك بين الجلسات.')}
+        ${programCard('🗓️','الخطة الأسبوعية','رابط مباشر لمجلد رفع الخطط الأسبوعية على الشيربوينت.')}
+        ${programCard('🏆','نجوم الأسبوع','اختيار نجم كل صف أسبوعياً من القائمة الحقيقية للطلاب، وطباعة شهادات/بطاقات تكريم، مع تحديث القائمة من بيانات المدرسة بضغطة واحدة.')}
+        ${programCard('📅','التقويم الأكاديمي','إدارة فعاليات وتواريخ العام الدراسي، مع ربط تلقائي (قراءة وكتابة) لملفه الخاص وخيار دمج أو استبدال عند الاستيراد.')}
+        ${programCard('🎲','التعلم باللعب','أنشطة وألعاب تعليمية تفاعلية للطلاب.')}
+      </div>
+    </div>
+  `;
 }
 
 let state = {
@@ -1874,7 +2010,7 @@ function afterWorkbookLoaded(fileName, handle, buf){
     document.getElementById('saveToLinkBtn').style.display = '';
     document.getElementById('unlinkBtn').style.display = '';
     document.getElementById('refreshNowBtn').style.display = '';
-    document.getElementById('linkBtn').textContent = '🔗 إعادة ربط';
+    document.getElementById('linkBtn').textContent = '🔐 ' + (window.RaziCurrentUserEmail || 'متصل');
     startAutoRefreshTimer();
   }
 }
@@ -2002,8 +2138,8 @@ async function onUnlinkBtnClick(){
   document.getElementById('saveToLinkBtn').style.display = 'none';
   document.getElementById('unlinkBtn').style.display = 'none';
   document.getElementById('refreshNowBtn').style.display = 'none';
-  document.getElementById('linkBtn').textContent = '🔗 ربط تلقائي';
-  setStatus('تم فك الربط التلقائي. اختر ملفاً من جديد للمتابعة.');
+  document.getElementById('linkBtn').textContent = '🔐 تسجيل الدخول';
+  setStatus('تم تسجيل الخروج. سجّل الدخول من جديد للمتابعة.');
 }
 
 async function saveToLinkedFile(){
@@ -2073,7 +2209,7 @@ async function initAutoLink(){
     }
   });
   if(result === 'needs-gesture'){
-    setStatus('🔗 يوجد ملف مرتبط سابقاً — اضغط زر "ربط تلقائي" لإعادة الاتصال (نقرة واحدة فقط، ثم لن يُطلب منك ذلك مجدداً).');
+    setStatus('🔐 اضغط زر "تسجيل الدخول" للدخول بحساب Google والوصول لبيانات المدرسة.');
   } else if(result === 'none' || result === 'unsupported'){
     setStatus('لم يتم تحميل أي ملف بيانات بعد.');
   }
