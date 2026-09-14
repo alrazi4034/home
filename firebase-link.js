@@ -23,11 +23,63 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* ---------- نافذة صغيرة لإدخال البريد وكلمة المرور (بدل نافذة Google) ---------- */
+function showLoginModal() {
+  return new Promise((resolve, reject) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;direction:rtl;';
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:10px;padding:26px;width:min(320px,90vw);box-shadow:0 10px 30px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 16px;font-size:16px;">🔐 تسجيل دخول الإداريين</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <input id="raziLoginEmail" type="email" placeholder="البريد الإلكتروني" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+          <input id="raziLoginPass" type="password" placeholder="كلمة المرور" style="padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;">
+          <div id="raziLoginErr" style="color:#DC2626;font-size:12.5px;display:none;"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <button id="raziLoginSubmit" style="flex:1;padding:10px;border:none;border-radius:6px;background:#2563EB;color:#fff;cursor:pointer;font-size:14px;">دخول</button>
+            <button id="raziLoginCancel" style="padding:10px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;">إلغاء</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const emailEl = overlay.querySelector('#raziLoginEmail');
+    const passEl = overlay.querySelector('#raziLoginPass');
+    const errEl = overlay.querySelector('#raziLoginErr');
+    const cleanup = () => overlay.remove();
+    overlay.querySelector('#raziLoginCancel').onclick = () => { cleanup(); reject(new Error('cancelled')); };
+    overlay.querySelector('#raziLoginSubmit').onclick = submit;
+    passEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    function submit() {
+      const email = emailEl.value.trim();
+      const pass = passEl.value;
+      if (!email || !pass) {
+        errEl.textContent = 'أدخل البريد وكلمة المرور.';
+        errEl.style.display = 'block';
+        return;
+      }
+      cleanup();
+      resolve({ email, pass });
+    }
+    emailEl.focus();
+  });
+}
+
+function loginErrorMessage(code) {
+  const map = {
+    'auth/invalid-email': 'صيغة البريد الإلكتروني غير صحيحة.',
+    'auth/user-not-found': 'لا يوجد حساب بهذا البريد.',
+    'auth/wrong-password': 'كلمة المرور غير صحيحة.',
+    'auth/invalid-credential': 'البريد أو كلمة المرور غير صحيحة.',
+    'auth/too-many-requests': 'محاولات كثيرة فاشلة — حاول لاحقاً.'
+  };
+  return map[code] || ('تعذّر تسجيل الدخول: ' + code);
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyCKzs1e66o_KhNHhZfx7P6YLba9kmPJU_s",
@@ -45,7 +97,6 @@ const DEFAULT_FILE_NAME = 'بيانات_المدرسة.xlsx';
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
 
 let currentUser = null;
 let authReadyResolve;
@@ -116,12 +167,20 @@ async function tryAutoLink(onData) {
 }
 
 /**
- * تسجيل الدخول بحساب Google (نافذة منبثقة)، ثم سحب الملف من Firestore.
+ * تسجيل الدخول ببريد وكلمة مرور (نافذة مدمجة)، ثم سحب الملف من Firestore.
+ * الحسابات تُنشأ يدوياً من Firebase Console → Authentication → Users،
+ * لا يوجد تسجيل ذاتي.
  */
 async function linkFile(onData, onError) {
   try {
     if (!currentUser) {
-      const result = await signInWithPopup(auth, provider);
+      let creds;
+      try {
+        creds = await showLoginModal();
+      } catch (e) {
+        return; // المستخدم ضغط "إلغاء"
+      }
+      const result = await signInWithEmailAndPassword(auth, creds.email, creds.pass);
       currentUser = result.user;
       window.RaziCurrentUserEmail = currentUser.email;
     }
@@ -135,10 +194,13 @@ async function linkFile(onData, onError) {
       return;
     }
     if (err && (err.code === 'permission-denied' || err.code === 'firestore/permission-denied')) {
-      if (onError) onError(new Error('حسابك غير مصرّح له بالوصول لبيانات المدرسة. تواصل مع مسؤول النظام لإضافة بريدك.'));
+      if (onError) onError(new Error('حسابك غير مصرّح له بالوصول لبيانات المدرسة. تواصل مع مسؤول النظام.'));
       return;
     }
-    if (err && err.code === 'auth/popup-closed-by-user') return; // المستخدم أغلق نافذة تسجيل الدخول
+    if (err && err.code && err.code.startsWith('auth/')) {
+      if (onError) onError(new Error(loginErrorMessage(err.code)));
+      return;
+    }
     if (onError) onError(err);
   }
 }
