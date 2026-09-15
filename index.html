@@ -259,6 +259,9 @@
   .stats-summary-card span{ font-size:11.5px; color:var(--ink-soft); }
   .stats-body{ padding:0 18px 18px; border-top:1px solid var(--line); }
   .stats-grade-block{ margin-top:14px; }
+  .grade-box-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:6px; }
+  .grade-box{ border:1.5px solid; border-radius:10px; padding:10px 12px; }
+  @media (max-width:760px){ .grade-box-grid{ grid-template-columns:repeat(2, 1fr); } }
   .stats-grade-title{ font-size:13px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
   .stats-grade-title .dot{ width:11px; height:11px; border-radius:50%; display:inline-block; }
   .class-chip{ display:inline-flex; align-items:center; gap:6px; border-radius:7px; padding:6px 12px; font-size:12.5px; margin:3px 5px 3px 0; font-weight:600; color:#fff; }
@@ -287,8 +290,145 @@
     transition:transform .15s ease, box-shadow .15s ease;
   }
   .back-home-btn:hover{ transform:translateY(-1px); box-shadow:0 5px 14px rgba(37,99,235,.35); }
+
+  /* ===== بوابة الدخول (معلم / إداري) ===== */
+  #roleGateOverlay{
+    position:fixed; inset:0; z-index:99999;
+    background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+  }
+  #roleGateOverlay.hidden{ display:none; }
+  .gate-box{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:36px 32px; width:100%; max-width:380px; text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.12);
+  }
+  .gate-icon{ font-size:40px; margin-bottom:10px; }
+  .gate-title{ font-family:'El Messiri',sans-serif; font-weight:700; font-size:18px; margin-bottom:4px; }
+  .gate-sub{ font-size:12.5px; color:var(--ink-soft); margin-bottom:22px; }
+  .gate-role-btns{ display:flex; gap:10px; margin-bottom:16px; }
+  .gate-role-btn{
+    flex:1; padding:16px 10px; border-radius:10px; border:1.5px solid var(--line);
+    background:var(--bg-alt); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700;
+    display:flex; flex-direction:column; align-items:center; gap:6px; color:var(--ink);
+  }
+  .gate-role-btn:hover{ border-color:var(--primary); background:rgba(37,99,235,.06); }
+  .gate-role-btn .r-icon{ font-size:24px; }
+  .gate-code-area{ display:none; }
+  .gate-code-area.active{ display:block; }
+  .gate-input{
+    width:100%; padding:12px 14px; border-radius:8px; border:1.5px solid var(--line);
+    font-family:inherit; font-size:20px; letter-spacing:6px; text-align:center;
+    direction:ltr; margin-bottom:10px; outline:none;
+  }
+  .gate-input:focus{ border-color:var(--primary); }
+  .gate-input.error{ border-color:var(--danger); }
+  .gate-msg{ font-size:12px; color:var(--danger); min-height:16px; margin-bottom:8px; }
+  .gate-back{ font-size:12px; color:var(--ink-soft); cursor:pointer; text-decoration:underline; margin-top:6px; display:inline-block; }
+
+  /* إخفاء عناصر خاصة بالإداري فقط عن المعلم */
+  body.role-teacher .admin-only{ display:none !important; }
+  /* إظهار عناصر خاصة بالمعلم فقط له */
+  body.role-admin .teacher-only{ display:none !important; }
+  body.role-teacher #switchAdminBtn{ display:inline-flex !important; }
+  /* وضع القراءة فقط لبيانات المدرسة عند دخول المعلم */
+  body.role-teacher.readonly-data #managementView input,
+  body.role-teacher.readonly-data #managementView select,
+  body.role-teacher.readonly-data #managementView textarea{
+    pointer-events:none; background:#f2f2f2; opacity:.75;
+  }
+  body.role-teacher.readonly-data #managementView button:not(.tab):not(.back-home-btn){
+    display:none !important;
+  }
+  body.role-teacher.readonly-data #linkBtn,
+  body.role-teacher.readonly-data #unlinkBtn,
+  body.role-teacher.readonly-data #saveToLinkBtn,
+  body.role-teacher.readonly-data #exportBtn{
+    display:none !important;
+  }
 </style>
 <body>
+
+<div id="roleGateOverlay">
+  <div class="gate-box">
+    <div id="gateStep1">
+      <div class="gate-icon">🔒</div>
+      <div class="gate-title">بوابة الرازي الذكية</div>
+      <div class="gate-sub">اختر نوع الدخول</div>
+      <div class="gate-role-btns">
+        <button class="gate-role-btn" onclick="gateShowCode('teacher')"><span class="r-icon">🧑‍🏫</span>دخول معلم</button>
+        <button class="gate-role-btn" onclick="gateShowCode('admin')"><span class="r-icon">🧑‍💼</span>دخول إداري</button>
+      </div>
+    </div>
+    <div id="gateStep2" class="gate-code-area">
+      <div class="gate-icon">🔑</div>
+      <div class="gate-title" id="gateRoleLabel"></div>
+      <div class="gate-sub">أدخل رمز الدخول</div>
+      <input class="gate-input" id="gateInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" onkeydown="if(event.key==='Enter') gateCheckCode()">
+      <div class="gate-msg" id="gateMsg"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="gateCheckCode()">دخول</button>
+      <span class="gate-back" onclick="gateBack()">← رجوع</span>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const ROLE_CODES = { teacher: '001123', admin: '131991' };
+  const overlay = document.getElementById('roleGateOverlay');
+  const savedRole = sessionStorage.getItem('idxRole');
+  if(savedRole === 'teacher' || savedRole === 'admin'){
+    overlay.classList.add('hidden');
+    applyRole(savedRole);
+  }
+  let pendingRole = null;
+  window.gateShowCode = function(role){
+    pendingRole = role;
+    document.getElementById('gateStep1').style.display = 'none';
+    document.getElementById('gateStep2').classList.add('active');
+    document.getElementById('gateRoleLabel').textContent = role === 'teacher' ? '🧑‍🏫 دخول معلم' : '🧑‍💼 دخول إداري';
+    document.getElementById('gateInput').value = '';
+    document.getElementById('gateInput').focus();
+  };
+  window.gateBack = function(){
+    pendingRole = null;
+    document.getElementById('gateStep1').style.display = 'block';
+    document.getElementById('gateStep2').classList.remove('active');
+    document.getElementById('gateMsg').textContent = '';
+  };
+  window.gateCheckCode = function(){
+    const input = document.getElementById('gateInput');
+    const msg = document.getElementById('gateMsg');
+    if(pendingRole && input.value.trim() === ROLE_CODES[pendingRole]){
+      sessionStorage.setItem('idxRole', pendingRole);
+      overlay.classList.add('hidden');
+      applyRole(pendingRole);
+    } else {
+      input.classList.add('error');
+      msg.textContent = 'رمز غير صحيح';
+      input.value = '';
+      input.focus();
+    }
+  };
+  function applyRole(role){
+    document.body.classList.remove('role-teacher', 'role-admin', 'readonly-data');
+    if(role === 'teacher'){
+      document.body.classList.add('role-teacher', 'readonly-data');
+    } else {
+      document.body.classList.add('role-admin');
+    }
+  }
+  window.showAdminLoginPrompt = function(){
+    overlay.classList.remove('hidden');
+    document.getElementById('gateStep1').style.display = 'none';
+    document.getElementById('gateStep2').classList.add('active');
+    document.getElementById('gateRoleLabel').textContent = '🧑‍💼 دخول إداري';
+    document.getElementById('gateMsg').textContent = '';
+    document.getElementById('gateInput').value = '';
+    pendingRole = 'admin';
+    document.getElementById('gateInput').focus();
+  };
+})();
+</script>
 
   <header>
     <div class="brand">
@@ -299,6 +439,7 @@
       </div>
     </div>
     <div class="h-actions">
+      <button class="btn" id="switchAdminBtn" onclick="showAdminLoginPrompt()" style="display:none;">🧑‍💼 دخول كإداري</button>
       <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة" onclick="onLinkBtnClick()">🔗 ربط تلقائي</button>
       <button class="link-btn" id="refreshNowBtn" title="التحقق من تحديثات بالملف المرتبط الآن" onclick="manualRefreshNow()" style="display:none;">🔄 تحديث الآن</button>
       <button class="link-btn" id="unlinkBtn" title="فك الربط" onclick="onUnlinkBtnClick()" style="display:none;">✖ فك الربط</button>
@@ -319,24 +460,55 @@
 <main>
     <div class="grid">
 
-      <a class="card" href="./attendance.html">
+      <a class="card admin-only" href="./attendance.html">
         <span class="card-link-badge" title="رابط تسجيل الحضور" onclick="event.stopPropagation();event.preventDefault();window.open('https://forms.cloud.microsoft/r/38easMEkWi','_blank')">🔗</span>
         <span class="icon">📋</span>
         <h3>الحضور</h3>
         <p>تسجيل ومتابعة حضور وغياب الطلاب يومياً</p>
       </a>
 
-      <a class="card" href="./behavior.html">
+      <a class="card teacher-only" href="https://forms.cloud.microsoft/r/38easMEkWi" target="_blank">
+        <span class="icon">📋</span>
+        <h3>تسجيل الحضور</h3>
+        <p>رابط مباشر لاستبانة تسجيل حضور وغياب الطلاب</p>
+      </a>
+
+      <a class="card admin-only" href="./behavior.html">
         <span class="card-link-badge" title="رابط تسجيل مخالفة سلوكية" onclick="event.stopPropagation();event.preventDefault();window.open('https://forms.cloud.microsoft/r/M2K32AaKUA','_blank')">🔗</span>
         <span class="icon">⚠️</span>
         <h3>المخالفات السلوكية</h3>
         <p>تتبع السلوك وإصدار النماذج الرسمية</p>
       </a>
 
-      <a class="card" href="./whatsapp.html">
-        <span class="icon">💬</span>
-        <h3>التواصل السريع</h3>
-        <p>رسائل مباشرة وفورية لأولياء الأمور</p>
+      <a class="card teacher-only" href="https://forms.cloud.microsoft/r/M2K32AaKUA" target="_blank">
+        <span class="icon">⚠️</span>
+        <h3>تسجيل مخالفة سلوكية</h3>
+        <p>رابط مباشر لاستبانة تسجيل مخالفة سلوكية</p>
+      </a>
+
+      <div class="card" style="cursor:default;">
+        <span class="card-link-badge admin-only" title="رابط رفع الخطة الأسبوعية" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgB7brwm3zBETZU5gyS5NwzoAWOkUWgBU-4-WAgVhAPugM0?e=x6bSWW','_blank')">🔗</span>
+        <span class="icon">🗓️</span>
+        <h3>الخطة الأسبوعية</h3>
+        <p>جدول الأنشطة والمهام الأسبوعية</p>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <a href="./weeklyplan-teacher-tool.html" class="btn" style="flex:1;text-align:center;text-decoration:none;">📝 إدخال الخطة</a>
+          <a href="./weeklyplan-coordinator-tool.html" class="btn btn-primary admin-only" style="flex:1;text-align:center;text-decoration:none;">📤 إخراج الخطة</a>
+          <a href="https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgB7brwm3zBETZU5gyS5NwzoAWOkUWgBU-4-WAgVhAPugM0?e=x6bSWW" target="_blank" class="btn btn-primary teacher-only" style="flex:1;text-align:center;text-decoration:none;">☁️ رفع الخطة</a>
+        </div>
+      </div>
+
+      <a class="card admin-only" href="./weekstar.html">
+        <span class="card-link-badge" title="قائمة أسماء نجوم الأسبوع" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgBM5cg7NaErQo2oLMe7sCM_AVLrQTWX7fllKweW108c578?e=2aP3ZD','_blank')">🔗</span>
+        <span class="icon">🏆</span>
+        <h3>نجوم الأسبوع</h3>
+        <p>تكريم الطلاب المتميزين كل أسبوع</p>
+      </a>
+
+      <a class="card teacher-only" href="https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgBM5cg7NaErQo2oLMe7sCM_AVLrQTWX7fllKweW108c578?e=2aP3ZD" target="_blank">
+        <span class="icon">🏆</span>
+        <h3>اختيار نجم الأسبوع</h3>
+        <p>رابط مباشر لرفع اسم نجم الأسبوع</p>
       </a>
 
       <a class="card" href="./nojoom.html">
@@ -345,34 +517,22 @@
         <p>نظام مكافآت وتحفيز الطلاب</p>
       </a>
 
-      <div class="card" style="cursor:default;">
-        <span class="card-link-badge" title="رابط رفع الخطة الأسبوعية" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgB7brwm3zBETZU5gyS5NwzoAWOkUWgBU-4-WAgVhAPugM0?e=x6bSWW','_blank')">🔗</span>
-        <span class="icon">🗓️</span>
-        <h3>الخطة الأسبوعية</h3>
-        <p>جدول الأنشطة والمهام الأسبوعية</p>
-        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
-          <a href="./weeklyplan-teacher-tool.html" class="btn" style="flex:1;text-align:center;text-decoration:none;">📝 إدخال الخطة</a>
-          <a href="./weeklyplan-coordinator-tool.html" class="btn btn-primary" style="flex:1;text-align:center;text-decoration:none;">📤 إخراج الخطة</a>
-        </div>
-      </div>
-
-      <a class="card" href="./weekstar.html">
-        <span class="card-link-badge" title="قائمة أسماء نجوم الأسبوع" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgBM5cg7NaErQo2oLMe7sCM_AVLrQTWX7fllKweW108c578?e=2aP3ZD','_blank')">🔗</span>
-        <span class="icon">🏆</span>
-        <h3>نجوم الأسبوع</h3>
-        <p>تكريم الطلاب المتميزين كل أسبوع</p>
-      </a>
-
-      <a class="card" href="./calendar.html">
-        <span class="icon">📅</span>
-        <h3>التقويم الأكاديمي</h3>
-        <p>فعاليات وتواريخ العام الدراسي</p>
-      </a>
-
       <a class="card" href="./play_learn.html">
         <span class="icon">🎲</span>
         <h3>التعلم باللعب</h3>
         <p>أنشطة وألعاب تعليمية تفاعلية للطلاب</p>
+      </a>
+
+      <a class="card" href="./whatsapp.html">
+        <span class="icon">💬</span>
+        <h3>التواصل السريع</h3>
+        <p>رسائل مباشرة وفورية لأولياء الأمور</p>
+      </a>
+
+      <a class="card admin-only" href="./calendar.html">
+        <span class="icon">📅</span>
+        <h3>التقويم الأكاديمي</h3>
+        <p>فعاليات وتواريخ العام الدراسي</p>
       </a>
 
       <a class="card utility" href="javascript:void(0)" onclick="showView('management')">
@@ -381,7 +541,7 @@
         <p>التحكم الكامل ببيانات المدرسة: الطلاب، الإداريون، المعلمون والجداول، والتقويم — من ملف إكسل واحد قابل للتعديل والتصدير</p>
       </a>
 
-      <a class="card utility" href="javascript:void(0)" onclick="showView('guide')">
+      <a class="card utility admin-only" href="javascript:void(0)" onclick="showView('guide')">
         <span class="icon">📖</span>
         <h3>دليل الاستخدام</h3>
         <p>شرح خطوة بخطوة لتعبئة ملف بيانات المدرسة، مع نموذج إكسل فارغ جاهز، وأمثلة على الإدخال، ونبذة عن كل برنامج</p>
@@ -465,8 +625,10 @@
   <div class="panel" id="panel-schedule">
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">جدول المدرسة الكامل — الأعمدة الأيام والحصص (الاثنين–الخميس ٨ حصص، الجمعة ٤)، والصفوف (الأسطر) بأسماء المعلمين ومرتّبة حسب المادة مع خط فاصل بين كل مادة وأخرى.</p>
     <div class="toolbar" style="margin-bottom:14px;">
-      <button class="btn btn-primary" onclick="printMasterSchedule()">🖨️ طباعة جدول المدرسة</button>
-      <button class="btn btn-primary" onclick="printClassSchedules()">🖨️ طباعة جداول الصفوف</button>
+      <div style="display:flex;gap:10px;margin-inline-start:auto;">
+        <button class="btn btn-primary" onclick="printMasterSchedule()">🖨️ طباعة جدول المدرسة</button>
+        <button class="btn btn-primary" onclick="printClassSchedules()">🖨️ طباعة جداول الصفوف</button>
+      </div>
     </div>
     <div id="scheduleAlert" style="margin-bottom:14px;"></div>
     <div class="table-wrap" id="masterScheduleWrap" style="overflow-x:auto;"></div>
@@ -616,18 +778,18 @@ function downloadEmptyTemplate(){
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentExamples, {header: studentHeaders}), 'جميع الطلاب');
 
-  const adminHeaders = ['اسم الموظف','رقم الاوراكل','الوظيفة'];
+  const adminHeaders = ['اسم الموظف','رقم الاوراكل','الوظيفة','رقم التواصل'];
   const adminExamples = [
-    {'اسم الموظف':'موظف 1','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
-    {'اسم الموظف':'موظف 2','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
+    {'اسم الموظف':'موظف 1','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة','رقم التواصل':'971500000003'},
+    {'اسم الموظف':'موظف 2','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية','رقم التواصل':'971500000004'}
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adminExamples, {header: adminHeaders}), 'الاداريين');
 
-  const teacherHeaders = ['اسم المعلم','رقم الاوراكل','مادة التدريس','الصفوف', ...DAYS];
+  const teacherHeaders = ['اسم المعلم','رقم الاوراكل','مادة التدريس','رقم التواصل','الصفوف', ...DAYS];
   const blankDays = Object.fromEntries(DAYS.map(d => [d, '']));
   const teacherExamples = [
-    Object.assign({'اسم المعلم':'معلم 1','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'51-52-61'}, blankDays),
-    Object.assign({'اسم المعلم':'معلم 2','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'71-72-81-82'}, blankDays)
+    Object.assign({'اسم المعلم':'معلم 1','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','رقم التواصل':'971500000005','الصفوف':'51-52-61'}, blankDays),
+    Object.assign({'اسم المعلم':'معلم 2','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','رقم التواصل':'971500000006','الصفوف':'71-72-81-82'}, blankDays)
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(teacherExamples, {header: teacherHeaders}), 'المعلمين والجداول');
 
@@ -694,14 +856,14 @@ function buildGuideView(){
 
       ${sheetSection('2) الاداريين', 'موظفو الإدارة المدرسية. عمود "الوظيفة" الأفضل يكون من الألقاب المعتمدة (مديرة المدرسة، رئيس وحدة الشؤون الاكاديمية، رئيس وحدة شؤون الطلاب، رئيس وحدة شؤون الخدمات، المرشد الاكاديمي) حتى تظهر صح بالطباعة والتقارير.',
         [
-          {'اسم الموظف':'موظف 1','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
-          {'اسم الموظف':'موظف 2','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
+          {'اسم الموظف':'موظف 1','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة','رقم التواصل':'971500000003'},
+          {'اسم الموظف':'موظف 2','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية','رقم التواصل':'971500000004'}
         ])}
 
       ${sheetSection('3) المعلمين والجداول', 'عمود "الصفوف" يحتوي كل رموز الصفوف اللي يدرّسها المعلم مفصولة بشرطة (مثل 51-52-61). أعمدة أيام الأسبوع (الاثنين...الجمعة) اتركها فارغة بالملف — الجدول التفصيلي (كل حصة) يُبنى من داخل البرنامج نفسه بعد ربط الملف، مو بالكتابة اليدوية بالإكسل.',
         [
-          {'اسم المعلم':'معلم 1','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'51-52-61'},
-          {'اسم المعلم':'معلم 2','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'71-72-81-82'}
+          {'اسم المعلم':'معلم 1','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','رقم التواصل':'971500000005','الصفوف':'51-52-61'},
+          {'اسم المعلم':'معلم 2','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','رقم التواصل':'971500000006','الصفوف':'71-72-81-82'}
         ])}
 
       <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px;">
@@ -857,14 +1019,14 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   const wsAdmins = wb.Sheets['الاداريين'];
   if(wsAdmins){
     const rows = XLSX.utils.sheet_to_json(wsAdmins, {defval:''});
-    state.adminHeaders = rows.length ? Object.keys(rows[0]) : ['اسم الموظف','رقم الاوراكل','الوظيفة'];
+    state.adminHeaders = rows.length ? Object.keys(rows[0]) : ['اسم الموظف','رقم الاوراكل','الوظيفة','رقم التواصل'];
     state.admins = rows;
   }
 
   const wsTeachers = wb.Sheets['المعلمين والجداول'];
   if(wsTeachers){
     const rows = XLSX.utils.sheet_to_json(wsTeachers, {defval:''});
-    state.teacherHeaders = rows.length ? Object.keys(rows[0]) : ['اسم المعلم','رقم الاوراكل','مادة التدريس','الصفوف',...DAYS];
+    state.teacherHeaders = rows.length ? Object.keys(rows[0]) : ['اسم المعلم','رقم الاوراكل','مادة التدريس','رقم التواصل','الصفوف',...DAYS];
     state.teachers = rows.map(r => {
       const t = {...r};
       t._classes = classesFromString(r['الصفوف']);
@@ -1144,7 +1306,7 @@ function computeStudentStats(){
   return {perClass, perGrade, total: state.students.length, incomplete, noPhone, noLms, noAlef, gradesSorted: Object.keys(perGrade).sort()};
 }
 
-state._statsCollapsed = state._statsCollapsed === undefined ? false : state._statsCollapsed;
+state._statsCollapsed = state._statsCollapsed === undefined ? true : state._statsCollapsed;
 function toggleStatsPanel(){
   state._statsCollapsed = !state._statsCollapsed;
   renderStudentStats();
@@ -1156,23 +1318,17 @@ function renderStudentStats(){
   const st = computeStudentStats();
   const collapsed = state._statsCollapsed;
 
-  const gradeBlocks = st.gradesSorted.map(g => {
-    const color = gradeAccent(g);
+  const gradeBoxes = st.gradesSorted.map(g => {
+    const accent = gradeAccent(g);
+    const soft = gradeAccentSoft(g);
     const classesOfGrade = Object.keys(st.perClass).filter(c => c[0] === g).sort();
-    const chips = classesOfGrade.map((c,ci) => `<span class="class-chip" style="background:${shadeColor(color, ci*14 - 14)}">${codeToDisplay(c)} — ${st.perClass[c]} طالب</span>`).join('');
-    return `<div class="stats-grade-block">
-      <div class="stats-grade-title"><span class="dot" style="background:${color}"></span>الصف ${g} <span style="font-weight:400;color:var(--ink-soft)">— إجمالي ${st.perGrade[g]} طالب</span></div>
-      <div>${chips}</div>
+    const rows = classesOfGrade.map(c => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>${codeToDisplay(c)}</span><b>${st.perClass[c]}</b></div>`).join('');
+    return `<div class="grade-box" style="background:${soft};border-color:${accent};">
+      <div style="font-weight:800;font-size:14px;color:${accent};margin-bottom:2px;">الصف ${g}</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-bottom:6px;">إجمالي: <b style="color:${accent}">${st.perGrade[g]}</b> طالب</div>
+      ${rows}
     </div>`;
   }).join('');
-
-  const incompleteHtml = st.incomplete.length
-    ? st.incomplete.slice(0, 300).map(item => `
-        <div class="stats-incomplete-item" onclick="switchToStudentsTabAndOpen(${item.i})">
-          <span>${codeToDisplay(item.cls)} — ${item.s['اسم الطالب'] || item.s['NAME IN ARABIC'] || ''}</span>
-          <span>${item.missing.map(m => `<span class="stats-missing-tag">${m}</span>`).join(' ')}</span>
-        </div>`).join('')
-    : '<p style="font-size:12.5px;color:var(--ink-soft);">لا يوجد بيانات ناقصة 🎉</p>';
 
   box.innerHTML = `
     <div class="stats-panel">
@@ -1189,11 +1345,7 @@ function renderStudentStats(){
         <div class="stats-summary-card" style="${st.noAlef.length?'background:rgba(220,38,38,0.1)':''}"><b style="${st.noAlef.length?'color:var(--danger)':''}">${st.noAlef.length}</b><span>بدون حساب منصة ألف</span></div>
       </div>
       <div class="stats-body" style="display:${collapsed?'none':'block'}">
-        ${gradeBlocks}
-        <div class="stats-incomplete">
-          <div class="stats-grade-title" style="margin-top:6px">⚠️ تفاصيل البيانات الناقصة</div>
-          ${incompleteHtml}
-        </div>
+        <div class="grade-box-grid">${gradeBoxes}</div>
       </div>
     </div>`;
 }
@@ -1243,7 +1395,7 @@ function renderStudents(){
       .filter(({s}) => String(s['الصف']) === cls)
       .filter(({s}) => !q || Object.values(s).some(v => String(v).includes(q)));
     if(!rows.length) return;
-    const collapsed = !!state._classCollapse[cls];
+    const collapsed = state._classCollapse[cls] !== false;
     const gColor = gradeAccent(cls);
     const incompleteRows = rows.filter(({s}) => missingListFor(s).length);
     const incompleteCollapsed = state._classIncompleteCollapse[cls] !== false; // مطوية افتراضياً
@@ -1296,7 +1448,7 @@ function toggleClassIncomplete(cls){
 }
 function toggleClassGroup(cls){
   state._classCollapse = state._classCollapse || {};
-  state._classCollapse[cls] = !state._classCollapse[cls];
+  state._classCollapse[cls] = state._classCollapse[cls] === false ? true : false;
   renderStudents();
 }
 
@@ -1745,33 +1897,25 @@ function buildCardHtml(s){
   const name = s['اسم الطالب'] || s['NAME IN ARABIC'] || '';
   const cls = codeToDisplay(String(s['الصف']||''));
   const accent = gradeAccent(String(s['الصف']||''));
-  const link = studentWhatsAppLink(s);
-  const qr = link ? `<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(link)}" style="width:16mm;height:16mm;">` : '';
-  const row = (label, val) => val ? `<div style="font-size:6.5pt;line-height:1.3;"><b>${label}:</b> ${val}</div>` : '';
+  const row = (label, val) => val ? `<div style="font-size:8pt;line-height:1.45;direction:ltr;text-align:left;"><b>${label}:</b> ${val}</div>` : '';
   return `
     <div class="id-card-box" style="border-color:${accent}">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${accent};padding-bottom:1mm;">
         <div>
-          <div style="font-size:9.5pt;font-weight:800;">${name}</div>
-          <div style="font-size:7pt;color:#555;">الصف: ${cls}</div>
+          <div style="font-size:10.5pt;font-weight:800;">${name}</div>
+          <div style="font-size:8pt;color:#555;">الصف: ${cls}</div>
         </div>
-        <div style="background:${accent};color:#fff;border-radius:5px;padding:2px 6px;font-size:6.5pt;font-weight:700;">حسابات الطالب</div>
+        <div style="background:${accent};color:#fff;border-radius:5px;padding:2px 7px;font-size:7pt;font-weight:700;">حسابات الطالب</div>
       </div>
-      <div style="display:flex;gap:2mm;flex:1;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:800;font-size:7pt;color:${accent};">📚 LMS</div>
-          ${lmsPair ? row('البريد', s[lmsPair.emailH]) + row('كلمة المرور', s[lmsPair.passH]) : ''}
-          <div style="font-size:6pt;direction:ltr;text-align:left;color:#555;">${PLATFORM_LINKS.LMS}</div>
-          <div style="font-weight:800;font-size:7pt;margin-top:1mm;color:${accent};">📱 ALEF</div>
-          ${alefPair ? row('البريد', s[alefPair.emailH]) + row('كلمة المرور', s[alefPair.passH]) : ''}
-          <div style="font-size:6pt;direction:ltr;text-align:left;color:#555;">${PLATFORM_LINKS.ALEF}</div>
-        </div>
-        <div style="text-align:center;flex-shrink:0;">
-          ${qr}
-          <div style="font-size:5pt;color:#777;max-width:16mm;line-height:1.2;">امسح لإرسال الحسابات واتساب</div>
-        </div>
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:8.5pt;color:${accent};margin-top:1mm;">📚 LMS</div>
+        ${lmsPair ? row('lms email', s[lmsPair.emailH]) + row('password', s[lmsPair.passH]) : ''}
+        ${row('LMS link', PLATFORM_LINKS.LMS)}
+        <div style="font-weight:800;font-size:8.5pt;color:${accent};margin-top:2mm;">📱 ALEF</div>
+        ${alefPair ? row('Alef account', s[alefPair.emailH]) + row('password', s[alefPair.passH]) : ''}
+        ${row('Alef link', PLATFORM_LINKS.ALEF)}
       </div>
-      <div style="font-size:5.5pt;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:0.5mm;">${state.schoolInfo['اسم المدرسة']||''}</div>
+      <div style="font-size:6pt;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:0.5mm;">${state.schoolInfo['اسم المدرسة']||''}</div>
     </div>`;
 }
 function printSingleCard(idx){ printSelectedCards([idx]); }
@@ -1819,7 +1963,7 @@ function handleAdminJobChange(i, sel){
 }
 function addAdminRow(){ const row={}; state.adminHeaders.forEach(h=>row[h]=''); state.admins.push(row); renderAdmins(); }
 
-state._adminStatsCollapsed = state._adminStatsCollapsed === undefined ? false : state._adminStatsCollapsed;
+state._adminStatsCollapsed = state._adminStatsCollapsed === undefined ? true : state._adminStatsCollapsed;
 function toggleAdminStats(){ state._adminStatsCollapsed = !state._adminStatsCollapsed; renderAdminStats(); }
 function renderAdminStats(){
   const box = document.getElementById('adminStatsBox');
@@ -1906,7 +2050,7 @@ function teacherLoad(t){
   return n;
 }
 
-state._teacherStatsCollapsed = state._teacherStatsCollapsed === undefined ? false : state._teacherStatsCollapsed;
+state._teacherStatsCollapsed = state._teacherStatsCollapsed === undefined ? true : state._teacherStatsCollapsed;
 function toggleTeacherStats(){ state._teacherStatsCollapsed = !state._teacherStatsCollapsed; renderTeacherStats(); }
 function renderTeacherStats(){
   const box = document.getElementById('teacherStatsBox');
@@ -1925,12 +2069,10 @@ function renderTeacherStats(){
     if(!classes.length) noClasses.push(t);
     if(!load) noSchedule.push(t);
   });
-  const subjectChips = Object.keys(bySubject).sort().map((sj,i) => `<span class="class-chip" style="background:${shadeColor('#059669', i*14-14)}">${subjectIcon(sj)} ${sj} — ${bySubject[sj]}</span>`).join('');
   const gaps = [...new Set([...noClasses, ...noSchedule])];
-  const gapsHtml = gaps.length ? gaps.map(t => `<div class="stats-incomplete-item" style="cursor:default"><span>${t['اسم المعلم']||''}</span><span>
-      ${!(t._classes||classesFromString(t['الصفوف'])).length ? '<span class="stats-missing-tag">بدون صفوف</span>' : ''}
-      ${!teacherLoad(t) ? '<span class="stats-missing-tag">بدون جدول حصص</span>' : ''}
-    </span></div>`).join('') : '<p style="font-size:12.5px;color:var(--ink-soft);">لا يوجد نقص 🎉</p>';
+  const activeSubj = state._teacherSubjectFilter || '';
+  const allChip = `<span class="class-chip" style="cursor:pointer;background:${!activeSubj ? '#059669' : shadeColor('#059669', 40)}" onclick="filterTeachersBySubject('')">الكل — ${state.teachers.length}</span>`;
+  const subjectChips = allChip + Object.keys(bySubject).sort().map((sj,i) => `<span class="class-chip" style="cursor:pointer;background:${sj === activeSubj ? '#059669' : shadeColor('#059669', i*14-14)}" onclick="filterTeachersBySubject('${sj.replace(/'/g,"\\'")}')">${subjectIcon(sj)} ${sj} — ${bySubject[sj]}</span>`).join('');
   box.innerHTML = `
     <div class="stats-panel">
       <div class="stats-head" onclick="toggleTeacherStats()">
@@ -1944,14 +2086,14 @@ function renderTeacherStats(){
         <div class="stats-summary-card" style="${gaps.length?'background:rgba(220,38,38,0.1)':''}"><b style="${gaps.length?'color:var(--danger)':''}">${gaps.length}</b><span>معلمون ببيانات ناقصة</span></div>
       </div>
       <div class="stats-body" style="display:${collapsed?'none':'block'}">
-        <div class="stats-grade-title">التوزيع حسب المادة</div>
+        <div class="stats-grade-title">التوزيع حسب المادة — اضغط على مادة لعرض معلميها فقط</div>
         <div>${subjectChips}</div>
-        <div class="stats-incomplete">
-          <div class="stats-grade-title" style="margin-top:10px">⚠️ بدون صفوف مسندة أو بدون جدول حصص</div>
-          ${gapsHtml}
-        </div>
       </div>
     </div>`;
+}
+function filterTeachersBySubject(subj){
+  state._teacherSubjectFilter = subj;
+  renderTeachers();
 }
 
 function renderScheduleTable(t, ti, classesForTeacher, readOnly){
@@ -1988,11 +2130,15 @@ function renderTeachers(){
   renderTeacherStats();
   const box = document.getElementById('teachersList');
   box.innerHTML = '';
+  const subjFilter = state._teacherSubjectFilter || '';
+  let shown = 0;
   state.teachers.forEach((t, ti) => {
     if(!t._classes) t._classes = classesFromString(t['الصفوف']);
     DAYS.forEach(d => { if(!t['_'+d]) t['_'+d] = Array(8).fill('0'); });
     if(t._editing === undefined) t._editing = false;
     if(t._collapsed === undefined) t._collapsed = true;
+    if(subjFilter && (t['مادة التدريس']||'') !== subjFilter) return;
+    shown++;
     const baseFields = state.teacherHeaders.filter(h => !DAYS.includes(h) && h !== 'الصفوف' && h !== 'مادة التدريس');
     const classesForTeacher = t._classes.length ? t._classes : state.schoolClasses;
 
