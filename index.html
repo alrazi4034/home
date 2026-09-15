@@ -440,6 +440,7 @@
     </div>
     <div class="h-actions">
       <button class="btn" id="switchAdminBtn" onclick="showAdminLoginPrompt()" style="display:none;">🧑‍💼 دخول كإداري</button>
+      <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
       <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة" onclick="onLinkBtnClick()">🔗 ربط تلقائي</button>
       <button class="link-btn" id="refreshNowBtn" title="التحقق من تحديثات بالملف المرتبط الآن" onclick="manualRefreshNow()" style="display:none;">🔄 تحديث الآن</button>
       <button class="link-btn" id="unlinkBtn" title="فك الربط" onclick="onUnlinkBtnClick()" style="display:none;">✖ فك الربط</button>
@@ -460,7 +461,7 @@
 <main>
     <div class="grid">
 
-      <a class="card admin-only" href="./attendance.html">
+      <a class="card admin-only" href="./attendance.html" target="_blank">
         <span class="card-link-badge" title="رابط تسجيل الحضور" onclick="event.stopPropagation();event.preventDefault();window.open('https://forms.cloud.microsoft/r/38easMEkWi','_blank')">🔗</span>
         <span class="icon">📋</span>
         <h3>الحضور</h3>
@@ -473,7 +474,7 @@
         <p>رابط مباشر لاستبانة تسجيل حضور وغياب الطلاب</p>
       </a>
 
-      <a class="card admin-only" href="./behavior.html">
+      <a class="card admin-only" href="./behavior.html" target="_blank">
         <span class="card-link-badge" title="رابط تسجيل مخالفة سلوكية" onclick="event.stopPropagation();event.preventDefault();window.open('https://forms.cloud.microsoft/r/M2K32AaKUA','_blank')">🔗</span>
         <span class="icon">⚠️</span>
         <h3>المخالفات السلوكية</h3>
@@ -492,13 +493,13 @@
         <h3>الخطة الأسبوعية</h3>
         <p>جدول الأنشطة والمهام الأسبوعية</p>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
-          <a href="./weeklyplan-teacher-tool.html" class="btn" style="flex:1;text-align:center;text-decoration:none;">📝 إدخال الخطة</a>
-          <a href="./weeklyplan-coordinator-tool.html" class="btn btn-primary admin-only" style="flex:1;text-align:center;text-decoration:none;">📤 إخراج الخطة</a>
-          <a href="https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgB7brwm3zBETZU5gyS5NwzoAWOkUWgBU-4-WAgVhAPugM0?e=x6bSWW" target="_blank" class="btn btn-primary teacher-only" style="flex:1;text-align:center;text-decoration:none;">☁️ رفع الخطة</a>
+          <a href="./weeklyplan-teacher-tool.html" target="_blank" class="btn" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">📝 إدخال الخطة</a>
+          <a href="./weeklyplan-coordinator-tool.html" target="_blank" class="btn btn-primary admin-only" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">📤 إخراج الخطة</a>
+          <a href="https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgB7brwm3zBETZU5gyS5NwzoAWOkUWgBU-4-WAgVhAPugM0?e=x6bSWW" target="_blank" class="btn btn-primary teacher-only" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">☁️ رفع الخطة</a>
         </div>
       </div>
 
-      <a class="card admin-only" href="./weekstar.html">
+      <a class="card admin-only" href="./weekstar.html" target="_blank">
         <span class="card-link-badge" title="قائمة أسماء نجوم الأسبوع" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgBM5cg7NaErQo2oLMe7sCM_AVLrQTWX7fllKweW108c578?e=2aP3ZD','_blank')">🔗</span>
         <span class="icon">🏆</span>
         <h3>نجوم الأسبوع</h3>
@@ -511,25 +512,25 @@
         <p>رابط مباشر لرفع اسم نجم الأسبوع</p>
       </a>
 
-      <a class="card" href="./nojoom.html">
+      <a class="card" href="./nojoom.html" target="_blank">
         <span class="icon">⭐</span>
         <h3>نجوم مدرستي</h3>
         <p>نظام مكافآت وتحفيز الطلاب</p>
       </a>
 
-      <a class="card" href="./play_learn.html">
+      <a class="card" href="./play_learn.html" target="_blank">
         <span class="icon">🎲</span>
         <h3>التعلم باللعب</h3>
         <p>أنشطة وألعاب تعليمية تفاعلية للطلاب</p>
       </a>
 
-      <a class="card" href="./whatsapp.html">
+      <a class="card" href="./whatsapp.html" target="_blank">
         <span class="icon">💬</span>
         <h3>التواصل السريع</h3>
         <p>رسائل مباشرة وفورية لأولياء الأمور</p>
       </a>
 
-      <a class="card admin-only" href="./calendar.html">
+      <a class="card admin-only" href="./calendar.html" target="_blank">
         <span class="icon">📅</span>
         <h3>التقويم الأكاديمي</h3>
         <p>فعاليات وتواريخ العام الدراسي</p>
@@ -537,14 +538,8 @@
 
       <a class="card utility" href="javascript:void(0)" onclick="showView('management')">
         <span class="icon">🔧</span>
-        <h3>إدارة البيانات</h3>
+        <h3>إدارة البيانات <span class="teacher-only" style="font-size:11px;font-weight:400;">(بيانات المدرسة - عرض فقط)</span></h3>
         <p>التحكم الكامل ببيانات المدرسة: الطلاب، الإداريون، المعلمون والجداول، والتقويم — من ملف إكسل واحد قابل للتعديل والتصدير</p>
-      </a>
-
-      <a class="card utility admin-only" href="javascript:void(0)" onclick="showView('guide')">
-        <span class="icon">📖</span>
-        <h3>دليل الاستخدام</h3>
-        <p>شرح خطوة بخطوة لتعبئة ملف بيانات المدرسة، مع نموذج إكسل فارغ جاهز، وأمثلة على الإدخال، ونبذة عن كل برنامج</p>
       </a>
 
     </div>
@@ -1079,7 +1074,11 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   renderAll();
 }
 
-function fmtDate(v){ return (v instanceof Date) ? v.toISOString().slice(0,10) : (v || ''); }
+function localDateStr(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + day;
+}
+function fmtDate(v){ return (v instanceof Date) ? localDateStr(v) : (v || ''); }
 
 /* بصمة سريعة لمحتوى الملف (ليست تشفيرية) — تُستخدم فقط لمعرفة هل الملف تغيّر فعلاً
    عن آخر نسخة قرأناها/كتبناها، لتفادي عرض تنبيه "تحديث متاح" كاذب. */
@@ -1227,7 +1226,7 @@ function generateTermWeeks(ti){
   for(let i = 0; i < count; i++){
     const d = new Date(start.getTime());
     d.setDate(d.getDate() + i * 7);
-    weeks.push({ week: 'الأسبوع ' + (i+1), date: d.toISOString().slice(0,10) });
+    weeks.push({ week: 'الأسبوع ' + (i+1), date: localDateStr(d) });
   }
   term.weeks = weeks;
   renderCalendar();
@@ -2591,7 +2590,7 @@ function exportWorkbook(){
   const wsCal = XLSX.utils.aoa_to_sheet(aoa);
   XLSX.utils.book_append_sheet(wb, wsCal, 'التقويم المدرسي');
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = localDateStr(new Date());
   const outName = `بيانات_المدرسة_${today}.xlsx`;
   XLSX.writeFile(wb, outName);
 
@@ -2617,7 +2616,6 @@ function afterWorkbookLoaded(fileName, handle, buf){
       : ' — ⚠️ تعذّرت مشاركتها مع باقي البرامج (الملف كبير على مساحة المتصفح المحلية).';
   }
   setStatus(label + sharedNote);
-  showView('management');
   document.getElementById('exportBtn').style.display = '';
   document.getElementById('exportBtn').disabled = false;
   if(handle){
@@ -2723,48 +2721,122 @@ function shareToOtherPrograms(arrayBuffer, fileName){
   }
 }
 
+/* ===================== ربط ملف بيانات المدرسة تلقائياً (File System Access API) =====================
+   زر واحد: 🔗 لا يوجد ربط بعد (يفتح منتقي ملفات)، 🔄 مرتبط ويملك الصلاحية (نقرة = تحديث فوري)،
+   🔓 يحتاج إعادة تفعيل (الصلاحية انتُزعت) — لا يُفتح منتقي ملفات جديد إلا في حال عدم وجود ملف مرتبط أصلاً،
+   ولا ينفصل الربط أبداً بمجرد تحديث الصفحة. */
+const IDX_DB_NAME = 'alrazi_index_fs_db';
+const IDX_STORE_NAME = 'handles';
+const IDX_HANDLE_KEY = 'linkedXlsxHandle';
+const idxFsApiSupported = typeof window.showOpenFilePicker === 'function';
+
+function idxOpenHandleDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDX_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDX_STORE_NAME); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idxSaveHandle(handle){
+  const db = await idxOpenHandleDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDX_STORE_NAME, 'readwrite');
+    tx.objectStore(IDX_STORE_NAME).put(handle, IDX_HANDLE_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idxLoadHandle(){
+  const db = await idxOpenHandleDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(IDX_STORE_NAME, 'readonly');
+    const req = tx.objectStore(IDX_STORE_NAME).get(IDX_HANDLE_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => resolve(null);
+  });
+}
+async function idxClearHandle(){
+  try{
+    const db = await idxOpenHandleDB();
+    const tx = db.transaction(IDX_STORE_NAME, 'readwrite');
+    tx.objectStore(IDX_STORE_NAME).delete(IDX_HANDLE_KEY);
+  }catch(e){ /* تجاهل */ }
+}
+function idxSetLinkBtn(icon, title){
+  const btn = document.getElementById('linkBtn');
+  if(!btn) return;
+  btn.textContent = icon;
+  btn.title = title;
+}
+async function readHandleAndLoad(handle){
+  const file = await handle.getFile();
+  const buf = await file.arrayBuffer();
+  loadWorkbookFromArrayBuffer(buf, file.name);
+  afterWorkbookLoaded(file.name, handle, buf);
+}
+
 async function onLinkBtnClick(){
-  if(!window.RaziLink || !RaziLink.fsaSupported()){
-    // متصفح لا يدعم الربط التلقائي (مثل Safari) — رجوع لاختيار ملف عادي
+  if(!idxFsApiSupported){
     document.getElementById('fileInput').click();
     return;
   }
-  setStatus('جاري فتح منتقي الملفات...');
-  await RaziLink.linkFile(
-    (buf, fileName, handle) => {
-      try{
-        loadWorkbookFromArrayBuffer(buf, fileName);
-        afterWorkbookLoaded(fileName, handle, buf);
-      }catch(err){
-        setStatus('❌ تعذّرت قراءة الملف: ' + err.message);
+  if(linkedHandle){
+    // تحديث/إعادة تفعيل — يطلب الصلاحية فقط، بدون فتح منتقي ملفات جديد
+    try{
+      let perm = await linkedHandle.queryPermission({mode:'readwrite'});
+      if(perm !== 'granted'){
+        perm = await linkedHandle.requestPermission({mode:'readwrite'});
+        if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح الصلاحية.'); return; }
+        idxSetLinkBtn('🔄', 'تحديث الآن');
+        startAutoRefreshTimer();
       }
-    },
-    (err) => {
-      if(err && err.message === 'unsupported') return;
-      setStatus('❌ تعذّر ربط الملف: ' + (err && err.message ? err.message : err));
+      await readHandleAndLoad(linkedHandle);
+    }catch(err){
+      setStatus('❌ تعذّر تحديث الملف المرتبط: ' + err.message);
     }
-  );
+    return;
+  }
+  try{
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description:'بيانات المدرسة (Excel)', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']} }]
+    });
+    const perm = await handle.requestPermission({mode:'readwrite'});
+    if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح الصلاحية.'); return; }
+    linkedHandle = handle;
+    await idxSaveHandle(handle);
+    idxSetLinkBtn('🔄', 'تحديث الآن');
+    await readHandleAndLoad(handle);
+  }catch(err){
+    if(err && err.name === 'AbortError') return;
+    setStatus('❌ تعذّر ربط الملف: ' + (err && err.message ? err.message : err));
+  }
 }
 
 async function onUnlinkBtnClick(){
-  if(window.RaziLink) await RaziLink.unlink();
+  await idxClearHandle();
   linkedHandle = null;
   stopAutoRefreshTimer();
   hideUpdateBanner();
   document.getElementById('saveToLinkBtn').style.display = 'none';
   document.getElementById('unlinkBtn').style.display = 'none';
-  document.getElementById('refreshNowBtn').style.display = 'none';
-  document.getElementById('linkBtn').textContent = '🔗 ربط تلقائي';
+  idxSetLinkBtn('🔗', 'ربط ملف بيانات المدرسة');
   setStatus('تم فك الربط التلقائي. اختر ملفاً من جديد للمتابعة.');
 }
 
 async function saveToLinkedFile(){
+  if(document.body.classList.contains('role-teacher')){ setStatus('❌ لا تملك صلاحية الحفظ (وضع القراءة فقط).'); return; }
   if(!linkedHandle){ setStatus('❌ لا يوجد ملف مرتبط حالياً.'); return; }
   try{
     setStatus('جاري الحفظ في الملف المرتبط...');
     const wb = buildWorkbook();
     const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-    await RaziLink.writeToLinkedFile(linkedHandle, buf);
+    const perm = await linkedHandle.queryPermission({mode:'readwrite'}) === 'granted'
+      ? 'granted' : await linkedHandle.requestPermission({mode:'readwrite'});
+    if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح صلاحية الكتابة.'); return; }
+    const writable = await linkedHandle.createWritable();
+    await writable.write(buf);
+    await writable.close();
     lastLinkedFileHash = bufHash(buf);
     shareToOtherPrograms(buf, state.fileName || 'بيانات المدرسة.xlsx');
     setStatus('✅ تم حفظ التحديثات مباشرة في الملف المرتبط، وتمت مشاركتها مع باقي البرامج.');
@@ -2815,21 +2887,21 @@ function buildWorkbook(){
 }
 
 async function initAutoLink(){
-  if(!window.RaziLink || !RaziLink.fsaSupported()) return; // متصفح لا يدعم — يبقى زر الاختيار العادي
-  setStatus('جاري التحقق من الملف المرتبط سابقاً...');
-  const result = await RaziLink.tryAutoLink((buf, fileName, handle) => {
-    try{
-      loadWorkbookFromArrayBuffer(buf, fileName);
-      afterWorkbookLoaded(fileName, handle, buf);
-    }catch(err){
-      setStatus('❌ تعذّرت قراءة الملف المرتبط: ' + err.message);
+  if(!idxFsApiSupported) return;
+  const handle = await idxLoadHandle();
+  if(!handle) return;
+  linkedHandle = handle;
+  try{
+    const perm = await handle.queryPermission({mode:'readwrite'});
+    if(perm === 'granted'){
+      idxSetLinkBtn('🔄', 'تحديث الآن');
+      await readHandleAndLoad(handle);
+      startAutoRefreshTimer();
+    } else {
+      idxSetLinkBtn('🔓', 'اضغط لإعادة تفعيل الربط بالملف المحفوظ');
+      setStatus('🔗 يوجد ملف مرتبط سابقاً — اضغط زر "🔓" لإعادة تفعيله (نقرة واحدة، ثم لن يُطلب منك ذلك مجدداً).');
     }
-  });
-  if(result === 'needs-gesture'){
-    setStatus('🔗 يوجد ملف مرتبط سابقاً — اضغط زر "ربط تلقائي" لإعادة الاتصال (نقرة واحدة فقط، ثم لن يُطلب منك ذلك مجدداً).');
-  } else if(result === 'none' || result === 'unsupported'){
-    setStatus('لم يتم تحميل أي ملف بيانات بعد.');
-  }
+  }catch(e){ console.warn(e); }
 }
 
 document.addEventListener('DOMContentLoaded', initAutoLink);
