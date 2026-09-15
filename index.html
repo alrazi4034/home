@@ -267,16 +267,26 @@
   .stats-incomplete-item:hover{ background:rgba(37,99,235,0.08); }
   .stats-missing-tag{ font-size:11px; padding:2px 8px; border-radius:20px; background:rgba(220,38,38,0.12); color:var(--danger); }
 
-  /* ---- بطاقات الطلاب للطباعة ---- */
-  .id-card{ width:277mm; height:180mm; box-sizing:border-box; }
+  /* ---- بطاقات الطلاب للطباعة: A4 عامودي — 8 بطاقات (عامودين × 4 صفوف) في كل ورقة ---- */
+  #printCardsArea{ display:none; }
   @media print{
-    @page{ size:A4 landscape; margin:8mm; }
+    @page{ size:A4 portrait; margin:8mm; }
     body *{ visibility:hidden; }
     #printCardsArea, #printCardsArea *{ visibility:visible; }
-    #printCardsArea{ position:absolute; inset:0; }
+    #printCardsArea{ display:block !important; position:absolute; inset:0; }
   }
-  .card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8mm; }
-  .id-card-box{ border:2px solid #333; border-radius:10px; padding:10mm; page-break-inside:avoid; display:flex; flex-direction:column; gap:6mm; }
+  .print-page{ display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4, 1fr); gap:4mm; width:100%; height:281mm; page-break-after:always; }
+  .id-card-box{ border:1.5px solid #333; border-radius:7px; padding:4mm; page-break-inside:avoid; display:flex; flex-direction:column; gap:1.5mm; overflow:hidden; }
+
+  .back-home-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:13.5px; font-weight:700; color:#fff;
+    background:var(--primary); border:1px solid var(--primary);
+    text-decoration:none; padding:9px 18px; border-radius:999px;
+    box-shadow:0 3px 10px rgba(37,99,235,.25);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .back-home-btn:hover{ transform:translateY(-1px); box-shadow:0 5px 14px rgba(37,99,235,.35); }
 </style>
 <body>
 
@@ -381,7 +391,7 @@
 
   <div id="managementView">
 <div style="padding:14px clamp(16px,5vw,50px) 0;">
-  <a href="javascript:void(0)" onclick="showView('portal')" style="font-size:13px;color:var(--ink-soft);text-decoration:none;">→ الرئيسية</a>
+  <a href="javascript:void(0)" onclick="showView('portal')" class="back-home-btn">→ الرئيسية</a>
 </div>
 <div class="tabs" id="tabs" style="display:none;">
   <button class="tab active" data-tab="info">بيانات المدرسة</button>
@@ -430,6 +440,7 @@
   </div>
 
   <div class="panel" id="panel-admins">
+    <div id="adminStatsBox"></div>
     <div class="toolbar">
       <span style="font-size:13px;color:var(--ink-soft)">الإداريون والموظفون</span>
       <button class="btn" onclick="addAdminRow()">+ إضافة موظف</button>
@@ -438,6 +449,7 @@
   </div>
 
   <div class="panel" id="panel-teachers">
+    <div id="teacherStatsBox"></div>
     <div class="toolbar">
       <span style="font-size:13px;color:var(--ink-soft)">لكل معلم: بياناته، الصفوف التي يدرّسها، وجدول حصصه (الأيام صفوف، الحصص أعمدة). الاثنين–الخميس ٨ حصص، الجمعة ٤. استخدم "إدخال سريع" لتعبئة يوم كامل دفعة واحدة، مثل 51520510 = الأولى 5/1، الثانية 5/2، الثالثة فراغ...</span>
       <button class="btn" onclick="addTeacherRow()">+ إضافة معلم</button>
@@ -506,8 +518,8 @@
       يحاول البرنامج مطابقة كل سطر مع طالب موجود عبر الرقم داخل الإيميل أو بالاسم، وتقدر تعدّل يدوياً قبل التطبيق.
     </p>
     <textarea class="search" id="pw-bulk-text" rows="6" style="width:100%;font-family:monospace;direction:ltr;text-align:left;resize:vertical;padding:10px;"
-      placeholder="محمد علي أحمد (2018017515@moe.sch.ae) : Ubc5MbGuGurA
-2018016503@alefedu.net - blackstrawberry88"></textarea>
+      placeholder="طالب 1 (2018017515@moe.sch.ae) : Ax7xxxxx
+stu2018016503@alefedu.net - Zq9xxxxx"></textarea>
     <button class="btn btn-primary" style="margin-top:10px;" onclick="analyzePasswordBulk()">🔎 تحليل النص</button>
     <div id="pw-bulk-preview" style="margin-top:14px;max-height:340px;overflow-y:auto;"></div>
     <div class="modal-actions">
@@ -525,8 +537,8 @@
       وتحويل رقم الهاتف تلقائياً إلى الصيغة <b>9715xxxxxxxx</b> مهما كانت صيغته الأصلية (05، 5، 00971، +971، بفواصل أو شرطات).
     </p>
     <textarea class="search" id="ph-bulk-text" rows="6" style="width:100%;font-family:monospace;direction:ltr;text-align:left;resize:vertical;padding:10px;"
-      placeholder="محمد علي أحمد (2018017515) 0501234567
-سالم خالد (2018016503) +971-50-987-6543"></textarea>
+      placeholder="طالب 1 (2018017515) 971500000001
+طالب 2 (2018016503) 971500000002"></textarea>
     <button class="btn btn-primary" style="margin-top:10px;" onclick="analyzePhoneBulk()">🔎 تحليل النص</button>
     <div id="ph-bulk-preview" style="margin-top:14px;max-height:340px;overflow-y:auto;"></div>
     <div class="modal-actions">
@@ -544,7 +556,7 @@
 </div>
 
 <!-- منطقة الطباعة المخفية (تظهر فقط أثناء الطباعة) -->
-<div id="printCardsArea" style="display:none;"></div>
+<div id="printCardsArea"></div>
 
 <!-- عرض رمز QR لإرسال واحد -->
 <div class="modal-overlay" id="qrModal">
@@ -595,30 +607,30 @@ function downloadEmptyTemplate(){
 
   const studentHeaders = ['م','اسم الطالب','الصف','رقم التواصل','معتمد','LMS EMAIL','LMS PASSWORD','ALEF EMAIL','ALEF PASSWORD'];
   const studentExamples = [
-    {'م':1,'اسم الطالب':'أحمد محمد علي (10234)','الصف':'5أ','رقم التواصل':'0501234567','معتمد':'1','LMS EMAIL':'ahmed.m@moe.gov.ae','LMS PASSWORD':'Ax7#2025','ALEF EMAIL':'ahmed.m@alef.education','ALEF PASSWORD':'Zq9!2025'},
-    {'م':2,'اسم الطالب':'سالم خالد الكتبي (10235)','الصف':'5أ','رقم التواصل':'0559876543','معتمد':'1','LMS EMAIL':'','LMS PASSWORD':'','ALEF EMAIL':'','ALEF PASSWORD':''}
+    {'م':1,'اسم الطالب':'طالب 1 (10234)','الصف':'51','رقم التواصل':'971500000001','معتمد':'1','LMS EMAIL':'stu10234@moe.sch.ae','LMS PASSWORD':'Ax7#2025','ALEF EMAIL':'stu10234@alefedu.net','ALEF PASSWORD':'Zq9!2025'},
+    {'م':2,'اسم الطالب':'طالب 2 (10235)','الصف':'51','رقم التواصل':'971500000002','معتمد':'1','LMS EMAIL':'','LMS PASSWORD':'','ALEF EMAIL':'','ALEF PASSWORD':''}
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentExamples, {header: studentHeaders}), 'جميع الطلاب');
 
   const adminHeaders = ['اسم الموظف','رقم الاوراكل','الوظيفة'];
   const adminExamples = [
-    {'اسم الموظف':'بدرية الظنحاني','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
-    {'اسم الموظف':'محمود شحادة','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
+    {'اسم الموظف':'موظف 1','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
+    {'اسم الموظف':'موظف 2','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(adminExamples, {header: adminHeaders}), 'الاداريين');
 
   const teacherHeaders = ['اسم المعلم','رقم الاوراكل','مادة التدريس','الصفوف', ...DAYS];
   const blankDays = Object.fromEntries(DAYS.map(d => [d, '']));
   const teacherExamples = [
-    Object.assign({'اسم المعلم':'خالد سعيد الحمادي','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'5أ-5ب-6أ'}, blankDays),
-    Object.assign({'اسم المعلم':'مريم عبدالله','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'7أ-7ب-8أ-8ب'}, blankDays)
+    Object.assign({'اسم المعلم':'معلم 1','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'51-52-61'}, blankDays),
+    Object.assign({'اسم المعلم':'معلم 2','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'71-72-81-82'}, blankDays)
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(teacherExamples, {header: teacherHeaders}), 'المعلمين والجداول');
 
   const aoa = [];
   aoa.push(['بيانات المدرسة']);
   aoa.push(['اسم المدرسة','صفوف المدرسة']);
-  aoa.push(['مدرسة الرازي للبنين','5أ-5ب-6أ-6ب-7أ-7ب-8أ-8ب']);
+  aoa.push(['مدرسة الرازي للبنين','51-52-61-62-71-72-81-82']);
   aoa.push([]);
   aoa.push(['بيانات الفصول الدراسية']);
   aoa.push([' الفصل الدراسي الأول','تاريخ البداية1',' الفصل الدراسي الثاني','تاريخ البداية2',' الفصل الدراسي الثالث','تاريخ البداية3']);
@@ -653,7 +665,7 @@ function buildGuideView(){
 
   el.innerHTML = `
     <div style="padding:14px clamp(16px,5vw,50px) 50px;max-width:900px;margin:0 auto;">
-      <a href="javascript:void(0)" onclick="showView('portal')" style="font-size:13px;color:var(--ink-soft);text-decoration:none;">→ الرئيسية</a>
+      <a href="javascript:void(0)" onclick="showView('portal')" class="back-home-btn">→ الرئيسية</a>
       <h2 style="margin:14px 0 4px;">📖 دليل الاستخدام</h2>
       <p style="color:var(--ink-soft);font-size:14px;margin-bottom:20px;line-height:1.9;">
         كل برامج بوابة الرازي الذكية تعتمد على ملف إكسل واحد — <b>ملف بيانات المدرسة</b> — تعبّئه مرة من هنا (تبويب "إدارة البيانات")
@@ -672,20 +684,20 @@ function buildGuideView(){
 
       ${sheetSection('1) جميع الطلاب', 'صف واحد لكل طالب. عمود "اسم الطالب" الأفضل يكون بصيغة <b>"الاسم الكامل (رقم الطالب)"</b> — كل البرامج تعتمد على الرقم بين القوسين للمطابقة الدقيقة حتى لو تكرر اسمين. "معتمد" تكون 1 (مفعّل) أو 0 (موقوف). أعمدة الحسابات اختيارية — أي عمود يحتوي كلمة LMS أو ALEF يُكتشف تلقائياً (عمود الإيميل بدون كلمة PASS، وعمود كلمة المرور يحتوي PASS بالاسم).',
         [
-          {'م':1,'اسم الطالب':'أحمد محمد علي (10234)','الصف':'5أ','رقم التواصل':'0501234567','معتمد':'1','LMS EMAIL':'ahmed.m@moe.gov.ae','LMS PASSWORD':'Ax7#2025'},
-          {'م':2,'اسم الطالب':'سالم خالد الكتبي (10235)','الصف':'5أ','رقم التواصل':'0559876543','معتمد':'1','LMS EMAIL':'','LMS PASSWORD':''}
+          {'م':1,'اسم الطالب':'طالب 1 (10234)','الصف':'51','رقم التواصل':'971500000001','معتمد':'1','LMS EMAIL':'stu10234@moe.sch.ae','LMS PASSWORD':'Ax7#2025'},
+          {'م':2,'اسم الطالب':'طالب 2 (10235)','الصف':'51','رقم التواصل':'971500000002','معتمد':'1','LMS EMAIL':'','LMS PASSWORD':''}
         ])}
 
       ${sheetSection('2) الاداريين', 'موظفو الإدارة المدرسية. عمود "الوظيفة" الأفضل يكون من الألقاب المعتمدة (مديرة المدرسة، رئيس وحدة الشؤون الاكاديمية، رئيس وحدة شؤون الطلاب، رئيس وحدة شؤون الخدمات، المرشد الاكاديمي) حتى تظهر صح بالطباعة والتقارير.',
         [
-          {'اسم الموظف':'بدرية الظنحاني','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
-          {'اسم الموظف':'محمود شحادة','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
+          {'اسم الموظف':'موظف 1','رقم الاوراكل':'900123','الوظيفة':'مديرة المدرسة'},
+          {'اسم الموظف':'موظف 2','رقم الاوراكل':'900456','الوظيفة':'رئيس وحدة الشؤون الاكاديمية'}
         ])}
 
-      ${sheetSection('3) المعلمين والجداول', 'عمود "الصفوف" يحتوي كل رموز الصفوف اللي يدرّسها المعلم مفصولة بشرطة (مثل 5أ-5ب-6أ). أعمدة أيام الأسبوع (الاثنين...الجمعة) اتركها فارغة بالملف — الجدول التفصيلي (كل حصة) يُبنى من داخل البرنامج نفسه بعد ربط الملف، مو بالكتابة اليدوية بالإكسل.',
+      ${sheetSection('3) المعلمين والجداول', 'عمود "الصفوف" يحتوي كل رموز الصفوف اللي يدرّسها المعلم مفصولة بشرطة (مثل 51-52-61). أعمدة أيام الأسبوع (الاثنين...الجمعة) اتركها فارغة بالملف — الجدول التفصيلي (كل حصة) يُبنى من داخل البرنامج نفسه بعد ربط الملف، مو بالكتابة اليدوية بالإكسل.',
         [
-          {'اسم المعلم':'خالد سعيد الحمادي','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'5أ-5ب-6أ'},
-          {'اسم المعلم':'مريم عبدالله','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'7أ-7ب-8أ-8ب'}
+          {'اسم المعلم':'معلم 1','رقم الاوراكل':'800111','مادة التدريس':'الرياضيات','الصفوف':'51-52-61'},
+          {'اسم المعلم':'معلم 2','رقم الاوراكل':'800222','مادة التدريس':'اللغة العربية','الصفوف':'71-72-81-82'}
         ])}
 
       <div style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px;">
@@ -1105,6 +1117,7 @@ function computeStudentStats(){
   const perClass = {};
   const perGrade = {};
   const incomplete = [];
+  const noPhone = [], noLms = [], noAlef = [];
   state.students.forEach((s, i) => {
     const cls = String(s['الصف']||'');
     if(!cls) return;
@@ -1113,18 +1126,18 @@ function computeStudentStats(){
     perGrade[grade] = (perGrade[grade]||0) + 1;
     const missing = [];
     const phone = String(s['رقم التواصل']||'').trim();
-    if(!phone) missing.push('رقم التواصل');
+    if(!phone){ missing.push('رقم التواصل'); noPhone.push({i,s,cls}); }
     if(lmsPair){
       const e = String(s[lmsPair.emailH]||'').trim(), p = String(s[lmsPair.passH]||'').trim();
-      if(!e || !p) missing.push('حساب LMS');
+      if(!e || !p){ missing.push('الحساب الوزاري (LMS)'); noLms.push({i,s,cls}); }
     }
     if(alefPair){
       const e = String(s[alefPair.emailH]||'').trim(), p = String(s[alefPair.passH]||'').trim();
-      if(!e || !p) missing.push('حساب ALEF');
+      if(!e || !p){ missing.push('منصة ألف (ALEF)'); noAlef.push({i,s,cls}); }
     }
     if(missing.length) incomplete.push({i, s, cls, missing});
   });
-  return {perClass, perGrade, total: state.students.length, incomplete, gradesSorted: Object.keys(perGrade).sort()};
+  return {perClass, perGrade, total: state.students.length, incomplete, noPhone, noLms, noAlef, gradesSorted: Object.keys(perGrade).sort()};
 }
 
 state._statsCollapsed = state._statsCollapsed === undefined ? false : state._statsCollapsed;
@@ -1167,12 +1180,14 @@ function renderStudentStats(){
         <div class="stats-summary-card"><b>${st.total}</b><span>إجمالي طلاب المدرسة</span></div>
         <div class="stats-summary-card"><b>${Object.keys(st.perClass).length}</b><span>عدد الشعب</span></div>
         <div class="stats-summary-card"><b>${st.gradesSorted.length}</b><span>عدد الصفوف</span></div>
-        <div class="stats-summary-card" style="${st.incomplete.length?'background:rgba(220,38,38,0.1)':''}"><b style="${st.incomplete.length?'color:var(--danger)':''}">${st.incomplete.length}</b><span>طلاب ببيانات ناقصة</span></div>
+        <div class="stats-summary-card" style="${st.noPhone.length?'background:rgba(220,38,38,0.1)':''}"><b style="${st.noPhone.length?'color:var(--danger)':''}">${st.noPhone.length}</b><span>بدون رقم تواصل</span></div>
+        <div class="stats-summary-card" style="${st.noLms.length?'background:rgba(220,38,38,0.1)':''}"><b style="${st.noLms.length?'color:var(--danger)':''}">${st.noLms.length}</b><span>بدون الحساب الوزاري (LMS)</span></div>
+        <div class="stats-summary-card" style="${st.noAlef.length?'background:rgba(220,38,38,0.1)':''}"><b style="${st.noAlef.length?'color:var(--danger)':''}">${st.noAlef.length}</b><span>بدون حساب منصة ألف</span></div>
       </div>
       <div class="stats-body" style="display:${collapsed?'none':'block'}">
         ${gradeBlocks}
         <div class="stats-incomplete">
-          <div class="stats-grade-title" style="margin-top:6px">⚠️ بيانات ناقصة (رقم التواصل أو حسابات المنصات)</div>
+          <div class="stats-grade-title" style="margin-top:6px">⚠️ تفاصيل البيانات الناقصة</div>
           ${incompleteHtml}
         </div>
       </div>
@@ -1206,6 +1221,15 @@ function renderStudents(){
   classesInData.forEach(c => { if(c && !orderedClasses.includes(c)) orderedClasses.push(c); });
 
   state._classCollapse = state._classCollapse || {};
+  state._classIncompleteCollapse = state._classIncompleteCollapse || {};
+
+  function missingListFor(s){
+    const missing = [];
+    if(!String(s['رقم التواصل']||'').trim()) missing.push('رقم التواصل');
+    if(lmsPair){ const e=String(s[lmsPair.emailH]||'').trim(), p=String(s[lmsPair.passH]||'').trim(); if(!e||!p) missing.push('الحساب الوزاري (LMS)'); }
+    if(alefPair){ const e=String(s[alefPair.emailH]||'').trim(), p=String(s[alefPair.passH]||'').trim(); if(!e||!p) missing.push('منصة ألف (ALEF)'); }
+    return missing;
+  }
 
   let html = '';
   orderedClasses.forEach(cls => {
@@ -1217,14 +1241,29 @@ function renderStudents(){
     if(!rows.length) return;
     const collapsed = !!state._classCollapse[cls];
     const gColor = gradeAccent(cls);
+    const incompleteRows = rows.filter(({s}) => missingListFor(s).length);
+    const incompleteCollapsed = state._classIncompleteCollapse[cls] !== false; // مطوية افتراضياً
     html += `<div class="schedule-card" style="border-inline-start:5px solid ${gColor}">
       <div class="schedule-head" style="cursor:pointer" onclick="toggleClassGroup('${cls}')">
-        <h3><span class="class-chip" style="background:${gColor}">${codeToDisplay(cls)}</span> <span style="font-size:12px;color:var(--ink-soft);font-weight:400">(${rows.length} طالب)</span></h3>
+        <h3 style="display:flex;align-items:center;gap:8px;"><span class="class-chip" style="background:${gColor}">${codeToDisplay(cls)}</span><span style="font-size:13px;color:var(--ink-soft);font-weight:600">${rows.length} طالب</span>${incompleteRows.length?`<span style="font-size:11px;background:rgba(220,38,38,0.12);color:var(--danger);border-radius:20px;padding:2px 10px;">⚠️ ${incompleteRows.length} ناقص</span>`:''}</h3>
         <span style="font-size:14px;color:var(--ink-soft)">${collapsed ? '▸' : '▾'}</span>
       </div>
       <div style="display:${collapsed ? 'none' : 'block'}">
+        ${incompleteRows.length ? `
+        <div style="margin-bottom:10px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:8px;overflow:hidden;">
+          <div style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;color:var(--danger);" onclick="event.stopPropagation();toggleClassIncomplete('${cls}')">
+            <span>⚠️ نواقص هذا الصف (${incompleteRows.length})</span>
+            <span>${incompleteCollapsed ? '▸' : '▾'}</span>
+          </div>
+          <div style="display:${incompleteCollapsed ? 'none' : 'block'};padding:0 12px 10px;">
+            ${incompleteRows.map(({s,i}) => `<div class="stats-incomplete-item" onclick="openStudentModal(${i})">
+              <span>${s['اسم الطالب']||s['NAME IN ARABIC']||''}</span>
+              <span>${missingListFor(s).map(m=>`<span class="stats-missing-tag">${m}</span>`).join(' ')}</span>
+            </div>`).join('')}
+          </div>
+        </div>` : ''}
         <table class="grid-table" style="text-align:right;width:100%">
-          <thead><tr><th>م</th><th>اسم الطالب</th><th>رقم التواصل</th><th>الحالة</th>${lmsPair?'<th>LMS</th>':''}${alefPair?'<th>ALEF</th>':''}</tr></thead>
+          <thead><tr><th>م</th><th>اسم الطالب</th><th>رقم التواصل</th><th>الحالة</th>${lmsPair?'<th>LMS</th>':''}${alefPair?'<th>ALEF</th>':''}<th>إجراءات</th></tr></thead>
           <tbody>
             ${rows.map(({s,i}) => `<tr onclick="openStudentModal(${i})" style="cursor:pointer">
               <td>${s['م'] ?? ''}</td>
@@ -1233,6 +1272,11 @@ function renderStudents(){
               <td>${String(s['معتمد'])==='0' ? '❌ غير معتمد' : '✅ معتمد'}</td>
               ${lmsPair?`<td>${accountDot(s, lmsPair)}</td>`:''}
               ${alefPair?`<td>${accountDot(s, alefPair)}</td>`:''}
+              <td onclick="event.stopPropagation()" style="white-space:nowrap">
+                <button class="btn" style="padding:3px 7px;font-size:11px" ${s['رقم التواصل']?'':'disabled'} onclick="sendStudentWhatsApp(${i})" title="إرسال الحسابات عبر واتساب">📱</button>
+                <button class="btn" style="padding:3px 7px;font-size:11px" ${s['رقم التواصل']?'':'disabled'} onclick="showStudentQR(${i})" title="عرض رمز QR">▦</button>
+                <button class="btn" style="padding:3px 7px;font-size:11px" onclick="printSingleCard(${i})" title="طباعة بطاقة هذا الطالب">🖨️</button>
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>
@@ -1240,6 +1284,11 @@ function renderStudents(){
     </div>`;
   });
   container.innerHTML = html || '<p style="color:var(--ink-soft);font-size:13px;">لا يوجد طلاب مطابقون.</p>';
+}
+function toggleClassIncomplete(cls){
+  state._classIncompleteCollapse = state._classIncompleteCollapse || {};
+  state._classIncompleteCollapse[cls] = state._classIncompleteCollapse[cls] === false ? true : false;
+  renderStudents();
 }
 function toggleClassGroup(cls){
   state._classCollapse = state._classCollapse || {};
@@ -1693,44 +1742,42 @@ function buildCardHtml(s){
   const cls = codeToDisplay(String(s['الصف']||''));
   const accent = gradeAccent(String(s['الصف']||''));
   const link = studentWhatsAppLink(s);
-  const qr = link ? `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(link)}" style="width:28mm;height:28mm;">` : '';
-  const row = (label, val) => val ? `<div style="font-size:11.5pt;margin-bottom:2mm;"><b>${label}:</b> ${val}</div>` : '';
+  const qr = link ? `<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(link)}" style="width:16mm;height:16mm;">` : '';
+  const row = (label, val) => val ? `<div style="font-size:6.5pt;line-height:1.3;"><b>${label}:</b> ${val}</div>` : '';
   return `
     <div class="id-card-box" style="border-color:${accent}">
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid ${accent};padding-bottom:3mm;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${accent};padding-bottom:1mm;">
         <div>
-          <div style="font-size:15pt;font-weight:800;">${name}</div>
-          <div style="font-size:11pt;color:#555;">الصف: ${cls}</div>
+          <div style="font-size:9.5pt;font-weight:800;">${name}</div>
+          <div style="font-size:7pt;color:#555;">الصف: ${cls}</div>
         </div>
-        <div style="background:${accent};color:#fff;border-radius:8px;padding:4px 12px;font-size:11pt;font-weight:700;">بطاقة حسابات الطالب</div>
+        <div style="background:${accent};color:#fff;border-radius:5px;padding:2px 6px;font-size:6.5pt;font-weight:700;">حسابات الطالب</div>
       </div>
-      <div style="display:flex;gap:8mm;flex:1;">
-        <div style="flex:1;">
-          <div style="font-weight:800;font-size:12.5pt;margin-bottom:2mm;color:${accent};">📚 LMS</div>
+      <div style="display:flex;gap:2mm;flex:1;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:7pt;color:${accent};">📚 LMS</div>
           ${lmsPair ? row('البريد', s[lmsPair.emailH]) + row('كلمة المرور', s[lmsPair.passH]) : ''}
-          <div style="font-size:10.5pt;direction:ltr;text-align:left;color:#555;">${PLATFORM_LINKS.LMS}</div>
-          <div style="font-weight:800;font-size:12.5pt;margin:4mm 0 2mm;color:${accent};">📱 ALEF</div>
+          <div style="font-size:6pt;direction:ltr;text-align:left;color:#555;">${PLATFORM_LINKS.LMS}</div>
+          <div style="font-weight:800;font-size:7pt;margin-top:1mm;color:${accent};">📱 ALEF</div>
           ${alefPair ? row('البريد', s[alefPair.emailH]) + row('كلمة المرور', s[alefPair.passH]) : ''}
-          <div style="font-size:10.5pt;direction:ltr;text-align:left;color:#555;">${PLATFORM_LINKS.ALEF}</div>
+          <div style="font-size:6pt;direction:ltr;text-align:left;color:#555;">${PLATFORM_LINKS.ALEF}</div>
         </div>
-        <div style="text-align:center;">
+        <div style="text-align:center;flex-shrink:0;">
           ${qr}
-          <div style="font-size:8.5pt;color:#777;max-width:28mm;">امسح لإرسال الحسابات عبر واتساب</div>
+          <div style="font-size:5pt;color:#777;max-width:16mm;line-height:1.2;">امسح لإرسال الحسابات واتساب</div>
         </div>
       </div>
-      <div style="font-size:9pt;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:2mm;">${state.schoolInfo['اسم المدرسة']||''}</div>
+      <div style="font-size:5.5pt;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:0.5mm;">${state.schoolInfo['اسم المدرسة']||''}</div>
     </div>`;
 }
 function printSingleCard(idx){ printSelectedCards([idx]); }
 function printSelectedCards(indices){
   const area = document.getElementById('printCardsArea');
-  const cardsPerPageRows = [];
-  for(let i = 0; i < indices.length; i += 2) cardsPerPageRows.push(indices.slice(i, i+2));
-  area.innerHTML = cardsPerPageRows.map(pair => `
-    <div class="id-card" style="page-break-after:always;">
-      <div class="card-grid">
-        ${pair.map(i => buildCardHtml(state.students[i])).join('')}
-      </div>
+  const pages = [];
+  for(let i = 0; i < indices.length; i += 8) pages.push(indices.slice(i, i+8));
+  area.innerHTML = pages.map(pageIdx => `
+    <div class="print-page">
+      ${pageIdx.map(i => buildCardHtml(state.students[i])).join('')}
     </div>`).join('');
   setTimeout(() => window.print(), 50);
 }
@@ -1738,6 +1785,7 @@ function printSelectedCards(indices){
 
 const JOB_TITLES = ['مديرة المدرسة','رئيس وحدة الشؤون الاكاديمية','رئيس وحدة شؤون الطلاب','رئيس وحدة شؤون الخدمات','المرشد الاكاديمي'];
 function renderAdmins(){
+  renderAdminStats();
   const table = document.getElementById('adminsTable');
   if(!state.adminHeaders.length){ table.innerHTML=''; return; }
   let html = '<thead><tr>' + state.adminHeaders.map(h=>`<th>${h}</th>`).join('') + '<th></th></tr></thead><tbody>';
@@ -1767,8 +1815,42 @@ function handleAdminJobChange(i, sel){
 }
 function addAdminRow(){ const row={}; state.adminHeaders.forEach(h=>row[h]=''); state.admins.push(row); renderAdmins(); }
 
+state._adminStatsCollapsed = state._adminStatsCollapsed === undefined ? false : state._adminStatsCollapsed;
+function toggleAdminStats(){ state._adminStatsCollapsed = !state._adminStatsCollapsed; renderAdminStats(); }
+function renderAdminStats(){
+  const box = document.getElementById('adminStatsBox');
+  if(!box) return;
+  if(!state.admins.length){ box.innerHTML=''; return; }
+  const collapsed = state._adminStatsCollapsed;
+  const byJob = {};
+  state.admins.forEach(a => { const j = a['الوظيفة'] || 'غير محدد'; byJob[j] = (byJob[j]||0)+1; });
+  const jobChips = Object.keys(byJob).sort().map((j,i) => `<span class="class-chip" style="background:${shadeColor('#2563EB', i*18-18)}">${j} — ${byJob[j]}</span>`).join('');
+  box.innerHTML = `
+    <div class="stats-panel">
+      <div class="stats-head" onclick="toggleAdminStats()">
+        <h3>📊 إحصائية الإداريين والموظفين</h3>
+        <span class="stats-arrow">${collapsed?'▸':'▾'}</span>
+      </div>
+      <div class="stats-summary-row">
+        <div class="stats-summary-card"><b>${state.admins.length}</b><span>إجمالي الموظفين</span></div>
+        <div class="stats-summary-card"><b>${Object.keys(byJob).length}</b><span>عدد المسمّيات الوظيفية</span></div>
+      </div>
+      <div class="stats-body" style="display:${collapsed?'none':'block'}">
+        <div class="stats-grade-title">التوزيع حسب الوظيفة</div>
+        <div>${jobChips}</div>
+      </div>
+    </div>`;
+}
+
 /* ---------- المعلمون والجداول ---------- */
 const SUBJECTS = ['التربية الاسلامية','اللغة العربية','اللغة الانجليزية','اللغة الفرنسية','الرياضيات','العلوم','الدراسات الاجتماعية','الذكاء الاصطناعي والتكنولوجيا','التربية الرياضية','الفنون السمعية','الفنون البصرية','الدراما','معلم التربية الخاصة','مدرب الجيوجتسو','اختصاصي مصادر التعلم'];
+const SUBJECT_ICON = {
+  'التربية الاسلامية': '🕌', 'اللغة العربية': '📗', 'اللغة الانجليزية': '📘', 'اللغة الفرنسية': '📙',
+  'الرياضيات': '🔢', 'العلوم': '🔬', 'الدراسات الاجتماعية': '🌍', 'الذكاء الاصطناعي والتكنولوجيا': '💻',
+  'التربية الرياضية': '⚽', 'الفنون السمعية': '🎵', 'الفنون البصرية': '🎨', 'الدراما': '🎭',
+  'معلم التربية الخاصة': '🧩', 'مدرب الجيوجتسو': '🥋', 'اختصاصي مصادر التعلم': '📚'
+};
+function subjectIcon(subject){ return SUBJECT_ICON[subject] || '📖'; }
 /* ترتيب ثابت للمواد (بدل الترتيب الأبجدي) يُستخدم في جدول المدرسة الكامل وجداول الطباعة */
 /* أسماء مختصرة للمواد — تُستخدم في خلايا الجداول المطبوعة ذات الحجم الثابت */
 const SUBJECT_ABBR = {
@@ -1820,6 +1902,54 @@ function teacherLoad(t){
   return n;
 }
 
+state._teacherStatsCollapsed = state._teacherStatsCollapsed === undefined ? false : state._teacherStatsCollapsed;
+function toggleTeacherStats(){ state._teacherStatsCollapsed = !state._teacherStatsCollapsed; renderTeacherStats(); }
+function renderTeacherStats(){
+  const box = document.getElementById('teacherStatsBox');
+  if(!box) return;
+  if(!state.teachers.length){ box.innerHTML=''; return; }
+  const collapsed = state._teacherStatsCollapsed;
+  const bySubject = {};
+  let totalLoad = 0;
+  const noClasses = [], noSchedule = [];
+  state.teachers.forEach(t => {
+    const subj = t['مادة التدريس'] || 'غير محدد';
+    bySubject[subj] = (bySubject[subj]||0) + 1;
+    const load = teacherLoad(t);
+    totalLoad += load;
+    const classes = t._classes || classesFromString(t['الصفوف']);
+    if(!classes.length) noClasses.push(t);
+    if(!load) noSchedule.push(t);
+  });
+  const subjectChips = Object.keys(bySubject).sort().map((sj,i) => `<span class="class-chip" style="background:${shadeColor('#059669', i*14-14)}">${subjectIcon(sj)} ${sj} — ${bySubject[sj]}</span>`).join('');
+  const gaps = [...new Set([...noClasses, ...noSchedule])];
+  const gapsHtml = gaps.length ? gaps.map(t => `<div class="stats-incomplete-item" style="cursor:default"><span>${t['اسم المعلم']||''}</span><span>
+      ${!(t._classes||classesFromString(t['الصفوف'])).length ? '<span class="stats-missing-tag">بدون صفوف</span>' : ''}
+      ${!teacherLoad(t) ? '<span class="stats-missing-tag">بدون جدول حصص</span>' : ''}
+    </span></div>`).join('') : '<p style="font-size:12.5px;color:var(--ink-soft);">لا يوجد نقص 🎉</p>';
+  box.innerHTML = `
+    <div class="stats-panel">
+      <div class="stats-head" onclick="toggleTeacherStats()">
+        <h3>📊 إحصائية المعلمين</h3>
+        <span class="stats-arrow">${collapsed?'▸':'▾'}</span>
+      </div>
+      <div class="stats-summary-row">
+        <div class="stats-summary-card"><b>${state.teachers.length}</b><span>إجمالي المعلمين</span></div>
+        <div class="stats-summary-card"><b>${totalLoad}</b><span>إجمالي الحصص المسندة</span></div>
+        <div class="stats-summary-card"><b>${Object.keys(bySubject).length}</b><span>عدد المواد</span></div>
+        <div class="stats-summary-card" style="${gaps.length?'background:rgba(220,38,38,0.1)':''}"><b style="${gaps.length?'color:var(--danger)':''}">${gaps.length}</b><span>معلمون ببيانات ناقصة</span></div>
+      </div>
+      <div class="stats-body" style="display:${collapsed?'none':'block'}">
+        <div class="stats-grade-title">التوزيع حسب المادة</div>
+        <div>${subjectChips}</div>
+        <div class="stats-incomplete">
+          <div class="stats-grade-title" style="margin-top:10px">⚠️ بدون صفوف مسندة أو بدون جدول حصص</div>
+          ${gapsHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderScheduleTable(t, ti, classesForTeacher, readOnly){
   return `<table class="grid-table">
     <thead><tr><th>اليوم</th>${!readOnly ? '<th>إدخال سريع</th>' : ''}${PERIOD_LABELS_FULL.map(l=>`<th>${l}</th>`).join('')}</tr></thead>
@@ -1851,6 +1981,7 @@ function renderScheduleTable(t, ti, classesForTeacher, readOnly){
 }
 
 function renderTeachers(){
+  renderTeacherStats();
   const box = document.getElementById('teachersList');
   box.innerHTML = '';
   state.teachers.forEach((t, ti) => {
@@ -2095,9 +2226,13 @@ function renderMasterSchedule(){
     alertBox.innerHTML = `<div style="border:1px solid var(--danger);background:rgba(220,38,38,.08);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--danger)">
       ⚠️ يوجد تعارض في الجدول (${conflicts.length} حالة):<br>${conflicts.slice(0,25).map(c=>'• '+c).join('<br>')}${conflicts.length>25?'<br>...':''}
     </div>`;
-  } else if(missingCount > 0){
+  } else if(missingCount > 5){
     alertBox.innerHTML = `<div style="border:1px solid var(--accent);background:rgba(37,99,235,.08);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--accent)">
       ⚠️ الجدول غير مكتمل — يوجد ${missingCount} حصة فارغة (بدون معلم) عبر الصفوف.
+    </div>`;
+  } else if(missingCount > 0){
+    alertBox.innerHTML = `<div style="border:1px solid var(--line);background:var(--bg-alt);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--ink-soft)">
+      ℹ️ يوجد ${missingCount} حصة فارغة فقط — ضمن الحد المقبول، لا داعي للقلق.
     </div>`;
   } else {
     alertBox.innerHTML = `<div style="border:1px solid var(--primary);background:rgba(37,99,235,.08);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--primary)">
