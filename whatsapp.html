@@ -126,11 +126,10 @@ tbody td{padding:9px 13px;font-size:.9rem;vertical-align:middle;}
 <body>
 
 <header>
-  <div class="logo">💬</div>
+  <div class="logo" onclick="location.href='index.html'" style="cursor:pointer" title="الرجوع إلى الرئيسية">💬</div>
   <div>
     <h1>برنامج التواصل مع أولياء الامور</h1>
     <p>إرسال رسائل لأولياء أمور الطلاب بسهولة - مدرسة الرازي</p>
-	    <p>تصميم وإعداد: محمود شحادة   |   مديرة المدرسة: بدرية الظنحاني</p>
   </div>
 </header>
 
@@ -154,7 +153,7 @@ tbody td{padding:9px 13px;font-size:.9rem;vertical-align:middle;}
     <div class="card-title">نص الرسالة</div>
     <div class="qmsg-grid" id="qmsgGrid"></div>
     <textarea id="msg" placeholder="اكتب رسالتك هنا، أو اختر رسالة جاهزة من الأعلى..."></textarea>
-    <p class="hint">💡 <code>{اسم}</code> يُستبدل باسم الطالب تلقائياً</p>
+    <p class="hint">💡 <code>{اسم}</code> يُستبدل باسم الطالب تلقائياً — و<code>{ايميل_LMS}</code> / <code>{باسورد_LMS}</code> / <code>{ايميل_الف}</code> / <code>{باسورد_الف}</code> تُستبدل ببيانات حسابات الطالب (لو مسحوبة من بوابة الرازي وموجودة)</p>
   </div>
 
   <!-- TABLE -->
@@ -201,7 +200,9 @@ tbody td{padding:9px 13px;font-size:.9rem;vertical-align:middle;}
 
 </div>
 
-<!-- QR MODAL -->
+<footer style="text-align:center;padding:22px 16px;font-size:.78rem;color:var(--muted);">
+  حقوق مدرسة الرازي 2026 - اعداد: محمود شحادة
+</footer>
 <div class="overlay" id="qrOverlay">
   <div class="modal" id="qrModal">
     <h3 id="mName"></h3>
@@ -237,6 +238,7 @@ var quickMsgs = [
   { label:'👨‍👩‍👧 لقاء أولياء الأمور', text:'السلام عليكم ورحمة الله، يسعدنا دعوتكم لحضور لقاء أولياء الأمور مع المعلمين للاطلاع على مستوى الطالب {اسم} ومناقشة سير العملية التعليمية. سيُحدَّد الموعد لاحقاً. شكراً.' },
   { label:'❓ استفسار عن غياب', text:'السلام عليكم ورحمة الله، نودّ الاستفسار عن سبب غياب الطالب {اسم} اليوم، نرجو إعلامنا حتى نتمكن من متابعته. شكراً لاهتمامكم.' },
   { label:'⚠️ مخالفة سلوكية', text:'السلام عليكم ورحمة الله، نُفيدكم بأنه تم تسجيل مخالفة سلوكية على الطالب {اسم} اليوم. نرجو التواصل معنا لمناقشة الأمر واتخاذ الإجراءات المناسبة. شكراً لتعاونكم.' },
+  { label:'🔐 حسابات LMS وألف', text:'السلام عليكم ورحمة الله، بيانات دخول الطالب {اسم} على المنصات التعليمية:\n\n📘 منصة LMS\nالبريد الإلكتروني: {ايميل_LMS}\nكلمة المرور: {باسورد_LMS}\n\n📗 منصة ألف\nالبريد الإلكتروني: {ايميل_الف}\nكلمة المرور: {باسورد_الف}\n\nنرجو حفظ هذه البيانات في مكان آمن. شكراً لتعاونكم.' },
 ];
 
 (function buildQuickMsgs(){
@@ -350,7 +352,12 @@ function filtered(){
 /* ===== MESSAGING ===== */
 function getMessage(s){
   var t=document.getElementById('msg').value||'السلام عليكم';
-  return t.replace(/\{اسم\}/g,s.name);
+  t = t.replace(/\{اسم\}/g, s.name);
+  t = t.replace(/\{ايميل_LMS\}/g, s.lmsEmail || 'غير متوفر');
+  t = t.replace(/\{باسورد_LMS\}/g, s.lmsPass || 'غير متوفر');
+  t = t.replace(/\{ايميل_الف\}/g, s.alefEmail || 'غير متوفر');
+  t = t.replace(/\{باسورد_الف\}/g, s.alefPass || 'غير متوفر');
+  return t;
 }
 /* تطبيع رقم الهاتف الإماراتي إلى صيغة 9715xxxxxxxx مهما كانت صيغته الأصلية
    (05xxxxxxxx / 5xxxxxxxx / 00971... / +9715... / بمسافات أو شرطات) */
@@ -485,6 +492,23 @@ function setSharedStatus(msg){
   var el = document.getElementById('sharedDataStatus');
   if(el) el.innerHTML = msg;
 }
+/* يفصل "الاسم (الرقم)" إلى اسم نظيف — نفس الصيغة المستخدمة بعمود "اسم الطالب" ببيانات المدرسة */
+function parseStudentEntry(str){
+  var s = String(str||'').trim();
+  var m = s.match(/^(.*?)\s*\(([^()]+)\)$/);
+  return m ? m[1].trim() : s;
+}
+/* يدور على زوج أعمدة إيميل/كلمة مرور لمنصة معيّنة (LMS أو ALEF) بالاعتماد على اسم العمود، بغض النظر عن ترتيبه */
+function accountHeaderPair(headers, keyword){
+  var kw = keyword.toUpperCase();
+  var emailH = null, passH = null;
+  headers.forEach(function(h){
+    var hu = String(h||'').toUpperCase();
+    if(hu.indexOf(kw) === -1) return;
+    if(hu.indexOf('PASS') !== -1) passH = h; else emailH = h;
+  });
+  return (emailH && passH) ? {emailH: emailH, passH: passH} : null;
+}
 function pullSharedStudents(){
   var dataUrl = null, fname = '';
   try{
@@ -507,14 +531,26 @@ function pullSharedStudents(){
     var ws = wb.Sheets['جميع الطلاب'];
     if(!ws){ setSharedStatus('⚠️ لم يتم العثور على صفحة "جميع الطلاب" بالملف المرتبط.'); return; }
     var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+    var headers = rows.length ? Object.keys(rows[0]) : [];
+    var lmsPair = accountHeaderPair(headers, 'LMS');
+    var alefPair = accountHeaderPair(headers, 'ALEF');
     students = rows.map(function(r){
       var code = String(r['الصف']||'').trim();
       var cls = code.length >= 2 ? (code[0] + '/' + code.slice(1)) : code;
-      return { cls: cls || '—', name: String(r['اسم الطالب']||'').trim(), phone: normalizePhoneUAE(r['رقم التواصل']) };
+      return {
+        cls: cls || '—',
+        name: parseStudentEntry(r['اسم الطالب']),
+        phone: normalizePhoneUAE(r['رقم التواصل']),
+        lmsEmail: lmsPair ? String(r[lmsPair.emailH]||'').trim() : '',
+        lmsPass: lmsPair ? String(r[lmsPair.passH]||'').trim() : '',
+        alefEmail: alefPair ? String(r[alefPair.emailH]||'').trim() : '',
+        alefPass: alefPair ? String(r[alefPair.passH]||'').trim() : ''
+      };
     }).filter(function(s){ return s.name && s.phone; });
     if(!students.length){ setSharedStatus('⚠️ ما فيه طلاب بأرقام تواصل بالملف المرتبط.'); return; }
     afterLoad();
-    dz.innerHTML = '<div class="ico">✅</div><p><strong>'+students.length+' طالب</strong> تم سحبهم من بوابة الرازي</p>';
+    var acctNote = (lmsPair || alefPair) ? ' (شامل حسابات ' + [lmsPair?'LMS':null, alefPair?'ألف':null].filter(Boolean).join(' و') + ')' : '';
+    dz.innerHTML = '<div class="ico">✅</div><p><strong>'+students.length+' طالب</strong> تم سحبهم من بوابة الرازي'+acctNote+'</p>';
     setSharedStatus('✅ تم السحب من الملف المرتبط' + (fname ? (' — ' + fname) : ''));
   }catch(err){
     setSharedStatus('⚠️ تعذّر قراءة الملف المرتبط: ' + err.message);
