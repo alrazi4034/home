@@ -461,9 +461,8 @@
     <div class="h-actions">
       <button class="btn" id="switchAdminBtn" onclick="showAdminLoginPrompt()" style="display:none;">🧑‍💼 دخول كإداري</button>
       <button class="btn" id="switchTeacherBtn" onclick="showTeacherLoginPrompt()" style="display:none;">🧑‍🏫 دخول كمعلم</button>
-      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة تلقائياً (قراءة وكتابة تلقائية)" onclick="onLinkBtnClick()">🔗</button>
+      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة + سجل الحضور + سجل المخالفات + ملف التقويم (دفعة واحدة، اختر عدة ملفات معاً)" onclick="onLinkBtnClick()">🔗</button>
       <button class="link-btn" id="unlinkBtn" title="فك الربط التلقائي" onclick="onUnlinkBtnClick()" style="display:none;">✖</button>
-      <button class="btn" id="companionLinkBtn" title="ربط ملفات البرامج الأخرى (الحضور، المخالفات، التقويم)" onclick="openCompanionLinkModal()">🔗📦 ربط ملفات البرامج</button>
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
       <button class="btn btn-primary" id="saveToLinkBtn" title="حفظ التعديلات في الملف المرتبط" onclick="saveToLinkedFile()" style="display:none;">💾 حفظ</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
@@ -759,14 +758,6 @@ stu2018016503@alefedu.net - Zq9xxxxx"></textarea>
   <div class="modal" style="max-width:640px;">
     <div class="modal-head"><h3 id="commListModalTitle">📞 التواصل</h3><button class="modal-close" onclick="closeModal('commListModal')">×</button></div>
     <div id="commListModalBody"></div>
-  </div>
-</div>
-
-<!-- ربط ملفات البرامج الأخرى دفعة واحدة (الحضور، المخالفات، التقويم) -->
-<div class="modal-overlay" id="companionLinkModal">
-  <div class="modal" style="max-width:620px;">
-    <div class="modal-head"><h3>🔗📦 ربط ملفات البرامج الأخرى</h3><button class="modal-close" onclick="closeModal('companionLinkModal')">×</button></div>
-    <div id="companionLinkModalBody"></div>
   </div>
 </div>
 
@@ -2982,19 +2973,18 @@ function shareToOtherPrograms(arrayBuffer, fileName){
   }
 }
 
-/* ===================== ربط ملفات البرامج الأخرى دفعة واحدة (سجل الحضور / سجل المخالفات / التقويم) =====================
-   نفس آلية "ربط ملف بيانات المدرسة" أعلاه (File System Access API + IndexedDB لحفظ الصلاحية بين الجلسات)،
-   لكن معمَّمة لعدة ملفات كل واحد له مفتاحه الخاص. لا يحتاج البرنامج هنا لفهم محتوى هذه الملفات — فقط
-   يحفظ مقبض الملف (handle) ويشارك محتواه الخام (base64) عبر localStorage تحت مفتاح معروف، بحيث يقرأه
-   البرنامج المعني (ملف الحضور/السلوك/التقويم) تلقائياً عند فتحه بدل رفع الملف يدوياً في كل مرة. */
+/* ===================== ملفات البرامج الأخرى المرتبطة عبر نفس زر الربط الرئيسي (🔗) =====================
+   سجل الحضور / سجل المخالفات السلوكية / ملف التقويم (JSON) — لا يحتاج هذا البرنامج لفهم محتواها،
+   فقط يحفظ مقبض كل ملف (handle) في IndexedDB ويشارك محتواه الخام (base64) عبر localStorage تحت
+   مفتاح معروف، ليقرأه البرنامج المعني تلقائياً عند فتحه بدل رفع الملف يدوياً في كل مرة. */
 const COMPANION_FILES = [
-  { key:'attendance', label:'📋 سجل الحضور', desc:'سجل الحضور (Excel)',
+  { key:'attendance', label:'سجل الحضور', desc:'سجل الحضور (Excel)',
     accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}, kind:'xlsx',
     lsData:'raziAttendanceRecordsXlsx', lsName:'raziAttendanceRecordsFilename', nameHints:['حضور','attendance'] },
-  { key:'behavior', label:'📝 سجل المخالفات السلوكية', desc:'سجل المخالفات السلوكية (Excel)',
+  { key:'behavior', label:'سجل المخالفات السلوكية', desc:'سجل المخالفات السلوكية (Excel)',
     accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}, kind:'xlsx',
     lsData:'raziBehaviorRecordsXlsx', lsName:'raziBehaviorRecordsFilename', nameHints:['مخالف','سلوك','behavior'] },
-  { key:'calendar', label:'🗓️ ملف التقويم المدرسي', desc:'ملف التقويم المشترك (JSON)',
+  { key:'calendar', label:'ملف التقويم المدرسي', desc:'ملف التقويم المشترك (JSON)',
     accept:{'application/json':['.json']}, kind:'json',
     lsData:'raziCalendarSharedJson', lsName:'raziCalendarSharedFilename', nameHints:['تقويم','calendar','agenda'] },
 ];
@@ -3035,14 +3025,6 @@ async function cmpClearHandle(key){
     tx.objectStore(CMP_STORE_NAME).delete(key);
   }catch(e){ /* تجاهل */ }
 }
-function cmpSetBtn(key, icon, title){
-  const btn = document.getElementById('cmpLinkBtn_'+key);
-  if(btn){ btn.textContent = icon; btn.title = title; }
-}
-function cmpSetStatus(key, text){
-  const el = document.getElementById('cmpStatus_'+key);
-  if(el) el.textContent = text;
-}
 async function cmpReadAndShare(cfg, handle){
   const file = await handle.getFile();
   const buf = await file.arrayBuffer();
@@ -3054,116 +3036,21 @@ async function cmpReadAndShare(cfg, handle){
   const mime = Object.keys(cfg.accept)[0];
   localStorage.setItem(cfg.lsData, 'data:'+mime+';base64,'+base64);
   localStorage.setItem(cfg.lsName, file.name || '');
-  cmpSetStatus(cfg.key, '✅ مرتبط ومُشارَك مع ' + cfg.label + ' — ' + (file.name||''));
 }
-async function cmpOnLinkClick(key){
-  const cfg = COMPANION_FILES.find(c => c.key === key);
-  const handle = companionHandles[key];
-  if(handle){
-    try{
-      let perm = await handle.queryPermission({mode:'read'});
-      if(perm !== 'granted'){
-        perm = await handle.requestPermission({mode:'read'});
-        if(perm !== 'granted'){ cmpSetStatus(key, '⚠️ لم تُمنح الصلاحية.'); return; }
-        cmpSetBtn(key, '🔄', 'تحديث الآن');
-      }
-      await cmpReadAndShare(cfg, handle);
-    }catch(err){ cmpSetStatus(key, '❌ تعذّر التحديث: ' + err.message); }
-    return;
-  }
-  try{
-    const [h] = await window.showOpenFilePicker({ types: [{ description: cfg.desc, accept: cfg.accept }] });
-    const perm = await h.requestPermission({mode:'read'});
-    if(perm !== 'granted'){ cmpSetStatus(key, '⚠️ لم تُمنح الصلاحية.'); return; }
-    companionHandles[key] = h;
-    await cmpSaveHandle(key, h);
-    cmpSetBtn(key, '🔄', 'تحديث الآن');
-    const unlinkBtn = document.getElementById('cmpUnlinkBtn_'+key);
-    if(unlinkBtn) unlinkBtn.style.display = '';
-    await cmpReadAndShare(cfg, h);
-  }catch(err){
-    if(err && err.name === 'AbortError') return;
-    cmpSetStatus(key, '❌ تعذّر الربط: ' + (err && err.message ? err.message : err));
-  }
-}
-async function cmpOnUnlinkClick(key){
-  const cfg = COMPANION_FILES.find(c => c.key === key);
-  await cmpClearHandle(key);
-  companionHandles[key] = null;
-  const unlinkBtn = document.getElementById('cmpUnlinkBtn_'+key);
-  if(unlinkBtn) unlinkBtn.style.display = 'none';
-  cmpSetBtn(key, '🔗', 'ربط ' + cfg.label);
-  cmpSetStatus(key, 'تم فك الربط. اختر ملفاً من جديد للمتابعة.');
+async function cmpClearShared(cfg){
   localStorage.removeItem(cfg.lsData);
   localStorage.removeItem(cfg.lsName);
 }
-
-/* ربط عدة ملفات دفعة واحدة: منتقي ملفات واحد بخاصية الاختيار المتعدد، ثم توزيع كل ملف على
-   الخانة المناسبة تلقائياً حسب اسمه (حضور/مخالفات/تقويم) — أي ملف غير معروف يُتجاهل مع تنبيه،
-   ويبقى بالإمكان ربطه يدوياً من صفّه الخاص أدناه. */
-async function cmpBatchLink(){
-  if(!idxFsApiSupported){ alert('متصفحك لا يدعم الربط التلقائي بملفات. استخدم Google Chrome أو Microsoft Edge على حاسوب.'); return; }
-  let handles;
-  try{
-    handles = await window.showOpenFilePicker({ multiple: true });
-  }catch(err){
-    if(err && err.name === 'AbortError') return;
-    alert('تعذّر فتح منتقي الملفات: ' + (err && err.message ? err.message : err));
-    return;
-  }
-  const unmatched = [];
-  for(const h of handles){
-    const name = (h.name || '').toLowerCase();
-    const cfg = COMPANION_FILES.find(c => c.nameHints.some(hint => name.includes(hint)));
-    if(!cfg){ unmatched.push(h.name); continue; }
+/* يحاول تحديث كل ملفات البرامج الأخرى المرتبطة مسبقاً (بصمت، بدون طلب صلاحية جديدة إن لم تكن ممنوحة) */
+async function cmpRefreshAllLinked(){
+  for(const cfg of COMPANION_FILES){
+    const handle = companionHandles[cfg.key];
+    if(!handle) continue;
     try{
-      const perm = await h.requestPermission({mode:'read'});
-      if(perm !== 'granted'){ cmpSetStatus(cfg.key, '⚠️ لم تُمنح الصلاحية.'); continue; }
-      companionHandles[cfg.key] = h;
-      await cmpSaveHandle(cfg.key, h);
-      cmpSetBtn(cfg.key, '🔄', 'تحديث الآن');
-      const unlinkBtn = document.getElementById('cmpUnlinkBtn_'+cfg.key);
-      if(unlinkBtn) unlinkBtn.style.display = '';
-      await cmpReadAndShare(cfg, h);
-    }catch(err){ cmpSetStatus(cfg.key, '❌ تعذّر ربط الملف: ' + err.message); }
+      const perm = await handle.queryPermission({mode:'read'});
+      if(perm === 'granted') await cmpReadAndShare(cfg, handle);
+    }catch(e){ console.warn(e); }
   }
-  if(unmatched.length){
-    alert('تعذّر التعرّف تلقائياً على نوع هذه الملفات من اسمها:\n' + unmatched.join('\n') + '\n\nيرجى ربط كل ملف يدوياً من صفّه الخاص في نفس النافذة (اسم الملف يُفضّل أن يحتوي كلمة "حضور" أو "مخالفات" أو "تقويم").');
-  }
-}
-
-function openCompanionLinkModal(){
-  const body = document.getElementById('companionLinkModalBody');
-  if(!idxFsApiSupported){
-    body.innerHTML = `<p style="font-size:12.5px;color:var(--danger);">متصفحك لا يدعم الربط التلقائي بالملفات (File System Access API). استخدم Google Chrome أو Microsoft Edge على حاسوب لتفعيل هذه الميزة.</p>
-      <div class="modal-actions"><button class="btn" onclick="closeModal('companionLinkModal')">إغلاق</button></div>`;
-  } else {
-    body.innerHTML = `
-      <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">اربط هنا ملفات البرامج الأخرى (سجل الحضور، سجل المخالفات السلوكية، ملف التقويم) — تُشارَك بياناتها تلقائياً مع تلك البرامج دون الحاجة لرفعها يدوياً في كل مرة، وتبقى مرتبطة حتى لو أُعيد تشغيل الجهاز (قد تحتاج بضغطة واحدة لإعادة السماح).</p>
-      <div class="modal-actions" style="justify-content:flex-start;margin-bottom:14px;">
-        <button class="btn btn-primary" onclick="cmpBatchLink()">📦 ربط عدة ملفات دفعة واحدة</button>
-      </div>
-      ${COMPANION_FILES.map(cfg => `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);">
-          <span style="flex:1;font-size:13px;">${cfg.label}</span>
-          <span id="cmpStatus_${cfg.key}" style="font-size:10.5px;color:var(--ink-soft);flex:2;"></span>
-          <button class="link-btn" id="cmpLinkBtn_${cfg.key}" title="ربط ${cfg.label}" onclick="cmpOnLinkClick('${cfg.key}')">🔗</button>
-          <button class="link-btn" id="cmpUnlinkBtn_${cfg.key}" title="فك الربط" onclick="cmpOnUnlinkClick('${cfg.key}')" style="display:none;">✖</button>
-        </div>`).join('')}
-      <div class="modal-actions" style="margin-top:14px;">
-        <button class="btn" onclick="closeModal('companionLinkModal')">إغلاق</button>
-      </div>`;
-  }
-  document.getElementById('companionLinkModal').classList.add('open');
-  refreshCompanionButtonStates();
-}
-function refreshCompanionButtonStates(){
-  COMPANION_FILES.forEach(cfg => {
-    const has = !!companionHandles[cfg.key];
-    cmpSetBtn(cfg.key, has ? '🔄' : '🔗', has ? 'تحديث الآن' : 'ربط ' + cfg.label);
-    const unlinkBtn = document.getElementById('cmpUnlinkBtn_'+cfg.key);
-    if(unlinkBtn) unlinkBtn.style.display = has ? '' : 'none';
-  });
 }
 async function initCompanionLinks(){
   if(!idxFsApiSupported) return;
@@ -3173,15 +3060,18 @@ async function initCompanionLinks(){
     companionHandles[cfg.key] = handle;
     try{
       const perm = await handle.queryPermission({mode:'read'});
-      if(perm === 'granted'){
-        await cmpReadAndShare(cfg, handle);
-      } else {
-        cmpSetStatus(cfg.key, 'الصلاحية انتُزعت — افتح نافذة "ربط ملفات البرامج" واضغط 🔒 لإعادة التفعيل.');
-      }
+      if(perm === 'granted') await cmpReadAndShare(cfg, handle);
     }catch(e){ console.warn(e); }
+  }
+  // إن كان هناك ملفات برامج أخرى مرتبطة حتى بدون ملف بيانات مدرسة رئيسي، أظهر زر فك الربط
+  if(!linkedHandle && Object.values(companionHandles).some(Boolean)){
+    const unlinkBtn = document.getElementById('unlinkBtn');
+    if(unlinkBtn) unlinkBtn.style.display = '';
+    idxSetLinkBtn('🔄', 'مرتبط جزئياً — اضغط للتحديث (بيانات المدرسة + الحضور + المخالفات + التقويم)');
   }
 }
 document.addEventListener('DOMContentLoaded', initCompanionLinks);
+
 
 /* ===================== ربط ملف بيانات المدرسة تلقائياً (File System Access API) =====================
    زر واحد: 🔗 لا يوجد ربط بعد (يفتح منتقي ملفات)، 🔄 مرتبط ويملك الصلاحية (نقرة = تحديث فوري)،
@@ -3238,40 +3128,88 @@ async function readHandleAndLoad(handle){
   afterWorkbookLoaded(file.name, handle, buf);
 }
 
+/* يصنّف ملفاً مُختاراً حسب اسمه: بيانات المدرسة (الافتراضي لأي xlsx لا يطابق حضور/مخالفات)،
+   أو أحد ملفات البرامج الأخرى (COMPANION_FILES) حسب nameHints. */
+function classifyPickedFile(handle){
+  const name = (handle.name || '').toLowerCase();
+  const cfg = COMPANION_FILES.find(c => c.nameHints.some(hint => name.includes(hint)));
+  if(cfg) return cfg;
+  return null; // null = بيانات المدرسة (الملف الرئيسي)
+}
+async function linkCompanionHandle(cfg, handle){
+  const perm = await handle.requestPermission({mode:'read'});
+  if(perm !== 'granted') return false;
+  companionHandles[cfg.key] = handle;
+  await cmpSaveHandle(cfg.key, handle);
+  await cmpReadAndShare(cfg, handle);
+  return true;
+}
+
 async function onLinkBtnClick(){
   if(!idxFsApiSupported){
     document.getElementById('fileInput').click();
     return;
   }
   if(linkedHandle){
-    // تحديث/إعادة تفعيل — يطلب الصلاحية فقط، بدون فتح منتقي ملفات جديد
+    // تحديث/إعادة تفعيل — يطلب الصلاحية فقط، بدون فتح منتقي ملفات جديد، ويحدّث كل الملفات المرتبطة معاً
     try{
       let perm = await linkedHandle.queryPermission({mode:'readwrite'});
       if(perm !== 'granted'){
         perm = await linkedHandle.requestPermission({mode:'readwrite'});
         if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح الصلاحية.'); return; }
-        idxSetLinkBtn('🔄', 'تحديث الآن');
+        idxSetLinkBtn('🔄', 'مرتبط — اضغط للتحديث (بيانات المدرسة + الحضور + المخالفات + التقويم)');
         startAutoRefreshTimer();
       }
       await readHandleAndLoad(linkedHandle);
+      await cmpRefreshAllLinked();
+      setStatus('✅ تم تحديث كل الملفات المرتبطة.');
     }catch(err){
       setStatus('❌ تعذّر تحديث الملف المرتبط: ' + err.message);
     }
     return;
   }
+  // لا يوجد ربط بعد — منتقي ملفات بخاصية الاختيار المتعدد، يقبل بيانات المدرسة + سجل الحضور +
+  // سجل المخالفات + ملف التقويم دفعة واحدة، ويوزّع كل ملف على مكانه تلقائياً حسب اسمه.
   try{
-    const [handle] = await window.showOpenFilePicker({
-      types: [{ description:'بيانات المدرسة (Excel)', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']} }]
+    const handles = await window.showOpenFilePicker({
+      multiple: true,
+      types: [
+        { description:'بيانات المدرسة / سجل الحضور / سجل المخالفات (Excel)', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']} },
+        { description:'ملف التقويم المشترك (JSON)', accept: {'application/json':['.json']} },
+      ]
     });
-    const perm = await handle.requestPermission({mode:'readwrite'});
-    if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح الصلاحية.'); return; }
-    linkedHandle = handle;
-    await idxSaveHandle(handle);
-    idxSetLinkBtn('🔄', 'تحديث الآن');
-    await readHandleAndLoad(handle);
+    let schoolHandle = null;
+    const unmatched = [];
+    for(const h of handles){
+      const cfg = classifyPickedFile(h);
+      if(cfg){
+        const ok = await linkCompanionHandle(cfg, h);
+        if(!ok) unmatched.push(h.name + ' (لم تُمنح الصلاحية)');
+      } else if(h.name.toLowerCase().endsWith('.xlsx') && !schoolHandle){
+        schoolHandle = h;
+      } else {
+        unmatched.push(h.name);
+      }
+    }
+    if(schoolHandle){
+      const perm = await schoolHandle.requestPermission({mode:'readwrite'});
+      if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح صلاحية ملف بيانات المدرسة.'); return; }
+      linkedHandle = schoolHandle;
+      await idxSaveHandle(schoolHandle);
+      idxSetLinkBtn('🔄', 'مرتبط — اضغط للتحديث (بيانات المدرسة + الحضور + المخالفات + التقويم)');
+      document.getElementById('unlinkBtn').style.display = '';
+      await readHandleAndLoad(schoolHandle);
+    } else if(Object.values(companionHandles).some(Boolean)){
+      document.getElementById('unlinkBtn').style.display = '';
+    }
+    const linkedNames = COMPANION_FILES.filter(c => companionHandles[c.key]).map(c => c.label);
+    let msg = schoolHandle ? '✅ تم ربط بيانات المدرسة' : '';
+    if(linkedNames.length) msg += (msg?' و':'✅ تم ربط ') + linkedNames.join('، ');
+    if(unmatched.length) msg += (msg?' — ':'') + 'تعذّر التعرّف على: ' + unmatched.join('، ') + ' (سمِّ الملف بكلمة تحتوي "حضور" أو "مخالفات" أو امتداد .json للتقويم)';
+    setStatus(msg || 'لم يُربط أي ملف.');
   }catch(err){
     if(err && err.name === 'AbortError') return;
-    setStatus('❌ تعذّر ربط الملف: ' + (err && err.message ? err.message : err));
+    setStatus('❌ تعذّر ربط الملفات: ' + (err && err.message ? err.message : err));
   }
 }
 
@@ -3281,9 +3219,16 @@ async function onUnlinkBtnClick(){
   stopAutoRefreshTimer();
   hideUpdateBanner();
   document.getElementById('saveToLinkBtn').style.display = 'none';
+  // فك ربط كل ملفات البرامج الأخرى المرتبطة معاً بنفس الزر
+  for(const cfg of COMPANION_FILES){
+    if(!companionHandles[cfg.key]) continue;
+    await cmpClearHandle(cfg.key);
+    await cmpClearShared(cfg);
+    companionHandles[cfg.key] = null;
+  }
   document.getElementById('unlinkBtn').style.display = 'none';
-  idxSetLinkBtn('🔗', 'ربط ملف بيانات المدرسة');
-  setStatus('تم فك الربط التلقائي. اختر ملفاً من جديد للمتابعة.');
+  idxSetLinkBtn('🔗', 'ربط ملف بيانات المدرسة + سجل الحضور + سجل المخالفات + ملف التقويم (دفعة واحدة، اختر عدة ملفات)');
+  setStatus('تم فك ربط كل الملفات. اختر ملفات من جديد للمتابعة.');
 }
 
 async function saveToLinkedFile(){
@@ -3356,7 +3301,7 @@ async function initAutoLink(){
   try{
     const perm = await handle.queryPermission({mode:'readwrite'});
     if(perm === 'granted'){
-      idxSetLinkBtn('🔄', 'تحديث الآن');
+      idxSetLinkBtn('🔄', 'مرتبط — اضغط للتحديث (بيانات المدرسة + الحضور + المخالفات + التقويم)');
       document.getElementById('unlinkBtn').style.display = '';
       await readHandleAndLoad(handle);
       startAutoRefreshTimer();
