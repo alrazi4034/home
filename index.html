@@ -283,12 +283,12 @@
   .stats-missing-tag{ font-size:11px; padding:2px 8px; border-radius:20px; background:rgba(220,38,38,0.12); color:var(--danger); }
 
   /* ---- بطاقات الطلاب/المعلمين للطباعة: A4 عامودي — 8 بطاقات (عامودين × 4 صفوف) في كل ورقة ---- */
-  #printCardsArea, #printTeacherCardsArea{ display:none; }
+  #printCardsArea{ display:none; }
   @media print{
     @page{ size:A4 portrait; margin:8mm; }
     body *{ visibility:hidden; }
-    #printCardsArea, #printCardsArea *, #printTeacherCardsArea, #printTeacherCardsArea *{ visibility:visible; }
-    #printCardsArea, #printTeacherCardsArea{ display:block !important; position:absolute; inset:0; }
+    #printCardsArea, #printCardsArea *{ visibility:visible; }
+    #printCardsArea{ display:block !important; position:absolute; inset:0; }
   }
   .print-page{ display:grid; grid-template-columns:1fr 1fr; grid-template-rows:repeat(4, 1fr); gap:4mm; width:100%; height:281mm; page-break-after:always; }
   .id-card-box{ border:1.5px solid #333; border-radius:7px; padding:4mm; page-break-inside:avoid; display:flex; flex-direction:column; gap:1.5mm; overflow:hidden; }
@@ -639,7 +639,6 @@
       <span style="font-size:13px;color:var(--ink-soft)">لكل معلم: بياناته، الصفوف التي يدرّسها، وجدول حصصه (الأيام صفوف، الحصص أعمدة). الاثنين–الخميس ٨ حصص، الجمعة ٤. استخدم "إدخال سريع" لتعبئة يوم كامل دفعة واحدة، مثل 51520510 = الأولى 5/1، الثانية 5/2، الثالثة فراغ...</span>
       <button class="btn" onclick="addTeacherRow()">+ إضافة معلم</button>
       <button class="btn btn-primary" onclick="printAllTeacherSchedules()">🖨️ طباعة جداول المعلمين</button>
-      <button class="btn" onclick="openTeacherCardsModal()">🪪 طباعة بطاقات المعلمين</button>
       <button class="btn" onclick="openCommListModal('teacher')">📞 التواصل مع المعلمين</button>
     </div>
     <div id="teachersList"></div>
@@ -743,15 +742,6 @@ stu2018016503@alefedu.net - Zq9xxxxx"></textarea>
     <div id="cardsModalBody"></div>
   </div>
 </div>
-
-<!-- بطاقات المعلمين -->
-<div class="modal-overlay" id="teacherCardsModal">
-  <div class="modal" style="max-width:760px;">
-    <div class="modal-head"><h3>🪪 طباعة بطاقات المعلمين</h3><button class="modal-close" onclick="closeModal('teacherCardsModal')">×</button></div>
-    <div id="teacherCardsModalBody"></div>
-  </div>
-</div>
-<div id="printTeacherCardsArea"></div>
 
 <!-- قائمة التواصل (واتساب + QR) — للطلاب أو المعلمين -->
 <div class="modal-overlay" id="commListModal">
@@ -1041,6 +1031,15 @@ function handleFile(e){
 
 function setStatus(html){ document.getElementById('statusLine').innerHTML = html; }
 
+/* يقرأ أسماء الأعمدة من صف العناوين نفسه (وليس فقط من مفاتيح أول صف بيانات)، حتى لو كانت
+   الورقة فارغة من البيانات أو كان أول صف ناقصاً — بهذا أي عمود جديد يُضاف مستقبلاً في ملف
+   بيانات المدرسة (للطلاب أو الإداريين أو المعلمين) يُعامَل تلقائياً كحقل بيانات جديد. */
+function readSheetHeaders(ws){
+  if(!ws) return [];
+  const headerRow = XLSX.utils.sheet_to_json(ws, {header:1, defval:''})[0] || [];
+  return headerRow.map(h => String(h||'').trim()).filter(Boolean);
+}
+
 function loadWorkbookFromArrayBuffer(buf, fileName){
   lastLinkedFileHash = bufHash(buf);
   const wb = XLSX.read(buf, {type:'array', cellDates:true});
@@ -1054,7 +1053,8 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   const wsStudents = wb.Sheets['جميع الطلاب'];
   if(wsStudents){
     const rows = XLSX.utils.sheet_to_json(wsStudents, {defval:''});
-    state.studentHeaders = rows.length ? Object.keys(rows[0]) : [];
+    const headerRow = readSheetHeaders(wsStudents);
+    state.studentHeaders = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : []);
     if(!state.studentHeaders.includes('معتمد')) state.studentHeaders.push('معتمد');
     rows.forEach(r => { if(r['معتمد'] === '' || r['معتمد'] === undefined || r['معتمد'] === null) r['معتمد'] = '1'; else r['معتمد'] = String(r['معتمد']) === '1' ? '1' : '0'; });
     state.students = rows;
@@ -1064,14 +1064,16 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   const wsAdmins = wb.Sheets['الاداريين'];
   if(wsAdmins){
     const rows = XLSX.utils.sheet_to_json(wsAdmins, {defval:''});
-    state.adminHeaders = rows.length ? Object.keys(rows[0]) : ['اسم الموظف','رقم الاوراكل','الوظيفة','رقم التواصل'];
+    const headerRow = readSheetHeaders(wsAdmins);
+    state.adminHeaders = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : ['اسم الموظف','رقم الاوراكل','الوظيفة','رقم التواصل']);
     state.admins = rows;
   }
 
   const wsTeachers = wb.Sheets['المعلمين والجداول'];
   if(wsTeachers){
     const rows = XLSX.utils.sheet_to_json(wsTeachers, {defval:''});
-    state.teacherHeaders = rows.length ? Object.keys(rows[0]) : ['اسم المعلم','رقم الاوراكل','مادة التدريس','رقم التواصل','الصفوف',...DAYS];
+    const headerRow = readSheetHeaders(wsTeachers);
+    state.teacherHeaders = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : ['اسم المعلم','رقم الاوراكل','مادة التدريس','رقم التواصل','الصفوف',...DAYS]);
     state.teachers = rows.map(r => {
       const t = {...r};
       t._classes = classesFromString(r['الصفوف']);
@@ -2039,71 +2041,6 @@ function printSelectedCards(indices){
   area.innerHTML = pages.map(pageIdx => `
     <div class="print-page">
       ${pageIdx.map(i => buildCardHtml(state.students[i])).join('')}
-    </div>`).join('');
-  setTimeout(() => window.print(), 50);
-}
-
-/* ---------- بطاقات المعلمين (طباعة فقط — بلا إجراءات تواصل، بنفس تخطيط بطاقات الطلاب) ---------- */
-function buildTeacherCardHtml(t){
-  const name = t['اسم المعلم'] || '';
-  const subject = t['مادة التدريس'] || '';
-  const oracle = t['رقم الاوراكل'] || '';
-  const phone = t['رقم التواصل'] || '';
-  const classes = (t._classes || []).slice().sort().map(codeToDisplay).join('، ');
-  const accent = gradeAccent(String((t._classes && t._classes[0]) || ''));
-  const row = (label, val) => val ? `<div style="font-size:8pt;line-height:1.6;"><b>${label}:</b> ${val}</div>` : '';
-  return `
-    <div class="id-card-box" style="border-color:${accent}">
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${accent};padding-bottom:1mm;">
-        <div>
-          <div style="font-size:9.75pt;font-weight:800;">${name}</div>
-          <div style="font-size:8pt;color:#555;">${subject}</div>
-        </div>
-        <div style="background:${accent};color:#fff;border-radius:5px;padding:2px 7px;font-size:7pt;font-weight:700;">بطاقة معلم</div>
-      </div>
-      <div style="flex:1;margin-top:1mm;">
-        ${row('رقم الأوراكل', oracle)}
-        ${row('رقم التواصل', phone)}
-        ${row('الصفوف', classes)}
-      </div>
-      <div style="font-size:6pt;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:0.5mm;">${state.schoolInfo['اسم المدرسة']||''}</div>
-    </div>`;
-}
-function openTeacherCardsModal(){
-  if(!state.teachers.length){ alert('لا يوجد معلمون مسجّلون بعد.'); return; }
-  window._teacherCardIndices = state.teachers.map((t,i)=>i);
-  const body = document.getElementById('teacherCardsModalBody');
-  body.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-      <span style="font-size:13px;color:var(--ink-soft)">${state.teachers.length} معلم</span>
-      <button class="btn btn-primary" onclick="printSelectedTeacherCards(window._teacherCardIndices)">🖨️ طباعة كل البطاقات</button>
-    </div>
-    <div style="max-height:420px;overflow-y:auto;">
-      <table class="grid-table" style="text-align:right;width:100%">
-        <thead><tr><th>المعلم</th><th>المادة</th><th>الصفوف</th><th></th></tr></thead>
-        <tbody>
-          ${state.teachers.map((t,i) => `<tr>
-              <td style="text-align:right">${t['اسم المعلم']||''}</td>
-              <td>${t['مادة التدريس']||''}</td>
-              <td>${(t._classes||[]).slice().sort().map(codeToDisplay).join('، ')}</td>
-              <td style="white-space:nowrap"><button class="btn" style="padding:4px 8px;font-size:11.5px" onclick="printSingleTeacherCard(${i})" title="طباعة بطاقة هذا المعلم">🖨️</button></td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal('teacherCardsModal')">إغلاق</button>
-    </div>`;
-  document.getElementById('teacherCardsModal').classList.add('open');
-}
-function printSingleTeacherCard(idx){ printSelectedTeacherCards([idx]); }
-function printSelectedTeacherCards(indices){
-  const area = document.getElementById('printTeacherCardsArea');
-  const pages = [];
-  for(let i = 0; i < indices.length; i += 8) pages.push(indices.slice(i, i+8));
-  area.innerHTML = pages.map(pageIdx => `
-    <div class="print-page">
-      ${pageIdx.map(i => buildTeacherCardHtml(state.teachers[i])).join('')}
     </div>`).join('');
   setTimeout(() => window.print(), 50);
 }

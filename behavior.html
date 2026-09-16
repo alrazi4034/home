@@ -972,7 +972,7 @@ function processRows(rows, fname, sheetName, rosterRows){
 
   allRecords = rows.map((r,i)=>({
     id: map.id!=null ? r[map.id] : (i+1),
-    studentName: map.studentName ? String(r[map.studentName]||'').trim() : '',
+    studentName: map.studentName ? parseStudentEntry(String(r[map.studentName]||'').trim()).name : '',
     grade: map.grade ? String(r[map.grade]||'').trim() : '',
     section: map.section ? String(r[map.section]!=null? r[map.section]:'').trim() : '',
     period: map.period ? String(r[map.period]||'').trim() : '',
@@ -1489,7 +1489,10 @@ function generateOverlayForm(formKey, ctx, records, noticeType){
 }
 
 /* ================= Parent communication (WhatsApp link + QR + call) ================= */
-function getStudentRoster(name){ return roster.find(x=>x.studentName===name) || null; }
+function getStudentRoster(name){
+  const target = normalizeAr(name);
+  return roster.find(x => normalizeAr(x.studentName) === target) || null;
+}
 function getStudentPhone(name){ const r=getStudentRoster(name); return r && r.phone ? r.phone : ''; }
 
 function buildQrSvg(text){
