@@ -46,6 +46,8 @@
   .brand-text .subtitle-sub{font-size:10.5px;color:var(--ink-soft);margin:2px 0 0;}
   .topbar-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink);font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s;white-space:nowrap;}
+  .link-btn{font-size:15px;color:var(--ink);border:1px solid var(--line);padding:8px 12px;border-radius:6px;background:#fff;transition:.15s;font-family:inherit;cursor:pointer;line-height:1;}
+  .link-btn:hover{background:var(--bg);}
   .btn:hover{background:var(--bg);border-color:var(--plum);}
   .btn.primary{background:var(--plum);border-color:var(--plum);color:#fff;}
   .btn.primary:hover{background:#3B74F0;}
@@ -318,7 +320,7 @@
 <header class="topbar">
   <div class="topbar-inner">
     <label class="brand-logo" title="تحميل شعار المدرسة">
-      <img id="logo1Img">
+      <img id="logo1Img" onclick="event.stopPropagation();event.preventDefault();location.href='index.html'" style="cursor:pointer">
       <input type="file" id="logo1Input" accept="image/*">
     </label>
     <div class="brand-text" onclick="location.href='index.html'" style="cursor:pointer" title="الرجوع إلى الرئيسية">
@@ -333,7 +335,8 @@
     <div class="topbar-actions">
       <button class="btn primary" id="openSettingsBtn">⚙ التقويم الأكاديمي</button>
       <button class="btn" id="openAddEventBtn">＋ إضافة حدث</button>
-      <button class="btn" id="btnAutoLinkFile" style="display:none;">🔗 ربط ملف تلقائي (JSON)</button>
+      <button class="link-btn" id="linkBtn" title="ربط ملف مشترك تلقائياً (قراءة وكتابة تلقائية)" style="display:none;">🔗</button>
+      <button class="link-btn" id="unlinkBtn" title="فك الربط التلقائي" style="display:none;">✖</button>
       <button class="btn" id="openDataMenuBtn">📁 البيانات</button>
       <input type="file" id="importFileInput" accept="application/json,.json" multiple>
     </div>
@@ -1597,7 +1600,8 @@ async function clearHandleFromDB(){
   }catch(e){}
 }
 
-const autoLinkBtn = document.getElementById('btnAutoLinkFile');
+const linkBtn = document.getElementById('linkBtn');
+const unlinkBtn = document.getElementById('unlinkBtn');
 const autoLinkStatusEl = document.getElementById('autoLinkStatus');
 function setAutoLinkStatus(text, isError){
   if(!autoLinkStatusEl) return;
@@ -1607,6 +1611,14 @@ function setAutoLinkStatus(text, isError){
 function fmtNow(){
   const d = new Date();
   return pad2(d.getHours())+':'+pad2(d.getMinutes())+' — '+pad2(d.getDate())+'/'+pad2(d.getMonth()+1);
+}
+/* 🔗 لا يوجد ربط بعد (يفتح منتقي ملفات) — 🔄 مرتبط ويملك الصلاحية (نقرة = تحديث فوري) —
+   🔒 يحتاج إعادة تفعيل (الصلاحية انتُزعت، مثلاً بعد إغلاق المتصفح) — بضغطة واحدة (Allow) يرجع لأيقونة
+   التحديث. زر ✖ مستقل لفك الربط نهائياً، يظهر فقط عند وجود ربط — نفس آلية ملف اندكس بالضبط. */
+function setLinkBtn(icon, title){
+  if(!linkBtn) return;
+  linkBtn.textContent = icon;
+  linkBtn.title = title;
 }
 
 async function writeToLinkedFile(){
@@ -1655,6 +1667,10 @@ function startAutoRefreshTimer(){
   if(!linkedHandle) return;
   autoRefreshTimer = setInterval(() => readFromLinkedFile(false), AUTO_REFRESH_MINUTES * 60 * 1000);
 }
+function stopAutoRefreshTimer(){
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = null;
+}
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible' && linkedHandle) readFromLinkedFile(false);
 });
@@ -1672,7 +1688,8 @@ async function pickAndLinkJsonFile(){
     if(perm !== 'granted'){ setAutoLinkStatus('لم تُمنح صلاحية الكتابة.', true); return; }
     linkedHandle = handle;
     await saveHandleToDBInternal(handle);
-    autoLinkBtn.textContent = '🔄 مرتبط — تحديث الآن';
+    setLinkBtn('🔄', 'تحديث الآن');
+    if(unlinkBtn) unlinkBtn.style.display = '';
     await readFromLinkedFile(true);
     startAutoRefreshTimer();
   }catch(err){
@@ -1682,43 +1699,65 @@ async function pickAndLinkJsonFile(){
   }
 }
 
+async function onLinkBtnClick(){
+  if(!fsApiSupported){ await pickAndLinkJsonFile(); return; }
+  if(linkedHandle){
+    // تحديث/إعادة تفعيل — يطلب الصلاحية فقط، بدون فتح منتقي ملفات جديد
+    try{
+      let perm = await linkedHandle.queryPermission({mode:'readwrite'});
+      if(perm !== 'granted'){
+        perm = await linkedHandle.requestPermission({mode:'readwrite'});
+        if(perm !== 'granted'){ setAutoLinkStatus('⚠️ لم تُمنح الصلاحية.', true); return; }
+        setLinkBtn('🔄', 'تحديث الآن');
+        startAutoRefreshTimer();
+      }
+      await readFromLinkedFile(false);
+    }catch(err){
+      setAutoLinkStatus('❌ تعذّر تحديث الملف المرتبط: ' + err.message, true);
+    }
+    return;
+  }
+  await pickAndLinkJsonFile();
+}
+
+async function onUnlinkBtnClick(){
+  await clearHandleFromDB();
+  linkedHandle = null;
+  stopAutoRefreshTimer();
+  if(unlinkBtn) unlinkBtn.style.display = 'none';
+  setLinkBtn('🔗', 'ربط ملف مشترك تلقائياً (قراءة وكتابة تلقائية)');
+  setAutoLinkStatus('تم فك الربط التلقائي. اختر ملفاً من جديد للمتابعة.');
+}
+
 async function initAutoLinkOnLoad(){
-  if(!fsApiSupported || !autoLinkBtn) return;
-  autoLinkBtn.style.display = 'inline-flex';
+  if(!fsApiSupported || !linkBtn) return;
+  linkBtn.style.display = 'inline-flex';
   const handle = await loadHandleFromDB();
   if(!handle) return;
   linkedHandle = handle;
   try{
     const perm = await handle.queryPermission({mode:'readwrite'});
     if(perm === 'granted'){
-      autoLinkBtn.textContent = '🔄 مرتبط — تحديث الآن';
+      setLinkBtn('🔄', 'تحديث الآن');
+      if(unlinkBtn) unlinkBtn.style.display = '';
       await readFromLinkedFile(false);
       startAutoRefreshTimer();
     } else {
-      autoLinkBtn.textContent = '🔓 إعادة تفعيل الربط التلقائي';
+      // الصلاحية انتُزعت (مثلاً بعد إغلاق المتصفح) — الأيقونة تتحول لقفل، وبضغطة واحدة (Allow) ترجع لأيقونة التحديث
+      setLinkBtn('🔒', 'اضغط للسماح (Allow) وإعادة تفعيل الربط');
+      if(unlinkBtn) unlinkBtn.style.display = '';
       setAutoLinkStatus('اضغط الزر لإعادة تفعيل الربط بالملف المحفوظ.');
     }
-  }catch(e){}
+  }catch(e){ console.warn(e); }
 }
 
-if(autoLinkBtn){
+if(linkBtn){
   if(!fsApiSupported){
-    autoLinkBtn.style.display = 'none';
+    linkBtn.style.display = 'none';
+    if(unlinkBtn) unlinkBtn.style.display = 'none';
   } else {
-    autoLinkBtn.addEventListener('click', async () => {
-      if(linkedHandle){
-        const perm = await linkedHandle.queryPermission({mode:'readwrite'});
-        if(perm !== 'granted'){
-          const reqPerm = await linkedHandle.requestPermission({mode:'readwrite'});
-          if(reqPerm !== 'granted'){ setAutoLinkStatus('لم تُمنح الصلاحية.', true); return; }
-          autoLinkBtn.textContent = '🔄 مرتبط — تحديث الآن';
-          startAutoRefreshTimer();
-        }
-        await readFromLinkedFile(false);
-      } else {
-        await pickAndLinkJsonFile();
-      }
-    });
+    linkBtn.addEventListener('click', onLinkBtnClick);
+    if(unlinkBtn) unlinkBtn.addEventListener('click', onUnlinkBtnClick);
     initAutoLinkOnLoad();
   }
 }
