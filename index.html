@@ -25,6 +25,17 @@
     --glow: rgba(37,99,235,.35);
   }
 
+  /* تمييز بصري لوضع المعلم بدرجة بيج صحراوي — بيج مباشر + خط علوي مميز حتى يكون واضح بلا لبس */
+  body.role-teacher{
+    --bg: #F0E4C8;
+    --bg-alt: #E6D5A8;
+    --card: #FFFBF0;
+    --line: #D9C48F;
+    background: #F0E4C8 !important;
+    border-top: 6px solid #C9A227;
+  }
+  body.role-teacher header{ background: #FFFBF0 !important; }
+
   *{box-sizing:border-box; margin:0; padding:0;}
   html{scroll-behavior:smooth;}
   body{
@@ -331,6 +342,7 @@
   /* إظهار عناصر خاصة بالمعلم فقط له */
   body.role-admin .teacher-only{ display:none !important; }
   body.role-teacher #switchAdminBtn{ display:inline-flex !important; }
+  body.role-admin #switchTeacherBtn{ display:inline-flex !important; }
   /* وضع القراءة فقط لبيانات المدرسة عند دخول المعلم */
   body.role-teacher.readonly-data #managementView input,
   body.role-teacher.readonly-data #managementView select,
@@ -340,10 +352,7 @@
   body.role-teacher.readonly-data #managementView button:not(.tab):not(.back-home-btn){
     display:none !important;
   }
-  body.role-teacher.readonly-data #linkBtn,
-  body.role-teacher.readonly-data #unlinkBtn,
-  body.role-teacher.readonly-data #saveToLinkBtn,
-  body.role-teacher.readonly-data #exportBtn{
+  body.role-teacher.readonly-data #saveToLinkBtn{
     display:none !important;
   }
 </style>
@@ -427,6 +436,16 @@
     pendingRole = 'admin';
     document.getElementById('gateInput').focus();
   };
+  window.showTeacherLoginPrompt = function(){
+    overlay.classList.remove('hidden');
+    document.getElementById('gateStep1').style.display = 'none';
+    document.getElementById('gateStep2').classList.add('active');
+    document.getElementById('gateRoleLabel').textContent = '🧑‍🏫 دخول معلم';
+    document.getElementById('gateMsg').textContent = '';
+    document.getElementById('gateInput').value = '';
+    pendingRole = 'teacher';
+    document.getElementById('gateInput').focus();
+  };
 })();
 </script>
 
@@ -440,6 +459,7 @@
     </div>
     <div class="h-actions">
       <button class="btn" id="switchAdminBtn" onclick="showAdminLoginPrompt()" style="display:none;">🧑‍💼 دخول كإداري</button>
+      <button class="btn" id="switchTeacherBtn" onclick="showTeacherLoginPrompt()" style="display:none;">🧑‍🏫 دخول كمعلم</button>
       <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
       <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة" onclick="onLinkBtnClick()">🔗 ربط تلقائي</button>
       <button class="link-btn" id="refreshNowBtn" title="التحقق من تحديثات بالملف المرتبط الآن" onclick="manualRefreshNow()" style="display:none;">🔄 تحديث الآن</button>
@@ -464,7 +484,7 @@
       <a class="card admin-only" href="./attendance.html" target="_blank">
         <span class="card-link-badge" title="رابط تسجيل الحضور" onclick="event.stopPropagation();event.preventDefault();window.open('https://forms.cloud.microsoft/r/38easMEkWi','_blank')">🔗</span>
         <span class="icon">📋</span>
-        <h3>الحضور</h3>
+        <h3>متابعة حضور الطلبة</h3>
         <p>تسجيل ومتابعة حضور وغياب الطلاب يومياً</p>
       </a>
 
@@ -477,7 +497,7 @@
       <a class="card admin-only" href="./behavior.html" target="_blank">
         <span class="card-link-badge" title="رابط تسجيل مخالفة سلوكية" onclick="event.stopPropagation();event.preventDefault();window.open('https://forms.cloud.microsoft/r/M2K32AaKUA','_blank')">🔗</span>
         <span class="icon">⚠️</span>
-        <h3>المخالفات السلوكية</h3>
+        <h3>متابعة المخالفات السلوكية</h3>
         <p>تتبع السلوك وإصدار النماذج الرسمية</p>
       </a>
 
@@ -512,13 +532,13 @@
         <p>رابط مباشر لرفع اسم نجم الأسبوع</p>
       </a>
 
-      <a class="card" href="./nojoom.html" target="_blank">
+      <a class="card teacher-only" href="./nojoom.html" target="_blank">
         <span class="icon">⭐</span>
         <h3>نجوم مدرستي</h3>
         <p>نظام مكافآت وتحفيز الطلاب</p>
       </a>
 
-      <a class="card" href="./play_learn.html" target="_blank">
+      <a class="card teacher-only" href="./play_learn.html" target="_blank">
         <span class="icon">🎲</span>
         <h3>التعلم باللعب</h3>
         <p>أنشطة وألعاب تعليمية تفاعلية للطلاب</p>
@@ -569,6 +589,10 @@
   </div>
 
   <div class="panel active" id="panel-info">
+    <div class="classes-block-head" style="margin-bottom:10px;">
+      <h3 style="margin:0;">بيانات المدرسة</h3>
+      <button class="btn admin-only" id="infoEditBtn" onclick="toggleInfoEdit()">✏️ تعديل</button>
+    </div>
     <div class="form-grid" id="infoForm"></div>
     <div class="classes-block">
       <div class="classes-block-head">
@@ -602,6 +626,7 @@
     <div id="adminStatsBox"></div>
     <div class="toolbar">
       <span style="font-size:13px;color:var(--ink-soft)">الإداريون والموظفون</span>
+      <button class="btn" id="adminsEditBtn" onclick="toggleAdminsEdit()">✏️ تعديل</button>
       <button class="btn" onclick="addAdminRow()">+ إضافة موظف</button>
     </div>
     <div class="table-wrap"><table id="adminsTable"></table></div>
@@ -1106,20 +1131,32 @@ function renderAll(){
 }
 
 /* ---------- بيانات المدرسة ---------- */
+state._infoEditMode = state._infoEditMode === undefined ? false : state._infoEditMode;
+function toggleInfoEdit(){
+  state._infoEditMode = !state._infoEditMode;
+  renderInfo();
+}
 function renderInfo(){
   const box = document.getElementById('infoForm');
   box.innerHTML = '';
+  const editing = state._infoEditMode && !document.body.classList.contains('role-teacher');
+  const btn = document.getElementById('infoEditBtn');
+  if(btn) btn.textContent = editing ? '💾 إنهاء التعديل' : '✏️ تعديل';
   state.infoHeaders.filter(h => h !== 'صفوف المدرسة').forEach(h => {
     const wrap = document.createElement('div');
     wrap.className = 'field';
-    wrap.innerHTML = `<label>${h}</label><input value="${state.schoolInfo[h] ?? ''}">`;
-    wrap.querySelector('input').addEventListener('input', e => { state.schoolInfo[h] = e.target.value; });
+    if(editing){
+      wrap.innerHTML = `<label>${h}</label><input value="${state.schoolInfo[h] ?? ''}">`;
+      wrap.querySelector('input').addEventListener('input', e => { state.schoolInfo[h] = e.target.value; });
+    } else {
+      wrap.innerHTML = `<label>${h}</label><div style="padding:9px 2px;font-weight:600;">${state.schoolInfo[h] || '—'}</div>`;
+    }
     box.appendChild(wrap);
   });
   const map = classesToMap(state.schoolClasses);
   const grades = Object.keys(map).sort();
   document.getElementById('schoolClassesBox').innerHTML = grades.length
-    ? grades.map(g => map[g].sort().map(s => `<span class="chip">${g}/${s}</span>`).join('')).join('')
+    ? grades.map(g => map[g].sort().map(s => `<span class="chip" style="background:${gradeAccentSoft(g)};color:${gradeAccent(g)};font-weight:700;">${g}/${s}</span>`).join('')).join('')
     : '<span style="color:var(--ink-soft);font-size:13px;">لا توجد صفوف بعد — اضغط "تعديل الصفوف"</span>';
 }
 
@@ -1896,12 +1933,17 @@ function buildCardHtml(s){
   const name = s['اسم الطالب'] || s['NAME IN ARABIC'] || '';
   const cls = codeToDisplay(String(s['الصف']||''));
   const accent = gradeAccent(String(s['الصف']||''));
-  const row = (label, val) => val ? `<div style="font-size:8pt;line-height:1.45;direction:ltr;text-align:left;"><b>${label}:</b> ${val}</div>` : '';
+  const styledVal = (val) => String(val||'').split('').map(ch => {
+    if(/[0-9]/.test(ch)) return `<span style="color:#7A0C0C;font-weight:700;">${ch}</span>`;
+    if(/[A-Z]/.test(ch)) return `<b>${ch}</b>`;
+    return ch;
+  }).join('');
+  const row = (label, val) => val ? `<div style="font-size:8pt;line-height:1.45;direction:ltr;text-align:left;"><b>${label}:</b> ${styledVal(val)}</div>` : '';
   return `
     <div class="id-card-box" style="border-color:${accent}">
       <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${accent};padding-bottom:1mm;">
         <div>
-          <div style="font-size:10.5pt;font-weight:800;">${name}</div>
+          <div style="font-size:9.75pt;font-weight:800;">${name}</div>
           <div style="font-size:8pt;color:#555;">الصف: ${cls}</div>
         </div>
         <div style="background:${accent};color:#fff;border-radius:5px;padding:2px 7px;font-size:7pt;font-weight:700;">حسابات الطالب</div>
@@ -1931,13 +1973,32 @@ function printSelectedCards(indices){
 
 
 const JOB_TITLES = ['مديرة المدرسة','رئيس وحدة الشؤون الاكاديمية','رئيس وحدة شؤون الطلاب','رئيس وحدة شؤون الخدمات','المرشد الاكاديمي'];
+function jobOrderIndex(job){
+  const i = JOB_TITLES.indexOf(job||'');
+  return i === -1 ? JOB_TITLES.length : i;
+}
+state._adminsEditMode = state._adminsEditMode === undefined ? false : state._adminsEditMode;
+function toggleAdminsEdit(){
+  state._adminsEditMode = !state._adminsEditMode;
+  renderAdmins();
+}
 function renderAdmins(){
   renderAdminStats();
   const table = document.getElementById('adminsTable');
   if(!state.adminHeaders.length){ table.innerHTML=''; return; }
-  let html = '<thead><tr>' + state.adminHeaders.map(h=>`<th>${h}</th>`).join('') + '<th></th></tr></thead><tbody>';
-  state.admins.forEach((a, i) => {
+  const editing = state._adminsEditMode;
+  const editBtn = document.getElementById('adminsEditBtn');
+  if(editBtn) editBtn.textContent = editing ? '💾 إنهاء التعديل' : '✏️ تعديل';
+  const order = state.admins.map((a,i) => i).sort((x,y) => {
+    const ox = jobOrderIndex(state.admins[x]['الوظيفة']), oy = jobOrderIndex(state.admins[y]['الوظيفة']);
+    if(ox !== oy) return ox - oy;
+    return (state.admins[x]['اسم الموظف']||'').localeCompare(state.admins[y]['اسم الموظف']||'', 'ar');
+  });
+  let html = '<thead><tr>' + state.adminHeaders.map(h=>`<th>${h}</th>`).join('') + (editing ? '<th></th>' : '') + '</tr></thead><tbody>';
+  order.forEach(i => {
+    const a = state.admins[i];
     html += '<tr>' + state.adminHeaders.map(h => {
+      if(!editing) return `<td>${a[h] ?? '—'}</td>`;
       if(h === 'الوظيفة'){
         const val = a[h] ?? '';
         const known = JOB_TITLES.includes(val);
@@ -1947,7 +2008,7 @@ function renderAdmins(){
         return `<td><select onchange="handleAdminJobChange(${i}, this)">${opts}</select></td>`;
       }
       return `<td><input value="${a[h] ?? ''}" oninput="state.admins[${i}]['${h}']=this.value"></td>`;
-    }).join('') + `<td><button class="btn btn-danger" onclick="state.admins.splice(${i},1);renderAdmins()">حذف</button></td></tr>`;
+    }).join('') + (editing ? `<td><button class="btn btn-danger" onclick="state.admins.splice(${i},1);renderAdmins()">حذف</button></td>` : '') + '</tr>';
   });
   table.innerHTML = html + '</tbody>';
 }
@@ -1960,31 +2021,22 @@ function handleAdminJobChange(i, sel){
   }
   state.admins[i]['الوظيفة'] = sel.value;
 }
-function addAdminRow(){ const row={}; state.adminHeaders.forEach(h=>row[h]=''); state.admins.push(row); renderAdmins(); }
+function addAdminRow(){ const row={}; state.adminHeaders.forEach(h=>row[h]=''); state.admins.push(row); state._adminsEditMode = true; renderAdmins(); }
 
-state._adminStatsCollapsed = state._adminStatsCollapsed === undefined ? true : state._adminStatsCollapsed;
-function toggleAdminStats(){ state._adminStatsCollapsed = !state._adminStatsCollapsed; renderAdminStats(); }
 function renderAdminStats(){
   const box = document.getElementById('adminStatsBox');
   if(!box) return;
   if(!state.admins.length){ box.innerHTML=''; return; }
-  const collapsed = state._adminStatsCollapsed;
   const byJob = {};
   state.admins.forEach(a => { const j = a['الوظيفة'] || 'غير محدد'; byJob[j] = (byJob[j]||0)+1; });
-  const jobChips = Object.keys(byJob).sort().map((j,i) => `<span class="class-chip" style="background:${shadeColor('#2563EB', i*18-18)}">${j} — ${byJob[j]}</span>`).join('');
   box.innerHTML = `
     <div class="stats-panel">
-      <div class="stats-head" onclick="toggleAdminStats()">
+      <div class="stats-head" style="cursor:default;">
         <h3>📊 إحصائية الإداريين والموظفين</h3>
-        <span class="stats-arrow">${collapsed?'▸':'▾'}</span>
       </div>
       <div class="stats-summary-row">
         <div class="stats-summary-card"><b>${state.admins.length}</b><span>إجمالي الموظفين</span></div>
         <div class="stats-summary-card"><b>${Object.keys(byJob).length}</b><span>عدد المسمّيات الوظيفية</span></div>
-      </div>
-      <div class="stats-body" style="display:${collapsed?'none':'block'}">
-        <div class="stats-grade-title">التوزيع حسب الوظيفة</div>
-        <div>${jobChips}</div>
       </div>
     </div>`;
 }
@@ -2070,8 +2122,9 @@ function renderTeacherStats(){
   });
   const gaps = [...new Set([...noClasses, ...noSchedule])];
   const activeSubj = state._teacherSubjectFilter || '';
-  const allChip = `<span class="class-chip" style="cursor:pointer;background:${!activeSubj ? '#059669' : shadeColor('#059669', 40)}" onclick="filterTeachersBySubject('')">الكل — ${state.teachers.length}</span>`;
-  const subjectChips = allChip + Object.keys(bySubject).sort().map((sj,i) => `<span class="class-chip" style="cursor:pointer;background:${sj === activeSubj ? '#059669' : shadeColor('#059669', i*14-14)}" onclick="filterTeachersBySubject('${sj.replace(/'/g,"\\'")}')">${subjectIcon(sj)} ${sj} — ${bySubject[sj]}</span>`).join('');
+  const orderedSubjects = Object.keys(bySubject).sort((a,b) => subjectOrderIndex(a) - subjectOrderIndex(b));
+  const allChip = `<span class="class-chip" style="cursor:pointer;background:${!activeSubj ? 'var(--primary)' : '#94a3b8'}" onclick="filterTeachersBySubject('')">الكل — ${state.teachers.length}</span>`;
+  const subjectChips = allChip + orderedSubjects.map(sj => `<span class="class-chip" style="cursor:pointer;background:${subjectColor(sj)};${sj === activeSubj ? 'outline:3px solid #222;' : ''}" onclick="filterTeachersBySubject('${sj.replace(/'/g,"\\'")}')">${subjectIcon(sj)} ${sj} — ${bySubject[sj]}</span>`).join('');
   box.innerHTML = `
     <div class="stats-panel">
       <div class="stats-head" onclick="toggleTeacherStats()">
@@ -2084,11 +2137,18 @@ function renderTeacherStats(){
         <div class="stats-summary-card"><b>${Object.keys(bySubject).length}</b><span>عدد المواد</span></div>
         <div class="stats-summary-card" style="${gaps.length?'background:rgba(220,38,38,0.1)':''}"><b style="${gaps.length?'color:var(--danger)':''}">${gaps.length}</b><span>معلمون ببيانات ناقصة</span></div>
       </div>
-      <div class="stats-body" style="display:${collapsed?'none':'block'}">
-        <div class="stats-grade-title">التوزيع حسب المادة — اضغط على مادة لعرض معلميها فقط</div>
-        <div>${subjectChips}</div>
-      </div>
+      <div class="stats-body" style="display:${collapsed?'none':'block'}"></div>
+    </div>
+    <div style="margin:10px 0 16px;">
+      <div class="stats-grade-title">التوزيع حسب المادة — اضغط على مادة لعرض معلميها فقط</div>
+      <div>${subjectChips}</div>
     </div>`;
+}
+/* لون مميز لكل مادة — ثابت حسب ترتيب المادة في القائمة */
+const SUBJECT_PALETTE = ['#0EA5E9','#059669','#D97706','#7C3AED','#DC2626','#0891B2','#65A30D','#DB2777','#EA580C','#4F46E5','#0D9488','#B91C1C','#475569','#9333EA','#16A34A'];
+function subjectColor(subject){
+  const i = subjectOrderIndex(subject);
+  return SUBJECT_PALETTE[i % SUBJECT_PALETTE.length];
 }
 function filterTeachersBySubject(subj){
   state._teacherSubjectFilter = subj;
@@ -2131,7 +2191,13 @@ function renderTeachers(){
   box.innerHTML = '';
   const subjFilter = state._teacherSubjectFilter || '';
   let shown = 0;
-  state.teachers.forEach((t, ti) => {
+  const order = state.teachers.map((t,i) => i).sort((a,b) => {
+    const oa = subjectOrderIndex(state.teachers[a]['مادة التدريس']), ob = subjectOrderIndex(state.teachers[b]['مادة التدريس']);
+    if(oa !== ob) return oa - ob;
+    return (state.teachers[a]['اسم المعلم']||'').localeCompare(state.teachers[b]['اسم المعلم']||'', 'ar');
+  });
+  order.forEach(ti => {
+    const t = state.teachers[ti];
     if(!t._classes) t._classes = classesFromString(t['الصفوف']);
     DAYS.forEach(d => { if(!t['_'+d]) t['_'+d] = Array(8).fill('0'); });
     if(t._editing === undefined) t._editing = false;
@@ -2307,7 +2373,7 @@ function buildMasterScheduleTableHtml(forPrint){
     const subjectDisplay = forPrint ? abbrevSubject(subject) : subject;
     const sepStyle = (prevSubject !== null && subject !== prevSubject) ? `border-top:3px solid ${SEP_COLOR};` : '';
     prevSubject = subject;
-    tbody += `<tr style="${sepStyle}"><td style="text-align:right;white-space:nowrap;"><b>${t['اسم المعلم']||''}</b><br><span style="font-size:11px;color:var(--ink-soft)">${subjectDisplay}</span></td><td style="text-align:center;font-weight:700">${teacherLoad(t)}</td>`;
+    tbody += `<tr style="${sepStyle}"><td style="text-align:right;white-space:nowrap;"><b>${subjectDisplay}</b> <span style="font-size:10px;color:var(--ink-soft)">(${t['اسم المعلم']||''})</span></td><td style="text-align:center;font-weight:700">${teacherLoad(t)}</td>`;
     DAYS.forEach((d,di) => {
       const count = d === 'الجمعة' ? 4 : 8;
       const arr = t['_'+d] || Array(8).fill('0');
@@ -2416,8 +2482,8 @@ function openPrintWindow(title, bodyHtml){
     .sched-grid .gcell { border-bottom:1px solid #999; border-left:1px solid #999; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; padding:2px; text-align:center; min-width:0; min-height:0; }
     .sched-grid .ghead, .sched-grid .gcorner { background:#1a1a1a; color:#fff; font-weight:700; font-size:10px; }
     .sched-grid .gday { background:#f3f3f3; font-weight:800; font-size:11px; }
-    .g-main { font-weight:800; font-size:11px; line-height:1.2; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .g-sub { font-size:9px; color:#333; line-height:1.15; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
+    .g-main { font-weight:800; font-size:14px; line-height:1.2; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .g-sub { font-size:12px; color:#333; line-height:1.15; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
 
     /* جدول المدرسة الكامل — عرض أعمدة ثابت بغض النظر عن طول محتوى الخلية */
     table.ptbl-fixed { table-layout:fixed; width:100%; border-collapse:collapse; }
@@ -2511,7 +2577,7 @@ function buildClassPrintPage(cls, slotMap, logoSrc, schoolName){
       if(p >= maxP){ cells.push('<div class="gcell" style="background:#eee"></div>'); continue; }
       const slot = slotMap[cls+'|'+d+'|'+p];
       cells.push(slot
-        ? `<div class="gcell"><span class="g-main">${abbrevSubject(slot.subject)}</span><span class="g-sub">${slot.teacher}</span></div>`
+        ? `<div class="gcell"><span class="g-main">${subjectIcon(slot.subject)} ${abbrevSubject(slot.subject)}</span><span class="g-sub">${slot.teacher}</span></div>`
         : '<div class="gcell"></div>');
     }
     return { label: d, cells };
@@ -2523,7 +2589,7 @@ function buildClassPrintPage(cls, slotMap, logoSrc, schoolName){
       ${logoSrc ? `<img src="${logoSrc}" alt="شعار المدرسة">` : ''}
       <div class="ph-titles">
         <div class="ph-school">${schoolName}</div>
-        <div class="ph-teacher" style="color:${accent}">جدول الصف ${codeToDisplay(cls)}</div>
+        <div class="ph-teacher" style="color:${accent};font-size:38px;">جدول الصف ${codeToDisplay(cls)}</div>
       </div>
       <div class="ph-load" style="background:${soft};color:${accent}">${codeToDisplay(cls)}</div>
     </div>
@@ -2895,11 +2961,13 @@ async function initAutoLink(){
     const perm = await handle.queryPermission({mode:'readwrite'});
     if(perm === 'granted'){
       idxSetLinkBtn('🔄', 'تحديث الآن');
+      document.getElementById('unlinkBtn').style.display = '';
       await readHandleAndLoad(handle);
       startAutoRefreshTimer();
     } else {
-      idxSetLinkBtn('🔓', 'اضغط لإعادة تفعيل الربط بالملف المحفوظ');
-      setStatus('🔗 يوجد ملف مرتبط سابقاً — اضغط زر "🔓" لإعادة تفعيله (نقرة واحدة، ثم لن يُطلب منك ذلك مجدداً).');
+      // الصلاحية انتُزعت (مثلاً بعد إغلاق المتصفح) — الأيقونة تتحول لقفل، وبضغطة واحدة (Allow) ترجع لأيقونة التحديث
+      idxSetLinkBtn('🔒', 'اضغط للسماح (Allow) وإعادة تفعيل الربط');
+      document.getElementById('unlinkBtn').style.display = '';
     }
   }catch(e){ console.warn(e); }
 }
