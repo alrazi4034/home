@@ -460,13 +460,12 @@
     <div class="h-actions">
       <button class="btn" id="switchAdminBtn" onclick="showAdminLoginPrompt()" style="display:none;">🧑‍💼 دخول كإداري</button>
       <button class="btn" id="switchTeacherBtn" onclick="showTeacherLoginPrompt()" style="display:none;">🧑‍🏫 دخول كمعلم</button>
-      <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
-      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة" onclick="onLinkBtnClick()">🔗 ربط تلقائي</button>
-      <button class="link-btn" id="refreshNowBtn" title="التحقق من تحديثات بالملف المرتبط الآن" onclick="manualRefreshNow()" style="display:none;">🔄 تحديث الآن</button>
-      <button class="link-btn" id="unlinkBtn" title="فك الربط" onclick="onUnlinkBtnClick()" style="display:none;">✖ فك الربط</button>
+      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة تلقائياً (قراءة وكتابة تلقائية)" onclick="onLinkBtnClick()">🔗</button>
+      <button class="link-btn" id="unlinkBtn" title="فك الربط التلقائي" onclick="onUnlinkBtnClick()" style="display:none;">✖</button>
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
-      <button class="btn btn-primary" id="saveToLinkBtn" onclick="saveToLinkedFile()" style="display:none;">💾 حفظ في الملف المرتبط</button>
+      <button class="btn btn-primary" id="saveToLinkBtn" title="حفظ التعديلات في الملف المرتبط" onclick="saveToLinkedFile()" style="display:none;">💾 حفظ</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
+      <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
     </div>
   </header>
   <div class="status" id="statusLine">لم يتم تحميل أي ملف بيانات بعد.</div>
@@ -2687,8 +2686,7 @@ function afterWorkbookLoaded(fileName, handle, buf){
   if(handle){
     document.getElementById('saveToLinkBtn').style.display = '';
     document.getElementById('unlinkBtn').style.display = '';
-    document.getElementById('refreshNowBtn').style.display = '';
-    document.getElementById('linkBtn').textContent = '🔗 إعادة ربط';
+    idxSetLinkBtn('🔄', 'تحديث الآن');
     startAutoRefreshTimer();
   }
 }
