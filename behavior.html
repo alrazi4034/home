@@ -214,8 +214,11 @@
   @media (max-width:520px){ .comm-cards{grid-template-columns:1fr;} }
   .comm-card{border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
   .comm-card h4{margin:0 0 8px;font-size:12.5px;color:var(--plum);font-family:'El Messiri',sans-serif;font-weight:700;}
-  .comm-qr{width:170px;height:170px;margin:0 auto 8px;background:#fff;padding:6px;border-radius:8px;border:1px solid var(--line);}
+  .comm-qr{width:170px;height:170px;margin:0 auto 8px;background:#fff;padding:6px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;}
   .comm-qr svg{width:100%;height:100%;display:block;}
+  #commQrFullscreenModal{background:rgba(16,32,63,.95);cursor:zoom-out;}
+  #commQrFullscreenContent{background:#fff;padding:24px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+  #commQrFullscreenContent svg{width:min(80vw,80vh);height:min(80vw,80vh);display:block;}
   .comm-card .comm-text{font-size:10.5px;color:var(--ink-soft);max-height:70px;overflow:auto;text-align:right;background:#FAF7F5;border-radius:6px;padding:6px 8px;margin-bottom:8px;}
   .comm-card a.comm-link{display:inline-block;font-size:12px;font-weight:700;color:#fff;background:#25D366;padding:6px 14px;border-radius:999px;text-decoration:none;}
 
@@ -525,6 +528,11 @@
         <button class="btn small" id="btnCommClose">إغلاق</button>
       </div>
     </div>
+  </div>
+
+  <!-- ===== نافذة تكبير رمز QR لملء الشاشة (كما في ملف الحضور) ===== -->
+  <div class="modal-overlay no-print" id="commQrFullscreenModal">
+    <div id="commQrFullscreenContent"></div>
   </div>
 
   <div class="modal-overlay no-print" id="warningModal">
@@ -1493,17 +1501,31 @@ function openCommunicationModal(ctx, data){
       ${messages.map(m=>`
         <div class="comm-card">
           <h4>${m.title}</h4>
-          <div class="comm-qr">${buildQrSvg(waLink(phone, m.text))}</div>
+          <div class="comm-qr" title="اضغط لتكبير الرمز">${buildQrSvg(waLink(phone, m.text))}</div>
           <div class="comm-text">${m.text.replace(/\n/g,'<br>')}</div>
           <a class="comm-link" target="_blank" rel="noopener" href="${waLink(phone, m.text)}">فتح واتساب مباشرة ↗</a>
         </div>`).join('')}
     </div>
-    <p class="report-note" style="margin-top:12px;">امسح رمز QR بهاتف ولي الأمر أو اضغط "فتح واتساب مباشرة" لإرسال الرسالة الجاهزة مباشرة.</p>
+    <p class="report-note" style="margin-top:12px;">امسح رمز QR بهاتف ولي الأمر (اضغط عليه لتكبيره إن كان صغيرًا)، أو اضغط "فتح واتساب مباشرة" لإرسال الرسالة الجاهزة مباشرة.</p>
   `;
   document.getElementById('commModal').style.display='flex';
 }
 document.getElementById('btnCommClose').addEventListener('click', ()=> document.getElementById('commModal').style.display='none');
 document.getElementById('commModal').addEventListener('click', (e)=>{ if(e.target.id==='commModal') document.getElementById('commModal').style.display='none'; });
+
+/* ---------- تكبير رمز QR ليملأ الشاشة (يظهر بوضوح أكثر عند التصوير) — كما في ملف الحضور ---------- */
+const commQrFullscreenModal = document.getElementById('commQrFullscreenModal');
+const commQrFullscreenContent = document.getElementById('commQrFullscreenContent');
+document.getElementById('commModalBody').addEventListener('click', (e)=>{
+  const qrBox = e.target.closest('.comm-qr');
+  if(!qrBox) return;
+  const svg = qrBox.querySelector('svg');
+  if(!svg) return;
+  commQrFullscreenContent.innerHTML = '';
+  commQrFullscreenContent.appendChild(svg.cloneNode(true));
+  commQrFullscreenModal.style.display = 'flex';
+});
+commQrFullscreenModal.addEventListener('click', () => commQrFullscreenModal.style.display = 'none');
 
 /* ================= Entity context ================= */
 function activeEntityContext(){
