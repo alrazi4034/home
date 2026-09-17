@@ -1497,11 +1497,13 @@ function getStudentPhone(name){ const r=getStudentRoster(name); return r && r.ph
 
 function buildQrSvg(text){
   try{
-    const qr = qrcode(0, 'M');
+    const qr = qrcode(0, 'L');
     qr.addData(text);
     qr.make();
     return qr.createSvgTag({cellSize:6, margin:8, scalable:true});
-  }catch(e){ return '<div style="font-size:11px;color:#B23A3A;padding:10px;">تعذّر إنشاء رمز QR</div>'; }
+  }catch(e){
+    return '<div style="font-size:11px;color:#B23A3A;padding:14px 10px;line-height:1.6;">تعذّر إنشاء رمز QR لأن الرسالة طويلة جداً.<br>استخدم زر "فتح واتساب مباشرة" أدناه بدلاً من ذلك.</div>';
+  }
 }
 function waLink(phone, text){ return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(text); }
 
@@ -1515,7 +1517,6 @@ function openCommunicationModal(ctx, data){
   const lah = genderWord('له','لها');
 
   const messages = [
-    { key:'summon', title:'📣 استدعاء ولي الأمر', text: studentSummonMessage(ctx.label, latest ? buildViolationSentence(latest) : '') },
     { key:'violation', title:'📝 إرسال مخالفة مسجلة', text: latest ? `السلام عليكم، نفيدكم بتسجيل مخالفة سلوكية على ${ibn} ${ctx.label} بتاريخ ${fmtDate(latest.date||new Date())}:\n${latest.type||''} (${latest.degree||''}).\nنأمل المتابعة والتوجيه.\n${SCHOOL_NAME}` : 'لا توجد مخالفة مسجلة لإرسالها.' },
     { key:'report', title:'📊 تقرير بالمخالفات', text: `السلام عليكم، إجمالي المخالفات المسجلة على ${ibn} ${ctx.label} حتى تاريخه: ${fmt(agg.total)} مخالفة (منها ${fmt(severeCount)} من الدرجة الثالثة أو الرابعة).\nللاطلاع على التفاصيل الكاملة يرجى التواصل مع إدارة المدرسة.\n${SCHOOL_NAME}` },
     { key:'warning', title:'⚠️ إنذار', text: `السلام عليكم، هذا إنذار بخصوص السلوك المتكرر ${lah==='له'?'لابنكم':'لابنتكم'} ${ctx.label} والذي سجّل ${fmt(agg.total)} مخالفة حتى الآن.\nنأمل التواصل العاجل مع المرشد الأكاديمي ${ADVISOR_NAME} لمتابعة الأمر ومراجعة السجل والتوقيع عليه.\n${SCHOOL_NAME}` },
@@ -1526,6 +1527,9 @@ function openCommunicationModal(ctx, data){
     <div class="comm-phone-bar">
       <span>📱 رقم ولي أمر الطالب <b>${ctx.label}</b></span>
       <a href="tel:+${phone}">📞 ${phone}</a>
+    </div>
+    <div style="margin-bottom:14px;">
+      <button class="btn small primary" id="btnCommSummon">📣🗓️ تحديد موعد وإرسال استدعاء</button>
     </div>
     <div class="comm-cards">
       ${messages.map(m=>`
@@ -1538,6 +1542,7 @@ function openCommunicationModal(ctx, data){
     </div>
     <p class="report-note" style="margin-top:12px;">امسح رمز QR بهاتف ولي الأمر (اضغط عليه لتكبيره إن كان صغيرًا)، أو اضغط "فتح واتساب مباشرة" لإرسال الرسالة الجاهزة مباشرة.</p>
   `;
+  document.getElementById('btnCommSummon').onclick = ()=> promptAndSendSummon(ctx.label);
   document.getElementById('commModal').style.display='flex';
 }
 document.getElementById('btnCommClose').addEventListener('click', ()=> document.getElementById('commModal').style.display='none');
@@ -1558,17 +1563,29 @@ document.getElementById('commModalBody').addEventListener('click', (e)=>{
 /* ================= تفاصيل مخالفات الطالب (قبل الطباعة) + إرسال واتساب لكل مخالفة/مجموعة/استدعاء ================= */
 /* نص الاستدعاء الموحّد المستخدم في كل مكان بالتطبيق (اللوحة والنافذة الجانبية)، بنفس روح
    نماذج الاستدعاء الرسمية: يبدأ بالاحترام والوقائع لا بالاتهام، ويوضح هدف اللقاء والشراكة مع الأسرة. */
-function studentSummonMessage(studentName, focusText){
+function studentSummonMessage(studentName, meetDate, meetTime){
   const ibn = genderWord('ابنكم','ابنتكم');
   const hu = genderWord('استقراره','استقرارها');
-  const focus = focusText ? `لمناقشة ${focusText}` : 'لمناقشة ملاحظة سلوكية تم رصدها';
+  const when = meetDate ? `بتاريخ ${meetDate}${meetTime? (' الساعة '+meetTime) : ''}` : '';
   return `السلام عليكم، نحن شركاء في دعم الطالب.
 ولي أمر الطالب/ة ${studentName} المحترم،
-حرصاً على مصلحة ${ibn} ودعم ${hu} السلوكي والتعليمي، نود دعوتكم للقاء فريق المدرسة ${focus}، والاستماع إلى وجهة نظركم، ومراجعة المعلومات ذات الصلة بصورة موضوعية.
-يهدف اللقاء إلى فهم الظروف المحيطة بالحالة وتحديد الإجراء التربوي المناسب، والاتفاق معكم على أية متابعة مشتركة تدعم الطالب وتحد من تكرار السلوك وفق الإجراءات المعتمدة.
-نؤكد أن حضوركم يمثل جزءاً مهماً من نجاح خطة المتابعة، وأن المدرسة والأسرة شريكان في دعم الطالب وتحقيق مصلحته.
-شاكرين تعاونكم وتفهمكم.
+حرصاً على مصلحة ${ibn} ودعم ${hu} السلوكي والتعليمي، نود دعوتكم للقاء فريق المدرسة${when ? (' '+when) : ''}.
+يهدف اللقاء لفهم الظروف وتحديد الإجراء المناسب بالتعاون معكم، فالمدرسة والأسرة شريكان في دعم الطالب.
+شاكرين تعاونكم.
 ${ADVISOR_NAME} - المرشد الأكاديمي - ${SCHOOL_NAME}`;
+}
+/* يطلب من المرسل تحديد موعد اللقاء (تاريخ ووقت) قبل توليد رسالة الاستدعاء، ثم يعرضها مباشرة
+   (QR + رابط مباشر) عبر نافذة التواصل المشتركة. */
+function defaultMeetingDateStr(){
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+}
+function promptAndSendSummon(studentName){
+  const date = prompt('تاريخ اللقاء المقترح مع ولي الأمر:', defaultMeetingDateStr());
+  if(date === null) return;
+  const time = prompt('وقت اللقاء (مثال: 10:00 صباحاً):', '');
+  if(time === null) return;
+  openSingleWaMessage(studentName, '📣 استدعاء ولي الأمر', studentSummonMessage(studentName, date.trim(), time.trim()));
 }
 function singleViolationWAMessage(studentName, r){
   const ibn = genderWord('ابنكم','ابنتكم');
@@ -1638,7 +1655,7 @@ function openStudentDetailModal(ctx, data){
     ${phone ? `<div class="comm-phone-bar"><span>📱 رقم ولي الأمر</span><a href="tel:+${phone}">📞 ${phone}</a></div>`
             : `<div class="note-box">⚠️ لا يوجد رقم تواصل مسجّل لهذا الطالب — أضِف رقمه في شيت "قائمة الطلاب" أو "بيانات المدرسة" لتفعيل إرسال واتساب.</div>`}
     <div class="btnrow" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">
-      <button class="btn small primary" id="btnSdSummon" ${phone?'':'disabled'}>📣 استدعاء ولي الأمر</button>
+      <button class="btn small primary" id="btnSdSummon" ${phone?'':'disabled'}>📣🗓️ تحديد موعد وإرسال استدعاء</button>
       <button class="btn small" id="btnSdSendSelected" ${phone?'':'disabled'}>📩 إرسال عن المخالفات المحددة ✓</button>
     </div>
     <div class="table-scroll" style="max-height:280px;">
@@ -1647,10 +1664,7 @@ function openStudentDetailModal(ctx, data){
     </div>`;
 
   if(phone){
-    document.getElementById('btnSdSummon').onclick = ()=>{
-      const focus = recs[0] ? buildViolationSentence(recs[0]) : '';
-      openSingleWaMessage(ctx.label, '📣 استدعاء ولي الأمر', studentSummonMessage(ctx.label, focus));
-    };
+    document.getElementById('btnSdSummon').onclick = ()=> promptAndSendSummon(ctx.label);
     document.getElementById('btnSdSendSelected').onclick = ()=>{
       const idxs = Array.from(document.querySelectorAll('.sd-check:checked')).map(cb=>parseInt(cb.dataset.idx,10));
       if(!idxs.length){ alert('اختر مخالفة واحدة على الأقل من الجدول (علامة ✓).'); return; }
