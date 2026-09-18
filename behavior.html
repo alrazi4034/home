@@ -19,7 +19,7 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',sans-serif;line-height:1.6;}
+  body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',sans-serif;line-height:1.6;padding:0 2.5%;box-sizing:border-box;}
   .wrap{max-width:1400px;margin:0 auto;padding:0 22px;}
 
   header.topbar{background:var(--panel);color:var(--ink);padding:16px 0;border-bottom:1px solid var(--line);}
@@ -72,6 +72,12 @@
   .filter-label{font-size:11px;font-weight:700;color:var(--ink-soft);}
   .chip-row{display:flex;flex-wrap:wrap;gap:5px;max-width:360px;}
   .chip{padding:5px 12px;border-radius:0;border:1px solid var(--line);background:#fff;font-size:11.5px;cursor:pointer;color:var(--ink);user-select:none;transition:.12s;}
+  .term-week-chips{display:flex;flex-direction:column;gap:6px;}
+  .term-week-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .term-week-line-label{font-size:11px;font-weight:700;color:var(--ink-soft);border-inline-start:3px solid transparent;padding-inline-start:6px;}
+  .term-week-chip{padding:4px 11px;border:1.5px solid var(--chip-c,var(--line));background:#fff;color:var(--chip-c,var(--ink));font-size:11.5px;cursor:pointer;user-select:none;transition:.12s;font-weight:600;}
+  .term-week-chip:hover{background:color-mix(in srgb, var(--chip-c,#888) 12%, #fff);}
+  .term-week-chip.active{background:var(--chip-c,var(--plum));color:#fff;}
   .chip:hover{border-color:var(--plum);}
   .chip.active{background:var(--plum);border-color:var(--plum);color:#fff;}
   .chip.small-chip{font-size:10.5px;padding:4px 9px;}
@@ -105,6 +111,9 @@
 
   .overview-grid{display:grid;gap:16px;}
   .row-2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;}
+  .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  .row-60-40{grid-template-columns:1.5fr 1fr;}
+  @media (max-width:1100px){ .row-3{grid-template-columns:1fr;} }
   .row-2.balanced{grid-template-columns:1fr 1fr;}
   .people-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .detail-grid{display:flex;flex-direction:column;}
@@ -127,9 +136,9 @@
   @media (max-width:1200px){ .kpi-grid{grid-template-columns:repeat(3,1fr);} }
   @media (max-width:700px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
   .kpi{background:var(--panel);box-shadow:0 2px 8px rgba(61,38,71,.06);border-radius:0;padding:11px 13px;border-inline-start:4px solid var(--plum);min-height:96px;}
-  .kpi .k-label{font-size:10.3px;color:var(--ink-soft);font-weight:500;margin-bottom:3px;}
+  .kpi .k-label{font-size:11.8px;color:var(--ink-soft);font-weight:600;margin-bottom:3px;}
   .kpi .k-value{font-family:'El Messiri',sans-serif;font-weight:800;font-size:19px;color:var(--plum);}
-  .kpi .k-sub{font-size:9.8px;color:var(--ink-soft);margin-top:2px;}
+  .kpi .k-sub{font-size:11px;color:var(--ink-soft);margin-top:2px;}
   .kpi.sev1{border-inline-start-color:var(--sev1);} .kpi.sev2{border-inline-start-color:var(--sev2);}
   .kpi.sev3{border-inline-start-color:var(--sev3);} .kpi.sev4{border-inline-start-color:var(--sev4);}
   .kpi.plain{border-inline-start-color:var(--plum);}
@@ -144,7 +153,11 @@
   .kpi-hero{text-align:center;}
   .kpi-hero .k-label, .kpi-hero .k-sub{text-align:center;}
   .kpi-hero .k-value{font-size:34px;}
-  .kpi-stat .k-value{font-size:15.5px;line-height:1.3;}
+  .kpi-stat{text-align:center;}
+  .kpi-stat .k-label, .kpi-stat .k-sub{text-align:center;}
+  .kpi-stat .k-value{font-size:16.5px;line-height:1.3;}
+  .kpi-stat-small .k-value{font-size:12.5px;line-height:1.35;}
+
 
   .kpi-tab-card{background:var(--panel);box-shadow:0 2px 10px rgba(61,38,71,.07);border-radius:0;padding:16px 18px;}
   .kpi-tab-card .kt-code{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#9CA98C;font-weight:700;}
@@ -168,6 +181,22 @@
   table.data-table tr:last-child td{border-bottom:none;}
   .table-scroll{max-height:420px;overflow:auto;}
   #panel-detail .table-scroll{max-height:65vh;}
+  #detailSortRow th{cursor:pointer;user-select:none;white-space:nowrap;}
+  #detailSortRow th:hover{background:var(--panel);}
+  .sort-arrow{font-size:9px;color:var(--ink-soft);}
+  .detail-filter-row th{padding:3px 6px;}
+  .col-filter{width:100%;box-sizing:border-box;font-size:10.5px;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font-family:inherit;}
+  .timeline-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10.8px;color:var(--ink-soft);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  .timeline-legend span{display:flex;align-items:center;gap:5px;}
+  .timeline-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .sv-timeline-card{border:1px solid var(--line);border-inline-start:4px solid var(--plum);padding:10px 14px;margin-bottom:10px;}
+  .sv-timeline-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+  .sv-timeline-name{font-weight:800;font-size:13.5px;color:var(--ink);}
+  .sv-timeline-meta{font-size:10.8px;color:var(--ink-soft);}
+  .sv-timeline-count{font-size:11px;color:#fff;background:var(--plum);padding:2px 10px;border-radius:12px;font-weight:700;}
+  .sv-timeline-track{position:relative;height:34px;background:linear-gradient(to left, var(--line) 0, var(--line) 100%) left 0 center/100% 2px no-repeat;margin:0 6px;}
+  .sv-timeline-dot{position:absolute;top:50%;transform:translate(50%,-50%);width:13px;height:13px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15);cursor:default;}
+  .sv-timeline-range{display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink-soft);margin-top:4px;}
   .pill{display:inline-block;padding:2px 9px;border-radius:0;font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;}
   .clickable-name{cursor:pointer;color:var(--plum);font-weight:600;}
   .clickable-name:hover{text-decoration:underline;}
@@ -259,14 +288,18 @@
 
   .daily-nav-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel);box-shadow:0 2px 10px rgba(61,38,71,.07);border-radius:14px;padding:14px 18px;}
   .daily-cards-wrap{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
-  .daily-card{border:1px solid var(--line);border-inline-start:4px solid var(--plum);background:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
-  .daily-card-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
-  .daily-card-name{font-weight:800;font-size:14px;color:var(--ink);}
-  .daily-card-grade{font-size:11.5px;color:var(--ink-soft);margin-inline-start:6px;}
-  .daily-card-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--ink-soft);}
-  .daily-card-meta b{color:var(--ink);font-weight:700;}
-  .daily-card-desc{font-size:12.5px;color:var(--ink);background:var(--panel);padding:8px 10px;line-height:1.7;}
-  .daily-card-prior{font-size:10.5px;color:#fff;background:var(--berry);padding:2px 9px;white-space:nowrap;}
+  .daily-card{border:1.5px solid var(--line);border-radius:0;background:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:7px;}
+  .daily-card-name{font-weight:800;font-size:14.5px;color:var(--ink);display:block;}
+  .daily-card-grade{font-size:11.5px;color:var(--ink-soft);display:block;margin-top:1px;}
+  .daily-card-badges{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0;}
+  .daily-badge{font-size:10.8px;padding:3px 11px;border-radius:14px;background:var(--panel);color:var(--ink);border:1px solid var(--line);white-space:nowrap;}
+  .daily-badge-degree{color:#fff;border:none;font-weight:700;}
+  .daily-card-violation{font-weight:800;font-size:13px;color:var(--ink);}
+  .daily-card-desc{font-size:12px;color:var(--ink-soft);line-height:1.6;}
+  .daily-card-context{font-size:10.8px;color:var(--ink-soft);background:var(--panel);padding:5px 10px;border-radius:6px;}
+  .daily-num-kpi{display:flex;align-items:center;justify-content:center;gap:8px;min-height:unset;padding:9px 10px;border-inline-start-width:4px;}
+  .daily-num-label{font-size:11px;color:var(--ink-soft);font-weight:600;}
+  .daily-num-value{font-family:'El Messiri',sans-serif;font-weight:800;font-size:18px;}
   .daily-date-display{font-family:'El Messiri',sans-serif;font-weight:800;font-size:15px;color:var(--plum);flex:1 1 auto;text-align:center;min-width:180px;}
 
   @media print{ body{background:#fff;} }
@@ -314,7 +347,7 @@
   <nav class="tabs-nav no-print" id="tabsNav">
     <div class="tabs-nav-inner">
       <button class="tab-btn active" data-target="panel-overview">📊 نظرة عامة</button>
-      <button class="tab-btn" data-target="panel-daily">📅 التقارير</button>
+      <button class="tab-btn" data-target="panel-daily">📅 التقارير اليومية</button>
       <button class="tab-btn" data-target="panel-recs">💡 التوصيات</button>
       <button class="tab-btn" data-target="panel-detail">📋 السجل التفصيلي</button>
       <button class="tab-btn" data-target="panel-people">👥 الطلاب</button>
@@ -325,7 +358,7 @@
     <div class="filters-row">
       <div class="filter-group" id="termWeekGroup" style="display:none;">
         <span class="filter-label">الأسبوع الدراسي</span>
-        <select id="selTermWeek"></select>
+        <div class="term-week-chips" id="termWeekChips"></div>
       </div>
       <div class="filter-group other-filter-group">
         <span class="filter-label">الصف الدراسي</span>
@@ -355,7 +388,7 @@
           <input type="date" id="dateTo">
         </div>
       </div>
-      <div class="filter-group grow other-filter-group">
+      <div class="filter-group grow other-filter-group" id="searchFilterGroup">
         <span class="filter-label">بحث (نوع المخالفة / اسم الطالب / رقم الطالب)</span>
         <input type="text" id="searchBox" placeholder="اكتب كلمة للبحث...">
       </div>
@@ -383,10 +416,20 @@
       <div class="overview-grid">
         <div class="kpi-grid" id="kpi-grid"></div>
 
-        <div class="card">
-          <h3><span>عدد المخالفات حسب الصف والشعبة <span class="hint">— اضغط عموداً للفلترة</span></span></h3>
-          <div class="class-legend" id="classLegend"></div>
-          <div class="chart-holder"><canvas id="chartClass"></canvas></div>
+        <div class="row-3">
+          <div class="card">
+            <h3><span>عدد المخالفات حسب الصف والشعبة <span class="hint">— اضغط عموداً للفلترة</span></span></h3>
+            <div class="class-legend" id="classLegend"></div>
+            <div class="chart-holder"><canvas id="chartClass"></canvas></div>
+          </div>
+          <div class="card">
+            <h3><span>أكثر المعلمين تسجيلاً للمخالفات</span></h3>
+            <div class="chart-holder"><canvas id="chartRecorderBar"></canvas></div>
+          </div>
+          <div class="card">
+            <h3><span>توزيع المخالفات حسب الدرجة</span></h3>
+            <div class="chart-holder"><canvas id="chartDegreeDonut"></canvas></div>
+          </div>
         </div>
 
         <div class="row-2">
@@ -400,19 +443,14 @@
           </div>
         </div>
 
-        <div class="card">
-          <h3><span>أكثر المعلمين تسجيلاً للمخالفات</span></h3>
-          <div class="chart-holder"><canvas id="chartRecorderBar"></canvas></div>
-        </div>
-
-        <div class="row-2">
-          <div class="card">
-            <h3><span>مقارنة المخالفات حسب الحصة الدراسية</span></h3>
-            <div class="chart-holder"><canvas id="chartPeriodBar"></canvas></div>
-          </div>
+        <div class="row-2 row-60-40">
           <div class="card">
             <h3><span>أكثر أنواع المخالفات تكراراً</span></h3>
             <div class="chart-holder"><canvas id="chartTypes"></canvas></div>
+          </div>
+          <div class="card">
+            <h3><span>مقارنة المخالفات حسب الحصة الدراسية</span></h3>
+            <div class="chart-holder"><canvas id="chartPeriodBar"></canvas></div>
           </div>
         </div>
 
@@ -436,15 +474,12 @@
 
     <div class="tab-panel" id="panel-daily">
       <div class="daily-nav-bar">
-        <div class="chip-row" id="reportModeToggle" style="margin:0;">
-          <span class="chip active" data-mode="day">📅 يومي</span>
-          <span class="chip" data-mode="week">🗓️ أسبوعي</span>
-        </div>
         <button class="btn tiny" id="dailyPrev">▶ السابق</button>
         <div class="daily-date-display" id="dailyDateDisplay"></div>
         <button class="btn tiny" id="dailyNext">التالي ◀</button>
         <input type="date" id="dailyDatePicker">
         <button class="btn small primary" id="btnPrintDaily">🖨️ طباعة هذا التقرير</button>
+        <button class="btn small" id="btnSaveDaily">💾 حفظ التقرير</button>
       </div>
       <div class="kpi-grid" id="dailyKpiGrid" style="margin-top:14px;"></div>
       <div class="card" style="margin-top:14px;">
@@ -470,7 +505,26 @@
           <h3><span>السجل التفصيلي (حسب الفلاتر الحالية) <span class="hint">— اضغط اسم الطالب أو المعلم للفلترة</span></span></h3>
           <div class="table-scroll">
             <table class="data-table" id="detailTable">
-              <thead><tr><th>التاريخ</th><th>الطالب</th><th>الصف</th><th>الشعبة</th><th>الدرجة</th><th>نوع المخالفة</th><th>المسجِّل</th></tr></thead>
+              <thead>
+                <tr id="detailSortRow">
+                  <th data-sort-key="date">التاريخ <span class="sort-arrow"></span></th>
+                  <th data-sort-key="studentName">الطالب <span class="sort-arrow"></span></th>
+                  <th data-sort-key="grade">الصف <span class="sort-arrow"></span></th>
+                  <th data-sort-key="section">الشعبة <span class="sort-arrow"></span></th>
+                  <th data-sort-key="degree">الدرجة <span class="sort-arrow"></span></th>
+                  <th data-sort-key="type">نوع المخالفة <span class="sort-arrow"></span></th>
+                  <th data-sort-key="recorder">المسجِّل <span class="sort-arrow"></span></th>
+                </tr>
+                <tr class="detail-filter-row">
+                  <th><input type="text" class="col-filter" data-col="date" placeholder="فلترة..."></th>
+                  <th><input type="text" class="col-filter" data-col="studentName" placeholder="فلترة..."></th>
+                  <th><input type="text" class="col-filter" data-col="grade" placeholder="فلترة..."></th>
+                  <th><input type="text" class="col-filter" data-col="section" placeholder="فلترة..."></th>
+                  <th><input type="text" class="col-filter" data-col="degree" placeholder="فلترة..."></th>
+                  <th><input type="text" class="col-filter" data-col="type" placeholder="فلترة..."></th>
+                  <th><input type="text" class="col-filter" data-col="recorder" placeholder="فلترة..."></th>
+                </tr>
+              </thead>
               <tbody></tbody>
             </table>
           </div>
@@ -479,33 +533,19 @@
     </div>
 
     <div class="tab-panel" id="panel-people">
-      <div class="people-grid">
-        <div class="card">
-          <h3><span>الطلاب الأكثر تكراراً للمخالفات <span class="hint">— اضغط لعرض تقرير الطالب</span></span></h3>
-          <div class="table-scroll">
-            <table class="data-table" id="studentsTable">
-              <thead><tr><th>#</th><th>الطالب</th><th>العدد</th></tr></thead>
-              <tbody></tbody>
-            </table>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          <h3 style="margin:0;"><span>الطلاب الأكثر تكراراً للمخالفات <span class="hint">— مع خط زمني يوضّح توقيت ودرجة كل مخالفة</span></span></h3>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;">
+            <span style="color:var(--ink-soft);">الفترة:</span>
+            <input type="date" id="peopleDateFrom">
+            <span style="color:var(--ink-soft);">إلى</span>
+            <input type="date" id="peopleDateTo">
+            <button class="btn tiny" id="peopleDateReset">الكل</button>
           </div>
         </div>
-        <div class="card">
-          <h3><span>طلاب يُظهرون تحسناً سلوكياً <span class="hint">— انخفاض ملحوظ في آخر 30 يوماً مقارنة بما قبلها</span></span></h3>
-          <div class="table-scroll">
-            <table class="data-table" id="improvedTable">
-              <thead><tr><th>الطالب</th><th>آخر 30 يوماً</th><th>الفترة السابقة</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:14px;">
-        <h3><span>توزيع الطلاب حسب عدد المخالفات <span class="hint">— لرصد الحالات المتكررة (المزمنة)</span></span></h3>
-        <div class="chart-holder short"><canvas id="chartStudentDist"></canvas></div>
-      </div>
-      <div class="card roster-card" id="rosterCard" style="display:none;">
-        <h3><span>الطلاب الذين لم تُسجَّل عليهم أي مخالفة</span></h3>
-        <div class="table-scroll"><ul class="ranked-list" id="rosterList" style="max-height:300px;"></ul></div>
+        <div class="timeline-legend" id="timelineLegend"></div>
+        <div id="topViolatorsTimelineWrap"></div>
       </div>
     </div>
 
@@ -619,6 +659,8 @@ function fmt(n){ return Number(n||0).toLocaleString(AR_LOCALE); }
 function fmtDate(d){ return d.toLocaleDateString(AR_LOCALE,{year:'numeric',month:'short',day:'numeric'}); }
 function fmtDateShort(d){ return d.toLocaleDateString(AR_LOCALE,{month:'short',day:'numeric'}); }
 function isoDate(d){ const z=new Date(d); z.setMinutes(z.getMinutes()-z.getTimezoneOffset()); return z.toISOString().slice(0,10); }
+function ddmmyyyy(d){ const p=n=>String(n).padStart(2,'0'); return p(d.getDate())+'_'+p(d.getMonth()+1)+'_'+d.getFullYear(); }
+function dailyReportFilename(dayDate, count){ return `تقرير_يومي_${ddmmyyyy(dayDate)}_(${count})`; }
 function shortLabel(s){ s=(s||'').trim(); return s.length>55? s.slice(0,55)+'…': s; }
 function degreeIndex(str){ const m=(str||'').match(/^(\d+)/); return m? parseInt(m[1],10)-1 : null; }
 function shortDegreeLabel(str){ return (str||'').replace(/\s*\([^)]*\)\s*$/,'').trim(); }
@@ -657,20 +699,24 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     const fc = document.getElementById('filtersCard');
     if(fc && fc.dataset.loaded === '1'){
       fc.style.display = hideFiltersOn.includes(btn.dataset.target) ? 'none' : 'block';
-      applyOverviewFilterVisibility(btn.dataset.target === 'panel-overview');
+      applyTabFilterVisibility(btn.dataset.target);
     }
     setTimeout(()=> Object.values(charts).forEach(c=> c && c.resize && c.resize()), 30);
   });
 });
-function applyOverviewFilterVisibility(overviewOnly){
+function applyTabFilterVisibility(target){
+  const mode = target==='panel-overview' ? 'overview' : (target==='panel-detail' ? 'detail' : 'full');
+  const termGrp = document.getElementById('termWeekGroup');
+  if(termGrp) termGrp.style.display = (mode==='detail') ? 'none' : 'flex';
   document.querySelectorAll('.other-filter-group').forEach(el=>{
     if(el.id === 'customDateRangeRow'){
-      const sel = document.getElementById('selTermWeek');
-      const isCustom = sel && Array.from(sel.selectedOptions).some(o=>o.value==='custom');
+      if(mode==='detail'){ el.style.display='flex'; return; }
+      const isCustom = filters.selectedWeekKeys && filters.selectedWeekKeys.has('custom');
       el.style.display = isCustom ? 'flex' : 'none';
-    } else {
-      el.style.display = overviewOnly ? 'none' : 'flex';
+      return;
     }
+    if(el.id === 'searchFilterGroup'){ el.style.display = (mode==='overview') ? 'none' : 'flex'; return; }
+    el.style.display = (mode==='full') ? 'flex' : 'none';
   });
 }
 
@@ -1106,7 +1152,7 @@ function showDashboard(){
   fc.dataset.loaded = '1';
   const activeTarget = document.querySelector('.tab-btn.active')?.dataset.target;
   fc.style.display = ['panel-daily','panel-people'].includes(activeTarget) ? 'none' : 'block';
-  applyOverviewFilterVisibility(activeTarget === 'panel-overview');
+  applyTabFilterVisibility(activeTarget);
   document.getElementById('tabContent').style.display = 'block';
   document.getElementById('btnToggleClear').style.display = 'inline-flex';
 }
@@ -1210,17 +1256,17 @@ function buildFilterUI(){
     filters = { grades:new Set(), sections:new Set(), degrees:new Set(), recorder:'', student:'', dateFrom:null, dateTo:null, search:'' };
     document.getElementById('dateFrom').value=''; document.getElementById('dateTo').value=''; document.getElementById('searchBox').value='';
     document.getElementById('chipSevereOnly').classList.remove('active');
-    document.getElementById('selTermWeek').value='all';
+    filters.selectedWeekKeys = new Set(['all']);
     const customRow = document.getElementById('customDateRangeRow');
     if(customRow) customRow.style.display = 'none';
     document.getElementById('termDayChips').innerHTML='';
     persistPlainDateFilter();
     buildFilterUI();
+    rebuildTermFilterUI();
     applyFilters();
   };
 
   rebuildSectionChips();
-  renderRosterPanel();
 }
 
 function rebuildSectionChips(){
@@ -1258,63 +1304,86 @@ function syncChipStates(){
 }
 
 /* ---------- Term week filter UI ---------- */
+const TERM_SEG_COLORS = ['#2563EB','#2F6B4F','#C9A227','#A13A3A','#7C3AED','#0E8F87'];
 function rebuildTermFilterUI(){
   const grp = document.getElementById('termWeekGroup');
   if(!termConfig || !allRecords.length){ grp.style.display='none'; document.getElementById('termDayChips').innerHTML=''; return; }
   grp.style.display='flex';
   const segments = getSegments();
-  const sel = document.getElementById('selTermWeek');
-  sel.multiple = true;
-  sel.size = 6;
-  let html = '<option value="all">كل الفصول</option>';
-  segments.forEach(seg=>{
-    html += `<optgroup label="${seg.label}"><option value="seg:${seg.segIndex}:all">${seg.label} (كامل)</option>`;
-    seg.weeks.forEach(w=>{
-      html += `<option value="seg:${seg.segIndex}:w:${w.localIndex}">الأسبوع ${w.localIndex} (${fmtDate(w.from)} → ${fmtDate(w.to)})${w.isBreak?' — استراحة':''}</option>`;
+  if(!filters.selectedWeekKeys) filters.selectedWeekKeys = new Set(['all']);
+  const box = document.getElementById('termWeekChips');
+
+  const chip = (key, label, color)=> `<span class="term-week-chip${filters.selectedWeekKeys.has(key)?' active':''}" data-key="${key}" style="--chip-c:${color}">${label}</span>`;
+
+  let html = '';
+  if(segments.length <= 1){
+    html += '<div class="term-week-row"><span class="term-week-line-label">الأسبوع:</span>';
+    html += chip('all','الكل','#5F7A57');
+    (segments[0] ? segments[0].weeks : []).forEach(w=>{ html += chip(`seg:${segments[0].segIndex}:w:${w.localIndex}`, String(w.localIndex), '#5F7A57'); });
+    html += chip('custom','🗓️ تخصيص','#5F7A57');
+    html += '</div>';
+  } else {
+    html += '<div class="term-week-row"><span class="term-week-line-label">الأسبوع:</span>';
+    html += chip('all','كل الفصول','#5F7A57');
+    html += chip('custom','🗓️ تخصيص','#5F7A57');
+    html += '</div>';
+    segments.forEach((seg,i)=>{
+      const color = TERM_SEG_COLORS[i % TERM_SEG_COLORS.length];
+      html += `<div class="term-week-row"><span class="term-week-line-label" style="color:${color};border-color:${color}">${seg.label}:</span>`;
+      seg.weeks.forEach(w=>{ html += chip(`seg:${seg.segIndex}:w:${w.localIndex}`, String(w.localIndex), color); });
+      html += '</div>';
     });
-    html += '</optgroup>';
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('.term-week-chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const key = el.dataset.key;
+      const set = filters.selectedWeekKeys;
+      if(key==='all'){ filters.selectedWeekKeys = new Set(['all']); }
+      else if(key==='custom'){ filters.selectedWeekKeys = set.has('custom') ? new Set(['all']) : new Set(['custom']); }
+      else {
+        set.delete('all'); set.delete('custom');
+        if(set.has(key)) set.delete(key); else set.add(key);
+        if(!set.size) set.add('all');
+      }
+      rebuildTermFilterUI();
+    });
   });
-  html += '<option value="custom">🗓️ تخصيص (اختر تاريخاً من - إلى يدوياً)</option>';
-  sel.innerHTML = html;
-  sel.onchange = ()=>{
-    const chosen = Array.from(sel.selectedOptions).map(o=>o.value);
-    document.getElementById('termDayChips').innerHTML='';
-    const isCustom = chosen.includes('custom');
-    const customRow = document.getElementById('customDateRangeRow');
-    if(customRow) customRow.style.display = isCustom ? 'flex' : 'none';
-    if(isCustom){
-      filters.dateFrom = null; filters.dateTo = null;
-      document.getElementById('dateFrom').value = '';
-      document.getElementById('dateTo').value = '';
-    } else if(!chosen.length || chosen.includes('all')){
-      filters.dateFrom = segments[0].start; filters.dateTo = segments[segments.length-1].end;
-      document.getElementById('dateFrom').value = filters.dateFrom? isoDate(filters.dateFrom): '';
-      document.getElementById('dateTo').value = filters.dateTo? isoDate(filters.dateTo): '';
-    } else {
-      let minD = null, maxD = null, singleWeek = null;
-      chosen.forEach(val=>{
-        const parts = val.split(':');
-        const seg = segments.find(s=>String(s.segIndex)===parts[1]);
-        if(!seg) return;
-        if(parts[2]==='all'){
-          if(!minD || seg.weeks[0].from < minD) minD = seg.weeks[0].from;
-          if(!maxD || seg.weeks[seg.weeks.length-1].to > maxD) maxD = seg.weeks[seg.weeks.length-1].to;
-        } else {
-          const w = seg.weeks.find(w=>String(w.localIndex)===parts[3]);
-          if(w){
-            if(!minD || w.from < minD) minD = w.from;
-            if(!maxD || w.to > maxD) maxD = w.to;
-            if(chosen.length===1) singleWeek = w;
-          }
-        }
-      });
-      filters.dateFrom = minD; filters.dateTo = maxD;
-      document.getElementById('dateFrom').value = filters.dateFrom? isoDate(filters.dateFrom): '';
-      document.getElementById('dateTo').value = filters.dateTo? isoDate(filters.dateTo): '';
-      if(singleWeek) renderTermDayChips(singleWeek);
-    }
-    applyFilters();
-  };
+  applyWeekChipSelection(segments);
+}
+function applyWeekChipSelection(segments){
+  const chosen = [...filters.selectedWeekKeys];
+  document.getElementById('termDayChips').innerHTML='';
+  const isCustom = chosen.includes('custom');
+  const customRow = document.getElementById('customDateRangeRow');
+  if(customRow) customRow.style.display = isCustom ? 'flex' : 'none';
+  if(isCustom){
+    filters.dateFrom = null; filters.dateTo = null;
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+  } else if(!chosen.length || chosen.includes('all')){
+    filters.dateFrom = segments[0].start; filters.dateTo = segments[segments.length-1].end;
+    document.getElementById('dateFrom').value = filters.dateFrom? isoDate(filters.dateFrom): '';
+    document.getElementById('dateTo').value = filters.dateTo? isoDate(filters.dateTo): '';
+  } else {
+    let minD = null, maxD = null, singleWeek = null;
+    chosen.forEach(val=>{
+      const parts = val.split(':');
+      const seg = segments.find(s=>String(s.segIndex)===parts[1]);
+      if(!seg) return;
+      const w = seg.weeks.find(w=>String(w.localIndex)===parts[3]);
+      if(w){
+        if(!minD || w.from < minD) minD = w.from;
+        if(!maxD || w.to > maxD) maxD = w.to;
+        if(chosen.length===1) singleWeek = w;
+      }
+    });
+    filters.dateFrom = minD; filters.dateTo = maxD;
+    document.getElementById('dateFrom').value = filters.dateFrom? isoDate(filters.dateFrom): '';
+    document.getElementById('dateTo').value = filters.dateTo? isoDate(filters.dateTo): '';
+    if(singleWeek) renderTermDayChips(singleWeek);
+  }
+  applyFilters();
 }
 function renderTermDayChips(week){
   const box = document.getElementById('termDayChips');
@@ -1898,6 +1967,7 @@ function renderAll(){
   const agg = computeAgg(filtered);
   renderKPIs(agg);
   renderClassChart();
+  renderDegreeDonut(agg);
   renderTrendChart(agg);
   renderSmallMultiples();
   renderPeriodBarChart(agg);
@@ -1905,11 +1975,8 @@ function renderAll(){
   renderTypesChart(agg);
   renderCalendarHeatmap();
   renderTermComparisons();
-  renderStudentsTable(agg);
-  renderImprovedStudents(agg);
-  renderStudentDistribution();
+  renderTopViolatorsTimeline();
   renderDetailTable(filtered);
-  renderRosterPanel();
   renderRecommendationsTab();
   renderDailyReport();
 }
@@ -1948,15 +2015,20 @@ function renderKPIs(agg){
   const grid = document.getElementById('kpi-grid');
   grid.innerHTML = '';
   const refDate = agg.dateMax || new Date();
+  const HERO_COLORS = ['#2563EB','#A13A3A'];
+  const STAT_COLORS = ['#2F6B4F','#C9A227','#3B6FA0','#7C3AED','#D9822B','#0E8F87','#5F7A57','#8A5A44'];
+  let statColorIdx = 0;
 
   const totalCard = document.createElement('div');
   totalCard.className = 'kpi plain kpi-hero';
-  totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات (بعد الفلترة)</div><div class="k-value">${fmt(agg.total)}</div><div class="k-sub">${agg.dateMin&&agg.dateMax? (fmtDate(agg.dateMin)+' ← '+fmtDate(agg.dateMax)) : 'لا توجد تواريخ'}</div>`;
+  totalCard.style.borderInlineStartColor = HERO_COLORS[0];
+  totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات (بعد الفلترة)</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(agg.total)}</div><div class="k-sub">${agg.dateMin&&agg.dateMax? (fmtDate(agg.dateMin)+' ← '+fmtDate(agg.dateMax)) : 'لا توجد تواريخ'}</div>`;
   grid.appendChild(totalCard);
 
   const studentsCard = document.createElement('div');
   studentsCard.className = 'kpi plain kpi-hero';
-  studentsCard.innerHTML = `<div class="k-label">عدد الطلاب المتأثرين</div><div class="k-value">${fmt(agg.uniqueStudents)}</div><div class="k-sub">طالب لديه مخالفة واحدة أو أكثر</div>`;
+  studentsCard.style.borderInlineStartColor = HERO_COLORS[1];
+  studentsCard.innerHTML = `<div class="k-label">عدد الطلاب المتأثرين</div><div class="k-value" style="color:${HERO_COLORS[1]}">${fmt(agg.uniqueStudents)}</div><div class="k-sub">طالب لديه مخالفة واحدة أو أكثر</div>`;
   grid.appendChild(studentsCard);
 
   const monthsData = lastNMonths(filtered, 4, refDate);
@@ -1971,39 +2043,45 @@ function renderKPIs(agg){
   weekCard.innerHTML = `<div class="k-label">آخر 4 أسابيع</div>` + weeksData.map(w=>`<div class="kmi-row"><span>${w.label}</span><span class="kmi-val">${fmt(w.count)}</span></div>`).join('');
   grid.appendChild(weekCard);
 
-  /* ---------- إحصائيات عامة إضافية (8 مربعات) ---------- */
-  const addStat = (label, value, sub)=>{
+  /* ---------- إحصائيات عامة إضافية (8 مربعات، بألوان متناسقة مختلفة) ---------- */
+  const addStat = (label, value, sub, extraClass)=>{
+    const color = STAT_COLORS[statColorIdx % STAT_COLORS.length]; statColorIdx++;
     const c = document.createElement('div');
-    c.className = 'kpi plain kpi-stat';
-    c.innerHTML = `<div class="k-label">${label}</div><div class="k-value">${value}</div>${sub? `<div class="k-sub">${sub}</div>`:''}`;
+    c.className = 'kpi plain kpi-stat' + (extraClass? (' '+extraClass) : '');
+    c.style.borderInlineStartColor = color;
+    c.innerHTML = `<div class="k-label">${label}</div><div class="k-value" style="color:${color}">${value}</div>${sub? `<div class="k-sub">${sub}</div>`:''}`;
     grid.appendChild(c);
   };
 
   if(agg.byStudent.length){
     const [topName, topCount] = agg.byStudent[0];
-    addStat('أكثر طالب تسجيلاً للمخالفات', studentInitials(topName), fmt(topCount)+' مخالفة');
+    addStat('أكثر طالب تسجيلاً للمخالفات', studentInitials3(topName), fmt(topCount)+' مخالفة');
   } else addStat('أكثر طالب تسجيلاً للمخالفات', '—');
 
   const gradeByCount = agg.byGrade.slice().sort((a,b)=>b[1]-a[1]);
   if(gradeByCount.length) addStat('أكثر مرحلة تسجيلاً للمخالفات', gradeByCount[0][0], fmt(gradeByCount[0][1])+' مخالفة');
   else addStat('أكثر مرحلة تسجيلاً للمخالفات', '—');
 
-  const bySection = groupCount(filtered, r=>r.section).sort((a,b)=>b[1]-a[1]);
-  if(bySection.length) addStat('أكثر شعبة تسجيلاً للمخالفات', bySection[0][0], fmt(bySection[0][1])+' مخالفة');
+  // أكثر شعبة: الصف + الشعبة معاً (وليس رقم الشعبة وحده عبر كل الصفوف)
+  const byGradeSection = groupCount(filtered, r=> (r.grade||'—') + ' — ' + (r.section||'—')).sort((a,b)=>b[1]-a[1]);
+  if(byGradeSection.length) addStat('أكثر شعبة تسجيلاً للمخالفات', byGradeSection[0][0], fmt(byGradeSection[0][1])+' مخالفة');
   else addStat('أكثر شعبة تسجيلاً للمخالفات', '—');
 
   const lastRec = filtered.filter(r=>r.date).sort((a,b)=>b.date-a.date)[0];
-  if(lastRec) addStat('آخر مخالفة مسجلة', WEEKDAYS_AR[lastRec.date.getDay()], fmtDate(lastRec.date) + (lastRec.period? (' — '+lastRec.period) : ''));
+  if(lastRec) addStat('آخر مخالفة مسجلة', fmtDate(lastRec.date), WEEKDAYS_AR[lastRec.date.getDay()] + (lastRec.period? (' — '+lastRec.period) : ''));
   else addStat('آخر مخالفة مسجلة', '—');
 
-  if(agg.byType.length) addStat('أكثر مخالفة تكراراً', shortLabel(agg.byType[0][0]), fmt(agg.byType[0][1])+' مرة');
+  if(agg.byType.length) addStat('أكثر مخالفة تكراراً', shortLabel(agg.byType[0][0]), fmt(agg.byType[0][1])+' مرة', 'kpi-stat-small');
   else addStat('أكثر مخالفة تكراراً', '—');
 
-  const dayCounts = {};
-  filtered.forEach(r=>{ if(r.date) dayCounts[r.date.getDay()] = (dayCounts[r.date.getDay()]||0)+1; });
-  const topDayIdx = Object.keys(dayCounts).sort((a,b)=>dayCounts[b]-dayCounts[a])[0];
-  if(topDayIdx!==undefined) addStat('اليوم الأكثر تسجيلاً للمخالفات', WEEKDAYS_AR[topDayIdx], fmt(dayCounts[topDayIdx])+' مخالفة');
-  else addStat('اليوم الأكثر تسجيلاً للمخالفات', '—');
+  // اليوم الأكثر تسجيلاً: تاريخ محدد بعينه (وليس تجميع أيام الأسبوع)
+  const dateCounts = {};
+  filtered.forEach(r=>{ if(r.date){ const k=isoDate(r.date); dateCounts[k]=(dateCounts[k]||0)+1; } });
+  const topDateKey = Object.keys(dateCounts).sort((a,b)=>dateCounts[b]-dateCounts[a])[0];
+  if(topDateKey){
+    const d = new Date(topDateKey+'T00:00:00');
+    addStat('اليوم الأكثر تسجيلاً للمخالفات', fmtDate(d), WEEKDAYS_AR[d.getDay()] + ' — ' + fmt(dateCounts[topDateKey]) + ' مخالفة');
+  } else addStat('اليوم الأكثر تسجيلاً للمخالفات', '—');
 
   const periodByCount = agg.byPeriod.slice().sort((a,b)=>b[1]-a[1]);
   if(periodByCount.length) addStat('الحصة الأكثر تسجيلاً للمخالفات', periodByCount[0][0], fmt(periodByCount[0][1])+' مخالفة');
@@ -2011,6 +2089,11 @@ function renderKPIs(agg){
 
   if(agg.byRecorder.length) addStat('المعلم الأكثر تسجيلاً للمخالفات', agg.byRecorder[0][0], fmt(agg.byRecorder[0][1])+' مخالفة');
   else addStat('المعلم الأكثر تسجيلاً للمخالفات', '—');
+}
+function studentInitials3(name){
+  const parts = (name||'').trim().split(/\s+/).filter(Boolean).slice(0,3);
+  if(!parts.length) return '—';
+  return parts.map(w=>w[0]).join('.') + '.';
 }
 
 function renderClassChart(){
@@ -2056,35 +2139,38 @@ const sliceLabelPlugin = {
   id: 'sliceLabels',
   afterDatasetsDraw(chart){
     const {ctx} = chart;
-    chart.data.datasets.forEach((dataset, i)=>{
-      const meta = chart.getDatasetMeta(i);
-      if(meta.hidden) return;
-      meta.data.forEach((arc, index)=>{
-        const value = dataset.data[index];
-        if(!value) return;
-        const pos = arc.tooltipPosition();
-        ctx.save();
-        ctx.fillStyle = '#fff';
-        ctx.font = "bold 12px 'IBM Plex Sans Arabic'";
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText(String(value), pos.x, pos.y);
-        ctx.restore();
-      });
+    const dataset = chart.data.datasets[0];
+    if(!dataset) return;
+    const total = dataset.data.reduce((s,v)=>s+v,0) || 1;
+    const meta = chart.getDatasetMeta(0);
+    if(meta.hidden) return;
+    meta.data.forEach((arc, index)=>{
+      const value = dataset.data[index];
+      if(!value) return;
+      const pct = Math.round(value/total*100);
+      const pos = arc.tooltipPosition();
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      ctx.font = "bold 11.5px 'IBM Plex Sans Arabic'";
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(`${value} (${pct}%)`, pos.x, pos.y);
+      ctx.restore();
     });
   }
 };
 
-function renderDegreeChart(agg){
-  destroyChart('degree');
-  const ctx = document.getElementById('chartDegree');
-  if(!agg.byDegree.length){ return; }
-  charts.degree = new Chart(ctx, {
+function renderDegreeDonut(agg){
+  destroyChart('degreeDonut');
+  const ctx = document.getElementById('chartDegreeDonut');
+  if(!ctx || !agg.byDegree.length){ return; }
+  const total = agg.total || 1;
+  charts.degreeDonut = new Chart(ctx, {
     type:'doughnut',
-    data:{ labels: agg.byDegree.map(d=>d[0]), datasets:[{ data: agg.byDegree.map(d=>d[1]),
+    data:{ labels: agg.byDegree.map(d=>`${d[0]} — ${d[1]} (${Math.round(d[1]/total*100)}%)`), datasets:[{ data: agg.byDegree.map(d=>d[1]),
       backgroundColor: agg.byDegree.map(d=>{ const i=degreeIndex(d[0]); return i!=null? sevColors[i]||plum : plum; }),
       borderColor:'#fff', borderWidth:2 }] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{position:'bottom', rtl:true, labels:{boxWidth:11,padding:8,font:{size:10.5}}} } },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'58%',
+      plugins:{ legend:{position:'bottom', rtl:true, labels:{boxWidth:11,padding:8,font:{size:10}}} } },
     plugins:[sliceLabelPlugin]
   });
 }
@@ -2260,6 +2346,67 @@ function renderComparisonBox(containerId, labelA, countA, labelB, countB){
     </div>`;
 }
 
+let peopleDateFrom = null, peopleDateTo = null;
+function renderTopViolatorsTimeline(){
+  const wrap = document.getElementById('topViolatorsTimelineWrap');
+  if(!wrap) return;
+  const data = allRecords.filter(r=>{
+    if(peopleDateFrom && (!r.date || r.date < peopleDateFrom)) return false;
+    if(peopleDateTo && (!r.date || r.date > peopleDateTo)) return false;
+    return true;
+  });
+  const agg = computeAgg(data);
+  const legend = document.getElementById('timelineLegend');
+  if(legend){
+    legend.innerHTML = agg.byDegree.map(([lbl])=>{
+      const idx = degreeIndex(lbl); const color = idx!=null? sevColors[idx] : '#8A7F6B';
+      return `<span><i style="background:${color}"></i>${shortDegreeLabel(lbl)}</span>`;
+    }).join('');
+  }
+
+  const top = agg.byStudent.slice(0, 20);
+  if(!top.length){ wrap.innerHTML = '<div class="empty-msg">لا توجد مخالفات ضمن الفترة المحددة</div>'; return; }
+
+  const allDates = data.filter(r=>r.date).map(r=>r.date.getTime());
+  const rangeMin = peopleDateFrom ? peopleDateFrom.getTime() : Math.min(...allDates);
+  const rangeMax = peopleDateTo ? peopleDateTo.getTime() : Math.max(...allDates);
+  const span = Math.max(1, rangeMax - rangeMin);
+
+  wrap.innerHTML = top.map(([name, count])=>{
+    const recs = data.filter(r=> r.studentName===name && r.date).sort((a,b)=>a.date-b.date);
+    if(!recs.length) return '';
+    const first = recs[0], last = recs[recs.length-1];
+    const dots = recs.map(r=>{
+      const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
+      const pct = ((r.date.getTime()-rangeMin)/span)*100;
+      return `<div class="sv-timeline-dot" style="right:${pct}%;background:${color};" title="${fmtDate(r.date)} — ${shortDegreeLabel(r.degree)||'—'}${r.type? (' — '+shortLabel(r.type)) : ''}"></div>`;
+    }).join('');
+    return `<div class="sv-timeline-card">
+      <div class="sv-timeline-head">
+        <span class="sv-timeline-name">${name}</span>
+        <span class="sv-timeline-meta">${(first.grade||'—')}${first.section?(' — '+first.section):''}</span>
+        <span class="sv-timeline-count">${fmt(count)} مخالفة</span>
+      </div>
+      <div class="sv-timeline-track">${dots}</div>
+      <div class="sv-timeline-range"><span>${fmtDate(first.date)}</span><span>${fmtDate(last.date)}</span></div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('peopleDateFrom').addEventListener('change', e=>{
+  peopleDateFrom = e.target.value? new Date(e.target.value): null;
+  renderTopViolatorsTimeline();
+});
+document.getElementById('peopleDateTo').addEventListener('change', e=>{
+  peopleDateTo = e.target.value? new Date(e.target.value): null;
+  renderTopViolatorsTimeline();
+});
+document.getElementById('peopleDateReset').addEventListener('click', ()=>{
+  peopleDateFrom = null; peopleDateTo = null;
+  document.getElementById('peopleDateFrom').value = '';
+  document.getElementById('peopleDateTo').value = '';
+  renderTopViolatorsTimeline();
+});
+
 function renderStudentsTable(agg){
   const body = document.querySelector('#studentsTable tbody');
   body.innerHTML = '';
@@ -2323,12 +2470,48 @@ function renderStudentDistribution(){
   });
 }
 
+let detailSort = { key: null, dir: 1 };
+let detailColFilters = {};
 function renderDetailTable(data){
   const body = document.querySelector('#detailTable tbody');
   body.innerHTML = '';
-  if(!data.length){ body.innerHTML = '<tr><td colspan="7" class="empty-msg">لا توجد سجلات ضمن الفلاتر الحالية</td></tr>'; return; }
-  const rows = data.slice(0, 300);
-  rows.forEach(r=>{
+
+  let rows = data.filter(r=>{
+    return Object.entries(detailColFilters).every(([col,val])=>{
+      if(!val) return true;
+      const cell = col==='date' ? (r.date? fmtDate(r.date) : '') : String(r[col]||'');
+      return cell.toLowerCase().includes(val.toLowerCase());
+    });
+  });
+
+  if(detailSort.key){
+    rows = rows.slice().sort((a,b)=>{
+      let va, vb;
+      if(detailSort.key==='date'){ va = a.date? a.date.getTime() : 0; vb = b.date? b.date.getTime() : 0; }
+      else if(detailSort.key==='degree'){ va = degreeIndex(a.degree); va = va==null? -1 : va; vb = degreeIndex(b.degree); vb = vb==null? -1 : vb; }
+      else { va = String(a[detailSort.key]||''); vb = String(b[detailSort.key]||''); }
+      if(typeof va==='number') return (va-vb)*detailSort.dir;
+      return va.localeCompare(vb,'ar')*detailSort.dir;
+    });
+  }
+
+  document.querySelectorAll('#detailSortRow th').forEach(th=>{
+    const arrow = th.querySelector('.sort-arrow');
+    if(!arrow) return;
+    arrow.textContent = th.dataset.sortKey===detailSort.key ? (detailSort.dir===1?'▲':'▼') : '';
+    th.onclick = ()=>{
+      if(detailSort.key===th.dataset.sortKey) detailSort.dir *= -1;
+      else { detailSort.key = th.dataset.sortKey; detailSort.dir = 1; }
+      renderDetailTable(filtered);
+    };
+  });
+  document.querySelectorAll('.col-filter').forEach(inp=>{
+    inp.oninput = ()=>{ detailColFilters[inp.dataset.col] = inp.value; renderDetailTable(filtered); };
+  });
+
+  if(!rows.length){ body.innerHTML = '<tr><td colspan="7" class="empty-msg">لا توجد سجلات ضمن الفلاتر الحالية</td></tr>'; return; }
+  const limited = rows.slice(0, 300);
+  limited.forEach(r=>{
     const idx = degreeIndex(r.degree);
     const color = idx!=null? sevColors[idx] : '#8A7F6B';
     const tr = document.createElement('tr');
@@ -2355,9 +2538,9 @@ function renderDetailTable(data){
     });
     body.appendChild(tr);
   });
-  if(data.length>300){
+  if(rows.length>300){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="7" class="empty-msg">... وعدد ${fmt(data.length-300)} سجلاً إضافياً غير معروض (استخدم الفلاتر لتضييق النتائج)</td>`;
+    tr.innerHTML = `<td colspan="7" class="empty-msg">... وعدد ${fmt(rows.length-300)} سجلاً إضافياً غير معروض (استخدم الفلاتر لتضييق النتائج)</td>`;
     body.appendChild(tr);
   }
 }
@@ -2450,21 +2633,39 @@ document.getElementById('btnPrintDaily').addEventListener('click', ()=>{
     openPrintWindow(buildWeeklyPrintHTML(weekData, weekStart, weekEnd));
   }
 });
+document.getElementById('btnSaveDaily').addEventListener('click', ()=>{
+  if(!dailyReportDate) initDailyDate();
+  const dayStart = new Date(dailyReportDate); dayStart.setHours(0,0,0,0);
+  const dayEnd = new Date(dailyReportDate); dayEnd.setHours(23,59,59,999);
+  const dayData = recordsMatchingNonDateFilters().filter(r=> r.date && r.date>=dayStart && r.date<=dayEnd);
+  const html = buildDailyPrintHTML(dayData, dayStart);
+  downloadHTML(html, dailyReportFilename(dayStart, dayData.length) + '.html');
+});
 
 function degreeKpiCards(agg){
-  const cards = [{label:'إجمالي المخالفات', value: fmt(agg.total), sub:'ضمن الفلاتر الحالية', cls:'plain'}];
+  const cards = [{label:'إجمالي المخالفات', value: fmt(agg.total), sub:'ضمن الفلاتر الحالية', cls:'plain', color: plum}];
   agg.byDegree.forEach(([label,count])=>{
-    cards.push({label: shortDegreeLabel(label), value: fmt(count), sub:'مخالفة', cls:'plain'});
+    const idx = degreeIndex(label);
+    const color = idx!=null? sevColors[idx] : '#8A7F6B';
+    cards.push({label: shortDegreeLabel(label), value: fmt(count), sub:'مخالفة', cls:'plain', color});
   });
   return cards;
 }
 
-/* عدد مخالفات الطالب المسجّلة قبل هذه المخالفة بالذات (بترتيب التاريخ) — يُستخدم لعرض
-   "إجمالي المخالفات السابقة" في بطاقة التقرير اليومي. */
-function priorViolationCount(rec){
+/* تفاصيل مخالفات الطالب السابقة (قبل هذه المخالفة بالذات) مع توزيعها حسب الدرجة —
+   تُستخدم لعرض سياق مثل "سبقها 4 مخالفات (منها 1 درجة ثالثة و1 درجة رابعة)". */
+function priorViolationBreakdown(rec){
   const history = allRecords.filter(r=> r.studentName===rec.studentName && r.date).sort((a,b)=>a.date-b.date);
   const idx = history.findIndex(r=> r.id===rec.id);
-  return idx>0 ? idx : 0;
+  const prior = idx>0 ? history.slice(0, idx) : [];
+  const byDeg = {};
+  prior.forEach(r=>{ const lbl = shortDegreeLabel(r.degree) || r.degree || '—'; byDeg[lbl] = (byDeg[lbl]||0)+1; });
+  return { count: prior.length, byDeg };
+}
+function formatPriorContext(pb){
+  if(!pb.count) return 'أول مخالفة مسجّلة لهذا الطالب';
+  const parts = Object.entries(pb.byDeg).map(([lbl,c])=> `${fmt(c)} ${lbl}`);
+  return `سبقها ${fmt(pb.count)} مخالفة` + (parts.length? ` (منها ${parts.join(' و')})` : '');
 }
 
 function renderDailyReport(){
@@ -2484,7 +2685,7 @@ function renderDailyReport(){
 
     const dayData = recordsMatchingNonDateFilters().filter(r=> r.date && r.date>=dayStart && r.date<=dayEnd);
     const agg = computeAgg(dayData);
-    document.getElementById('dailyKpiGrid').innerHTML = degreeKpiCards(agg).map(c=>`<div class="kpi ${c.cls}"><div class="k-label">${c.label}</div><div class="k-value">${c.value}</div><div class="k-sub">${c.sub}</div></div>`).join('');
+    document.getElementById('dailyKpiGrid').innerHTML = degreeKpiCards(agg).map(c=>`<div class="kpi daily-num-kpi" style="border-color:${c.color}"><span class="daily-num-label">${c.label}</span><span class="daily-num-value" style="color:${c.color}">${c.value}</span></div>`).join('');
 
     const wrap = document.getElementById('dailyCardsWrap');
     if(!dayData.length){
@@ -2492,22 +2693,21 @@ function renderDailyReport(){
     } else {
       wrap.innerHTML = dayData.map(r=>{
         const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-        const prior = priorViolationCount(r);
-        const details = [r.type, r.notes].filter(Boolean).join(' — ') || 'لا توجد تفاصيل إضافية';
-        return `<div class="daily-card" style="border-inline-start-color:${color}">
-          <div class="daily-card-head">
-            <span><span class="daily-card-name">${r.studentName||'—'}</span><span class="daily-card-grade">${r.grade||'—'}${r.section?(' / '+r.section):''}</span></span>
-            <span style="display:flex;align-items:center;gap:8px;">
-              <span class="daily-card-prior">${prior>0 ? ('سبقها '+fmt(prior)+' مخالفة') : 'أول مخالفة له'}</span>
-              <span class="pill" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span>
-            </span>
+        const pb = priorViolationBreakdown(r);
+        return `<div class="daily-card" style="border-color:${color};border-inline-start-width:4px;">
+          <div>
+            <span class="daily-card-name">${r.studentName||'—'}</span>
+            <span class="daily-card-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
           </div>
-          <div class="daily-card-meta">
-            <span>🕐 التوقيت: <b>${r.period || '—'}</b></span>
-            <span>📍 المكان: <b>${r.location || '—'}</b></span>
-            <span>✍️ سجّلها: <b>${r.recorder || '—'}</b></span>
+          <div class="daily-card-badges">
+            <span class="daily-badge daily-badge-degree" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span>
+            <span class="daily-badge">🕐 ${r.period || '—'}</span>
+            <span class="daily-badge">📍 ${r.location || '—'}</span>
+            <span class="daily-badge">✍️ ${r.recorder || '—'}</span>
           </div>
-          <div class="daily-card-desc">${details}</div>
+          <div class="daily-card-violation">${shortLabel(r.type) || 'مخالفة سلوكية'}</div>
+          <div class="daily-card-desc">${r.notes ? shortLabel(r.notes) : 'لا توجد ملاحظات إضافية'}</div>
+          <div class="daily-card-context">${formatPriorContext(pb)}</div>
         </div>`;
       }).join('');
     }
@@ -2520,7 +2720,7 @@ function renderDailyReport(){
 
     const weekData = recordsMatchingNonDateFilters().filter(r=> r.date && r.date>=weekStart && r.date<=weekEnd);
     const agg = computeAgg(weekData);
-    document.getElementById('dailyKpiGrid').innerHTML = degreeKpiCards(agg).map(c=>`<div class="kpi ${c.cls}"><div class="k-label">${c.label}</div><div class="k-value">${c.value}</div><div class="k-sub">${c.sub}</div></div>`).join('');
+    document.getElementById('dailyKpiGrid').innerHTML = degreeKpiCards(agg).map(c=>`<div class="kpi daily-num-kpi" style="border-color:${c.color}"><span class="daily-num-label">${c.label}</span><span class="daily-num-value" style="color:${c.color}">${c.value}</span></div>`).join('');
 
     const body = document.querySelector('#dailyTable tbody');
     if(!weekData.length){
@@ -2546,20 +2746,47 @@ function renderDailyReport(){
 function buildDailyPrintHTML(data, dayDate){
   const agg = computeAgg(data);
   const now = new Date();
-  const degreeRows = agg.byDegree.map(([l,c])=>`<tr><td>${shortDegreeLabel(l)}</td><td>${fmt(c)}</td></tr>`).join('') || '<tr><td colspan="2">لا توجد بيانات</td></tr>';
-  const detailRows = data.map((r,i)=>{
+  const degreeRows = agg.byDegree.map(([l,c])=>{
+    const idx = degreeIndex(l); const color = idx!=null? sevColors[idx] : '#8A7F6B';
+    return `<tr><td><span class="pill" style="background:${color}">${shortDegreeLabel(l)}</span></td><td>${fmt(c)}</td></tr>`;
+  }).join('') || '<tr><td colspan="2">لا توجد بيانات</td></tr>';
+  const detailCards = data.map(r=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-    return `<tr><td>${i+1}</td><td>${r.studentName||'—'}</td><td>${r.grade||'—'}${r.section?(' / '+r.section):''}</td><td>${r.type||'—'}</td><td><span class="pill" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span></td><td style="font-size:10px;">${violationContext(r)}</td></tr>`;
-  }).join('') || '<tr><td colspan="6">لا توجد مخالفات</td></tr>';
-  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير يومي</title>
-  <style>${REPORT_BASE_CSS}</style></head><body>
+    const pb = priorViolationBreakdown(r);
+    return `<div class="p-daily-card" style="border-color:${color}">
+      <div class="p-daily-name">${r.studentName||'—'} <span class="p-daily-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span></div>
+      <div class="p-daily-badges">
+        <span class="p-badge" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span>
+        <span class="p-badge p-badge-out">🕐 ${r.period||'—'}</span>
+        <span class="p-badge p-badge-out">📍 ${r.location||'—'}</span>
+        <span class="p-badge p-badge-out">✍️ ${r.recorder||'—'}</span>
+      </div>
+      <div class="p-daily-violation">${shortLabel(r.type)||'مخالفة سلوكية'}</div>
+      ${r.notes? `<div class="p-daily-desc">${shortLabel(r.notes)}</div>` : ''}
+      <div class="p-daily-context">${formatPriorContext(pb)}</div>
+    </div>`;
+  }).join('') || '<div class="empty-note">لا توجد مخالفات مسجّلة</div>';
+  const filename = dailyReportFilename(dayDate, agg.total);
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${filename}</title>
+  <style>${REPORT_BASE_CSS}
+    .p-daily-card{border:1.5px solid var(--line);border-inline-start-width:4px;border-radius:0;padding:9px 12px;margin-bottom:8px;break-inside:avoid;}
+    .p-daily-name{font-weight:800;font-size:13px;}
+    .p-daily-grade{font-weight:400;font-size:11px;color:#6B5E50;margin-inline-start:6px;}
+    .p-daily-badges{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0;}
+    .p-badge{font-size:9.5px;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;}
+    .p-badge-out{background:#F2EFE9;color:#3A3226;font-weight:500;}
+    .p-daily-violation{font-weight:800;font-size:11.5px;}
+    .p-daily-desc{font-size:10.5px;color:#6B5E50;margin-top:2px;}
+    .p-daily-context{font-size:9.5px;color:#6B5E50;background:#F7F4EE;padding:3px 8px;border-radius:5px;margin-top:5px;}
+    .empty-note{text-align:center;color:#8A7F6B;padding:20px;}
+  </style></head><body>
   ${buildLetterheadHTML('تقرير يومي')}
   <div class="meta">${schoolMetaLine()}<br>اليوم: ${dayDate.toLocaleDateString(AR_LOCALE,{weekday:'long',year:'numeric',month:'long',day:'numeric'})}<br>تاريخ الإصدار: ${now.toLocaleString(AR_LOCALE)}</div>
   <div class="kpi-row"><div class="kpi-box"><b>${fmt(agg.total)}</b>إجمالي المخالفات</div></div>
   <h2>حسب الدرجة</h2>
   <table><thead><tr><th>الدرجة</th><th>العدد</th></tr></thead><tbody>${degreeRows}</tbody></table>
   <h2>السجل التفصيلي</h2>
-  <table><thead><tr><th>#</th><th>الطالب</th><th>الصف / الشعبة</th><th>نوع المخالفة</th><th>الدرجة</th><th>السياق</th></tr></thead><tbody>${detailRows}</tbody></table>
+  ${detailCards}
   <footer>تقرير أُعدّ آلياً لأغراض المتابعة الداخلية للمدرسة فقط</footer>
   </body></html>`;
 }
