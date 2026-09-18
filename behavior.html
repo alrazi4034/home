@@ -159,6 +159,8 @@
   .kpi-stat-small .k-value{font-size:12.5px;line-height:1.35;}
   .kpi-clickable{cursor:pointer;transition:box-shadow .15s,transform .1s;}
   .kpi-clickable:hover{box-shadow:0 3px 14px rgba(0,0,0,.14);transform:translateY(-1px);}
+  @keyframes kpiFlip{ 0%{transform:rotateY(0deg);} 45%{transform:rotateY(90deg);opacity:.35;} 55%{transform:rotateY(90deg);opacity:.35;} 100%{transform:rotateY(0deg);opacity:1;} }
+  .kpi-flip{animation:kpiFlip .38s ease;transform-style:preserve-3d;}
 
 
   .kpi-tab-card{background:var(--panel);box-shadow:0 2px 10px rgba(61,38,71,.07);border-radius:0;padding:16px 18px;}
@@ -297,7 +299,8 @@
   .daily-nav-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel);box-shadow:0 2px 10px rgba(61,38,71,.07);border-radius:14px;padding:14px 18px;}
   .daily-cards-wrap{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
   .daily-card{border:1.5px solid var(--line);border-radius:0;background:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:7px;}
-  .daily-card-name{font-weight:800;font-size:14.5px;color:var(--ink);}
+  .daily-card-name{font-weight:800;font-size:14.5px;color:var(--ink);cursor:pointer;}
+  .daily-card-name:hover{text-decoration:underline;color:var(--plum);}
   .daily-card-grade{font-size:11.5px;color:var(--ink-soft);white-space:nowrap;}
   .daily-card-nameline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
   .daily-card-badges{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0;}
@@ -676,7 +679,13 @@ function ddmmyyyy(d){ const p=n=>String(n).padStart(2,'0'); return p(d.getDate()
 function dailyReportFilename(dayDate, count){ return `تقرير_يومي_${ddmmyyyy(dayDate)}_(${count})`; }
 function shortLabel(s){ s=(s||'').trim(); return s.length>55? s.slice(0,55)+'…': s; }
 function degreeIndex(str){ const m=(str||'').match(/^(\d+)/); return m? parseInt(m[1],10)-1 : null; }
-function shortDegreeLabel(str){ return (str||'').replace(/\s*\([^)]*\)\s*$/,'').trim(); }
+const DEGREE_WORDS = ['الأولى','الثانية','الثالثة','الرابعة'];
+function shortDegreeLabel(str){
+  const cleaned = (str||'').replace(/\s*\([^)]*\)\s*$/,'').trim();
+  const idx = degreeIndex(cleaned);
+  if(idx!=null && idx>=0 && idx<DEGREE_WORDS.length) return 'الدرجة ' + DEGREE_WORDS[idx];
+  return cleaned;
+}
 function normalizeAr(s){ return (s||'').replace(/[إأآا]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim(); }
 /* يفصل "الاسم (الرقم)" إلى اسم نظيف ورقم — نفس الصيغة المستخدمة في عمود "اسم الطالب" ببيانات
    المدرسة المرتبطة وعمود "اسم ورقم" في ملف الحضور. لو ما فيه رقم بين قوسين، يرجع id فارغ. */
@@ -2025,8 +2034,26 @@ function lastNWeeks(data, n, refDate){
 }
 
 let lastKpiAgg = null;
-let kpiState = { studentExpanded:false, typeIdx:0, lastRecMode:'avg', gradeSevere:false, sectionSevere:false };
+let kpiState = { studentExpanded:false, typeIdx:0, lastRecMode:'avg', gradeSevere:false, sectionSevere:false, totalSevere:false, studentsRepeat:false, timeView:'days', dayMode:'day' };
+let kpiJustFlipped = false;
 function isSevereDegree(str){ const i=degreeIndex(str); return i!=null && i>=2; }
+
+function lastNSchoolDays(data, n, refDate){
+  const days = [];
+  let d = new Date(refDate); d.setHours(0,0,0,0);
+  let guard = 0;
+  while(days.length < n && guard < 60){
+    const dow = d.getDay();
+    if(dow !== 5 && dow !== 6) days.unshift(new Date(d));
+    d.setDate(d.getDate()-1);
+    guard++;
+  }
+  return days.map(day=>{
+    const dayEnd = new Date(day); dayEnd.setHours(23,59,59,999);
+    const count = data.filter(r=>r.date && r.date>=day && r.date<=dayEnd).length;
+    return { label: fmtDateShort(day), count };
+  });
+}
 
 function renderKPIs(agg){
   lastKpiAgg = agg;
@@ -2034,58 +2061,84 @@ function renderKPIs(agg){
   grid.innerHTML = '';
   const refDate = agg.dateMax || new Date();
   const HERO_COLORS = ['#2563EB','#A13A3A'];
-  const STAT_COLORS = ['#2F6B4F','#C9A227','#3B6FA0','#7C3AED','#D9822B','#0E8F87','#5F7A57','#8A5A44'];
+  const STAT_COLORS = ['#2F6B4F','#C9A227','#3B6FA0','#7C3AED','#D9822B','#0E8F87','#5F7A57'];
   let statColorIdx = 0;
+  const flipClass = kpiJustFlipped ? ' kpi-flip' : '';
+  const severeData = filtered.filter(r=>isSevereDegree(r.degree));
 
+  // 1) إجمالي المخالفات — اضغط للتحويل إلى إجمالي المخالفات الخطيرة (3 و4)
   const totalCard = document.createElement('div');
-  totalCard.className = 'kpi plain kpi-hero';
+  totalCard.className = 'kpi plain kpi-hero kpi-clickable' + flipClass;
   totalCard.style.borderInlineStartColor = HERO_COLORS[0];
-  totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات (بعد الفلترة)</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(agg.total)}</div><div class="k-sub">${agg.dateMin&&agg.dateMax? (fmtDate(agg.dateMin)+' ← '+fmtDate(agg.dateMax)) : 'لا توجد تواريخ'}</div>`;
+  if(kpiState.totalSevere){
+    totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات الخطيرة (3 و4)</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(severeData.length)}</div><div class="k-sub">من أصل ${fmt(agg.total)} مخالفة</div>`;
+  } else {
+    totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات (بعد الفلترة)</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(agg.total)}</div><div class="k-sub">${agg.dateMin&&agg.dateMax? (fmtDate(agg.dateMin)+' ← '+fmtDate(agg.dateMax)) : 'لا توجد تواريخ'}</div>`;
+  }
+  totalCard.addEventListener('click', ()=>{ kpiState.totalSevere = !kpiState.totalSevere; kpiJustFlipped = true; renderKPIs(lastKpiAgg); });
   grid.appendChild(totalCard);
 
+  // 2) عدد الطلاب المتأثرين — اضغط للتحويل إلى الطلاب ذوي المخالفتين فأكثر
   const studentsCard = document.createElement('div');
-  studentsCard.className = 'kpi plain kpi-hero';
+  studentsCard.className = 'kpi plain kpi-hero kpi-clickable' + flipClass;
   studentsCard.style.borderInlineStartColor = HERO_COLORS[1];
-  studentsCard.innerHTML = `<div class="k-label">عدد الطلاب المتأثرين</div><div class="k-value" style="color:${HERO_COLORS[1]}">${fmt(agg.uniqueStudents)}</div><div class="k-sub">طالب لديه مخالفة واحدة أو أكثر</div>`;
+  if(kpiState.studentsRepeat){
+    const repeatCount = agg.byStudent.filter(([n,c])=>c>=2).length;
+    studentsCard.innerHTML = `<div class="k-label">طلاب لديهم مخالفتان فأكثر</div><div class="k-value" style="color:${HERO_COLORS[1]}">${fmt(repeatCount)}</div><div class="k-sub">من أصل ${fmt(agg.uniqueStudents)} طالب متأثر</div>`;
+  } else {
+    studentsCard.innerHTML = `<div class="k-label">عدد الطلاب المتأثرين</div><div class="k-value" style="color:${HERO_COLORS[1]}">${fmt(agg.uniqueStudents)}</div><div class="k-sub">طالب لديه مخالفة واحدة أو أكثر</div>`;
+  }
+  studentsCard.addEventListener('click', ()=>{ kpiState.studentsRepeat = !kpiState.studentsRepeat; kpiJustFlipped = true; renderKPIs(lastKpiAgg); });
   grid.appendChild(studentsCard);
 
-  const monthsData = lastNMonths(filtered, 4, refDate);
-  const monthCard = document.createElement('div');
-  monthCard.className = 'kpi multi plain';
-  monthCard.innerHTML = `<div class="k-label">آخر 4 أشهر</div>` + monthsData.map(m=>`<div class="kmi-row"><span>${m.label}</span><span class="kmi-val">${fmt(m.count)}</span></div>`).join('');
-  grid.appendChild(monthCard);
+  // 3) مؤشر الانضباط العام (عداد دائري)
+  const score = computeDisciplineScore(filtered);
+  const ringColor = score>=80? forest : (score>=50? mustard : berry);
+  const gaugeCard = document.createElement('div');
+  gaugeCard.className = 'kpi plain gauge-kpi' + flipClass;
+  gaugeCard.innerHTML = `<div class="gauge-ring-wrap" style="--pct:${score};--ring-color:${ringColor}"><div class="gauge-ring"></div><div class="gauge-ring-inner">${score}</div></div>
+    <div><div class="k-label">مؤشر الانضباط العام</div><div class="k-sub">من 100 — كلما زاد كان أفضل</div></div>`;
+  grid.appendChild(gaugeCard);
 
-  const weeksData = lastNWeeks(filtered, 4, refDate);
-  const weekCard = document.createElement('div');
-  weekCard.className = 'kpi multi plain';
-  weekCard.innerHTML = `<div class="k-label">آخر 4 أسابيع</div>` + weeksData.map(w=>`<div class="kmi-row"><span>${w.label}</span><span class="kmi-val">${fmt(w.count)}</span></div>`).join('');
-  grid.appendChild(weekCard);
+  // 4) بطاقة موحّدة: آخر 4 أيام دراسية / أسابيع / أشهر — اضغط للتنقل بينها
+  const timeViewData = kpiState.timeView==='days' ? lastNSchoolDays(filtered,4,refDate)
+    : kpiState.timeView==='weeks' ? lastNWeeks(filtered,4,refDate)
+    : lastNMonths(filtered,4,refDate);
+  const timeViewLabel = kpiState.timeView==='days' ? 'آخر 4 أيام دراسية' : kpiState.timeView==='weeks' ? 'آخر 4 أسابيع' : 'آخر 4 أشهر';
+  const timeCard = document.createElement('div');
+  timeCard.className = 'kpi multi plain kpi-clickable' + flipClass;
+  timeCard.innerHTML = `<div class="k-label">${timeViewLabel} <span style="font-size:9px;color:var(--ink-soft);">(اضغط للتبديل)</span></div>` +
+    timeViewData.map(x=>`<div class="kmi-row"><span>${x.label}</span><span class="kmi-val">${fmt(x.count)}</span></div>`).join('');
+  timeCard.addEventListener('click', ()=>{
+    kpiState.timeView = kpiState.timeView==='days' ? 'weeks' : (kpiState.timeView==='weeks' ? 'months' : 'days');
+    kpiJustFlipped = true; renderKPIs(lastKpiAgg);
+  });
+  grid.appendChild(timeCard);
 
-  /* ---------- إحصائيات عامة إضافية (8 مربعات، بألوان متناسقة مختلفة، بعضها قابل للضغط) ---------- */
+  /* ---------- إحصائيات عامة إضافية (بألوان متناسقة مختلفة، بعضها قابل للضغط) ---------- */
   const addStat = (label, value, sub, extraClass, onClick)=>{
     const color = STAT_COLORS[statColorIdx % STAT_COLORS.length]; statColorIdx++;
     const c = document.createElement('div');
-    c.className = 'kpi plain kpi-stat' + (extraClass? (' '+extraClass) : '') + (onClick? ' kpi-clickable' : '');
+    c.className = 'kpi plain kpi-stat' + (extraClass? (' '+extraClass) : '') + (onClick? ' kpi-clickable' : '') + flipClass;
     c.style.borderInlineStartColor = color;
     c.innerHTML = `<div class="k-label">${label}</div><div class="k-value" style="color:${color}">${value}</div>${sub? `<div class="k-sub">${sub}</div>`:''}`;
     if(onClick) c.addEventListener('click', onClick);
     grid.appendChild(c);
   };
 
-  // أكثر طالب — اضغط لإظهار/إخفاء الاسم الكامل
+  // 5) أكثر طالب — اضغط لإظهار/إخفاء الاسم الكامل
   if(agg.byStudent.length){
     const [topName, topCount] = agg.byStudent[0];
     const shown = kpiState.studentExpanded ? topName : studentInitials3(topName);
     addStat('أكثر طالب تسجيلاً للمخالفات', shown, fmt(topCount)+' مخالفة — اضغط لإظهار/إخفاء الاسم', null,
-      ()=>{ kpiState.studentExpanded = !kpiState.studentExpanded; renderKPIs(lastKpiAgg); });
+      ()=>{ kpiState.studentExpanded = !kpiState.studentExpanded; kpiJustFlipped = true; renderKPIs(lastKpiAgg); });
   } else addStat('أكثر طالب تسجيلاً للمخالفات', '—');
 
-  // أكثر مرحلة — اضغط للتحويل إلى الأكثر بالمخالفات الخطيرة (3 و4) فقط
+  // 6) أكثر مرحلة — اضغط للتحويل إلى الأكثر بالمخالفات الخطيرة (3 و4) فقط
   const gradeByCount = agg.byGrade.slice().sort((a,b)=>b[1]-a[1]);
-  const severeData = filtered.filter(r=>isSevereDegree(r.degree));
   const gradeSevereByCount = groupCount(severeData, r=>r.grade||'—').sort((a,b)=>b[1]-a[1]);
   {
-    const toggleGrade = ()=>{ kpiState.gradeSevere = !kpiState.gradeSevere; renderKPIs(lastKpiAgg); };
+    const toggleGrade = ()=>{ kpiState.gradeSevere = !kpiState.gradeSevere; kpiJustFlipped = true; renderKPIs(lastKpiAgg); };
     if(kpiState.gradeSevere){
       if(gradeSevereByCount.length) addStat('أكثر مرحلة — مخالفات خطيرة (3 و4)', gradeSevereByCount[0][0], fmt(gradeSevereByCount[0][1])+' مخالفة خطيرة', null, toggleGrade);
       else addStat('أكثر مرحلة — مخالفات خطيرة (3 و4)', 'لا يوجد', null, null, toggleGrade);
@@ -2093,11 +2146,11 @@ function renderKPIs(agg){
     else addStat('أكثر مرحلة تسجيلاً للمخالفات', '—');
   }
 
-  // أكثر شعبة: الصف + الشعبة معاً — اضغط للتحويل لأكثر شعبة بالمخالفات الخطيرة (3 و4) فقط
+  // 7) أكثر شعبة: الصف + الشعبة معاً — اضغط للتحويل لأكثر شعبة بالمخالفات الخطيرة (3 و4) فقط
   const byGradeSection = groupCount(filtered, r=> (r.grade||'—') + ' — ' + (r.section||'—')).sort((a,b)=>b[1]-a[1]);
   const byGradeSectionSevere = groupCount(severeData, r=> (r.grade||'—') + ' — ' + (r.section||'—')).sort((a,b)=>b[1]-a[1]);
   {
-    const toggleSection = ()=>{ kpiState.sectionSevere = !kpiState.sectionSevere; renderKPIs(lastKpiAgg); };
+    const toggleSection = ()=>{ kpiState.sectionSevere = !kpiState.sectionSevere; kpiJustFlipped = true; renderKPIs(lastKpiAgg); };
     if(kpiState.sectionSevere){
       if(byGradeSectionSevere.length) addStat('أكثر شعبة — مخالفات خطيرة (3 و4)', byGradeSectionSevere[0][0], fmt(byGradeSectionSevere[0][1])+' مخالفة خطيرة', null, toggleSection);
       else addStat('أكثر شعبة — مخالفات خطيرة (3 و4)', 'لا يوجد', null, null, toggleSection);
@@ -2105,14 +2158,13 @@ function renderKPIs(agg){
     else addStat('أكثر شعبة تسجيلاً للمخالفات', '—');
   }
 
-  // معدل عدد المخالفات في اليوم — اضغط للتحويل إلى معدل المخالفات الخطيرة (3 و4) في اليوم
+  // 8) معدل عدد المخالفات في اليوم — اضغط للتحويل إلى معدل المخالفات الخطيرة (3 و4) في اليوم
   {
     const violationDays = new Set(filtered.filter(r=>r.date).map(r=>isoDate(r.date)));
     const dayCount = violationDays.size || 1;
     const avgAll = filtered.length / dayCount;
-    const severeTotal = severeData.length;
-    const avgSevere = severeTotal / dayCount;
-    const toggleAvg = ()=>{ kpiState.lastRecMode = kpiState.lastRecMode==='avg' ? 'severe' : 'avg'; renderKPIs(lastKpiAgg); };
+    const avgSevere = severeData.length / dayCount;
+    const toggleAvg = ()=>{ kpiState.lastRecMode = kpiState.lastRecMode==='avg' ? 'severe' : 'avg'; kpiJustFlipped = true; renderKPIs(lastKpiAgg); };
     if(kpiState.lastRecMode==='avg'){
       addStat('معدل عدد المخالفات في اليوم', avgAll.toFixed(1), 'عبر ' + fmt(violationDays.size) + ' يوم فيه تسجيل', null, toggleAvg);
     } else {
@@ -2120,10 +2172,10 @@ function renderKPIs(agg){
     }
   }
 
-  // أكثر مخالفة تكراراً — اضغط للتنقل بين الأكثر والثاني بالأكثر تكراراً
+  // 9) أكثر مخالفة تكراراً — اضغط للتنقل بين الأكثر والثاني بالأكثر تكراراً
   {
     const arr = agg.byType;
-    const toggleType = ()=>{ kpiState.typeIdx = kpiState.typeIdx===0 ? 1 : 0; renderKPIs(lastKpiAgg); };
+    const toggleType = ()=>{ kpiState.typeIdx = kpiState.typeIdx===0 ? 1 : 0; kpiJustFlipped = true; renderKPIs(lastKpiAgg); };
     if(arr.length){
       const i = Math.min(kpiState.typeIdx, arr.length-1);
       const label = i===1 ? 'ثاني أكثر مخالفة تكراراً' : 'أكثر مخالفة تكراراً';
@@ -2131,21 +2183,36 @@ function renderKPIs(agg){
     } else addStat('أكثر مخالفة تكراراً', '—');
   }
 
-  // اليوم الأكثر تسجيلاً: العدد بارز بالوسط، والتاريخ صغيراً بالأسفل
+  // 10) اليوم الأكثر تسجيلاً — اضغط للتحويل إلى الأسبوع الأكثر تسجيلاً
   const dateCounts = {};
   filtered.forEach(r=>{ if(r.date){ const k=isoDate(r.date); dateCounts[k]=(dateCounts[k]||0)+1; } });
   const topDateKey = Object.keys(dateCounts).sort((a,b)=>dateCounts[b]-dateCounts[a])[0];
-  if(topDateKey){
-    const d = new Date(topDateKey+'T00:00:00');
-    addStat('اليوم الأكثر تسجيلاً للمخالفات', fmt(dateCounts[topDateKey])+' مخالفة', WEEKDAYS_AR[d.getDay()] + ' — ' + fmtDate(d));
-  } else addStat('اليوم الأكثر تسجيلاً للمخالفات', '—');
+  const weekCounts = {};
+  filtered.forEach(r=>{ if(r.date){ const wk = isoDate(mondayOf(r.date)); weekCounts[wk]=(weekCounts[wk]||0)+1; } });
+  const topWeekKey = Object.keys(weekCounts).sort((a,b)=>weekCounts[b]-weekCounts[a])[0];
+  {
+    const toggleDayWeek = ()=>{ kpiState.dayMode = kpiState.dayMode==='day' ? 'week' : 'day'; kpiJustFlipped = true; renderKPIs(lastKpiAgg); };
+    if(kpiState.dayMode==='week'){
+      if(topWeekKey){
+        const wkStart = new Date(topWeekKey+'T00:00:00'); const wkEnd = new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
+        addStat('الأسبوع الأكثر تسجيلاً للمخالفات', fmt(weekCounts[topWeekKey])+' مخالفة', fmtDate(wkStart)+' ← '+fmtDate(wkEnd), null, toggleDayWeek);
+      } else addStat('الأسبوع الأكثر تسجيلاً للمخالفات', '—', null, null, toggleDayWeek);
+    } else if(topDateKey){
+      const d = new Date(topDateKey+'T00:00:00');
+      addStat('اليوم الأكثر تسجيلاً للمخالفات', fmt(dateCounts[topDateKey])+' مخالفة', WEEKDAYS_AR[d.getDay()] + ' — ' + fmtDate(d), null, toggleDayWeek);
+    } else addStat('اليوم الأكثر تسجيلاً للمخالفات', '—');
+  }
 
+  // 11) الحصة الأكثر تسجيلاً
   const periodByCount = agg.byPeriod.slice().sort((a,b)=>b[1]-a[1]);
   if(periodByCount.length) addStat('الحصة الأكثر تسجيلاً للمخالفات', periodByCount[0][0], fmt(periodByCount[0][1])+' مخالفة');
   else addStat('الحصة الأكثر تسجيلاً للمخالفات', '—');
 
+  // 12) المعلم الأكثر تسجيلاً
   if(agg.byRecorder.length) addStat('المعلم الأكثر تسجيلاً للمخالفات', agg.byRecorder[0][0], fmt(agg.byRecorder[0][1])+' مخالفة');
   else addStat('المعلم الأكثر تسجيلاً للمخالفات', '—');
+
+  kpiJustFlipped = false;
 }
 function studentInitials3(name){
   const parts = (name||'').trim().split(/\s+/).filter(Boolean).slice(0,3);
@@ -2743,6 +2810,18 @@ function degreeKpiCards(agg){
 
 /* تفاصيل مخالفات الطالب السابقة (قبل هذه المخالفة بالذات) مع توزيعها حسب الدرجة —
    تُستخدم لعرض سياق مثل "سبقها 4 مخالفات (منها 1 درجة ثالثة و1 درجة رابعة)". */
+function relativeDaysTextBefore(days){
+  if(days<=0) return 'في نفس اليوم';
+  if(days===1) return 'قبل يوم واحد';
+  if(days===2) return 'قبل يومين';
+  if(days<=6) return 'قبل ' + fmt(days) + ' أيام';
+  if(days<=13) return days===7 ? 'قبل أسبوع' : ('قبل أسبوع و' + fmt(days-7) + ' أيام');
+  if(days<=60){ const weeks=Math.round(days/7); return weeks===2 ? 'قبل أسبوعين' : ('قبل ' + fmt(weeks) + ' أسابيع'); }
+  const months = Math.round(days/30);
+  if(months===1) return 'قبل شهر تقريباً';
+  if(months===2) return 'قبل شهرين تقريباً';
+  return 'قبل ' + fmt(months) + ' أشهر تقريباً';
+}
 function violationOrdinalInfo(rec){
   const history = allRecords.filter(r=> r.studentName===rec.studentName && r.date).sort((a,b)=>a.date-b.date);
   const idx = history.findIndex(r=> r.id===rec.id);
@@ -2751,9 +2830,16 @@ function violationOrdinalInfo(rec){
   const severeCount = upToHere.filter(r=>isSevereDegree(r.degree)).length;
   return { ordinal, severeCount };
 }
-function formatOrdinalContext(info){
-  let text = `المخالفة رقم <b class="ctx-num">${fmt(info.ordinal)}</b> للطالب`;
-  if(info.severeCount>0) text += ` (منهم <b class="ctx-num">${fmt(info.severeCount)}</b> من الدرجة الخطيرة)`;
+function formatOrdinalContext(rec){
+  const history = allRecords.filter(r=> r.studentName===rec.studentName && r.date).sort((a,b)=>a.date-b.date);
+  const idx = history.findIndex(r=> r.id===rec.id);
+  const prior = idx>0 ? history.slice(0, idx) : [];
+  if(!prior.length) return 'أول مخالفة مسجّلة لهذا الطالب';
+  const severeCount = prior.filter(r=>isSevereDegree(r.degree)).length;
+  let text = `سبقها <b class="ctx-num">${fmt(prior.length)}</b> مخالفة`;
+  if(severeCount>0) text += ` (منها <b class="ctx-num">${fmt(severeCount)}</b> مخالفة خطيرة)`;
+  const daysSince = Math.round((rec.date - prior[prior.length-1].date)/(1000*60*60*24));
+  text += ' | آخر مخالفة مسجلة ' + relativeDaysTextBefore(daysSince);
   return text;
 }
 /* الحفاظ على الدالتين القديمتين للتوافق مع أي استخدام آخر (السياق التفصيلي في وضع الأسبوع مثلاً) */
@@ -2771,7 +2857,7 @@ function formatPriorContext(pb){
   return `سبقها ${fmt(pb.count)} مخالفة` + (parts.length? ` (منها ${parts.join(' و')})` : '');
 }
 document.getElementById('dailyCardsWrap').addEventListener('click', (e)=>{
-  const ctx = e.target.closest('.daily-card-context');
+  const ctx = e.target.closest('[data-student]');
   if(!ctx) return;
   const name = ctx.dataset.student;
   if(!name) return;
@@ -2804,23 +2890,23 @@ function renderDailyReport(){
     } else {
       wrap.innerHTML = dayData.map(r=>{
         const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-        const info = violationOrdinalInfo(r);
+        const studentAttr = (r.studentName||'').replace(/"/g,'&quot;');
         return `<div class="daily-card" style="border-color:${color};border-inline-start-width:4px;">
           <div class="daily-card-nameline">
-            <span class="daily-card-name">${r.studentName||'—'}</span>
+            <span class="daily-card-name" data-student="${studentAttr}" title="اضغط لعرض سجل الطالب الكامل">${r.studentName||'—'}</span>
             <span class="daily-card-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
+          </div>
+          <div class="daily-card-recctx">
+            <span class="daily-badge">✍️ ${r.recorder || '—'}</span>
+            <span class="daily-card-context" data-student="${studentAttr}" title="اضغط لعرض سجل الطالب الكامل">${formatOrdinalContext(r)}</span>
           </div>
           <div class="daily-card-badges">
             <span class="daily-badge daily-badge-degree" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span>
             <span class="daily-badge">🕐 ${r.period || '—'}</span>
             <span class="daily-badge">📍 ${r.location || '—'}</span>
           </div>
-          <div class="daily-card-violation">${shortLabel(r.type) || 'مخالفة سلوكية'}</div>
-          <div class="daily-card-desc">${r.notes ? shortLabel(r.notes) : 'لا توجد ملاحظات إضافية'}</div>
-          <div class="daily-card-recctx">
-            <span class="daily-badge">✍️ ${r.recorder || '—'}</span>
-            <span class="daily-card-context" data-student="${(r.studentName||'').replace(/"/g,'&quot;')}" title="اضغط لعرض تفاصيل الطالب">${formatOrdinalContext(info)}</span>
-          </div>
+          <div class="daily-card-violation">${r.type || 'مخالفة سلوكية'}</div>
+          <div class="daily-card-desc">${r.notes || 'لا توجد ملاحظات إضافية'}</div>
         </div>`;
       }).join('');
     }
@@ -2859,45 +2945,59 @@ function renderDailyReport(){
 function buildDailyPrintHTML(data, dayDate){
   const agg = computeAgg(data);
   const now = new Date();
-  const degreeRows = agg.byDegree.map(([l,c])=>{
+  const degreeBox = agg.byDegree.map(([l,c])=>{
     const idx = degreeIndex(l); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-    return `<tr><td><span class="pill" style="background:${color}">${shortDegreeLabel(l)}</span></td><td>${fmt(c)}</td></tr>`;
-  }).join('') || '<tr><td colspan="2">لا توجد بيانات</td></tr>';
+    return `<div class="p-kpi-line"><span class="p-kpi-dot" style="background:${color}"></span>${shortDegreeLabel(l)}<b>${fmt(c)}</b></div>`;
+  }).join('') || '<div class="p-kpi-line">لا توجد بيانات</div>';
+  const gradeCounts = groupCount(data, r=>r.grade||'—').sort((a,b)=> GRADE_ORDER.indexOf(a[0]) - GRADE_ORDER.indexOf(b[0]));
+  const gradeBox = gradeCounts.map(([l,c])=> `<div class="p-kpi-line">${l}<b>${fmt(c)}</b></div>`).join('') || '<div class="p-kpi-line">لا توجد بيانات</div>';
   const detailCards = data.map(r=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-    const info = violationOrdinalInfo(r);
     return `<div class="p-daily-card" style="border-color:${color}">
-      <div class="p-daily-name">${r.studentName||'—'} <span class="p-daily-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span></div>
+      <div class="p-daily-nameline">
+        <span class="p-daily-name">${r.studentName||'—'}</span>
+        <span class="p-daily-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
+      </div>
+      <div class="p-daily-recctx">
+        <span class="p-badge p-badge-out">✍️ ${r.recorder||'—'}</span>
+        <span class="p-daily-context">${formatOrdinalContext(r)}</span>
+      </div>
       <div class="p-daily-badges">
         <span class="p-badge" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span>
         <span class="p-badge p-badge-out">🕐 ${r.period||'—'}</span>
         <span class="p-badge p-badge-out">📍 ${r.location||'—'}</span>
-        <span class="p-badge p-badge-out">✍️ ${r.recorder||'—'}</span>
       </div>
-      <div class="p-daily-violation">${shortLabel(r.type)||'مخالفة سلوكية'}</div>
-      ${r.notes? `<div class="p-daily-desc">${shortLabel(r.notes)}</div>` : ''}
-      <div class="p-daily-context">${formatOrdinalContext(info)}</div>
+      <div class="p-daily-violation">${r.type||'مخالفة سلوكية'}</div>
+      ${r.notes? `<div class="p-daily-desc">${r.notes}</div>` : ''}
     </div>`;
   }).join('') || '<div class="empty-note">لا توجد مخالفات مسجّلة</div>';
   const filename = dailyReportFilename(dayDate, agg.total);
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${filename}</title>
   <style>${REPORT_BASE_CSS}
-    .p-daily-card{border:1.5px solid var(--line);border-inline-start-width:4px;border-radius:0;padding:9px 12px;margin-bottom:8px;break-inside:avoid;}
+    .p-daily-card{border:1.5px solid var(--line);border-inline-start-width:4px;border-radius:0;padding:9px 12px;margin-bottom:8px;break-inside:avoid;page-break-inside:avoid;}
+    .p-daily-nameline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
     .p-daily-name{font-weight:800;font-size:13px;}
-    .p-daily-grade{font-weight:400;font-size:11px;color:#6B5E50;margin-inline-start:6px;}
+    .p-daily-grade{font-weight:400;font-size:11px;color:#6B5E50;}
+    .p-daily-recctx{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0;}
     .p-daily-badges{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0;}
     .p-badge{font-size:9.5px;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;}
     .p-badge-out{background:#F2EFE9;color:#3A3226;font-weight:500;}
     .p-daily-violation{font-weight:800;font-size:11.5px;}
     .p-daily-desc{font-size:10.5px;color:#6B5E50;margin-top:2px;}
-    .p-daily-context{font-size:9.5px;color:#6B5E50;background:#F7F4EE;padding:3px 8px;border-radius:5px;margin-top:5px;}
+    .p-daily-context{font-size:9.5px;color:#6B5E50;background:#F7F4EE;padding:3px 8px;border-radius:5px;}
+    .p-kpi-box{flex:1;min-width:150px;}
+    .p-kpi-line{display:flex;align-items:center;gap:6px;font-size:10.5px;justify-content:space-between;padding:2px 0;}
+    .p-kpi-line b{color:#5F2E3D;}
+    .p-kpi-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
     .empty-note{text-align:center;color:#8A7F6B;padding:20px;}
   </style></head><body>
-  ${buildLetterheadHTML('تقرير يومي')}
+  ${buildLetterheadHTML('تقرير مخالفات يومي')}
   <div class="meta">${schoolMetaLine()}<br>اليوم: ${dayDate.toLocaleDateString(AR_LOCALE,{weekday:'long',year:'numeric',month:'long',day:'numeric'})}<br>تاريخ الإصدار: ${now.toLocaleString(AR_LOCALE)}</div>
-  <div class="kpi-row"><div class="kpi-box"><b>${fmt(agg.total)}</b>إجمالي المخالفات</div></div>
-  <h2>حسب الدرجة</h2>
-  <table><thead><tr><th>الدرجة</th><th>العدد</th></tr></thead><tbody>${degreeRows}</tbody></table>
+  <div class="kpi-row">
+    <div class="kpi-box p-kpi-box"><div class="p-kpi-line" style="font-size:11.5px;font-weight:800;">إجمالي المخالفات<b style="font-size:16px;">${fmt(agg.total)}</b></div></div>
+    <div class="kpi-box p-kpi-box">${degreeBox}</div>
+    <div class="kpi-box p-kpi-box">${gradeBox}</div>
+  </div>
   <h2>السجل التفصيلي</h2>
   ${detailCards}
   <footer>تقرير أُعدّ آلياً لأغراض المتابعة الداخلية للمدرسة فقط</footer>
