@@ -118,6 +118,9 @@
   .row-60-40{grid-template-columns:1.5fr 1fr;}
   @media (max-width:1100px){ .row-3{grid-template-columns:1fr;} }
   .row-2.balanced{grid-template-columns:1fr 1fr;}
+  .row-2.split-65-35{grid-template-columns:65% 35%;}
+  @media (max-width:980px){ .row-2.split-65-35{grid-template-columns:1fr;} }
+  .trend-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;}
   .people-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .detail-grid{display:flex;flex-direction:column;}
   .reports-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -219,13 +222,16 @@
   .timeline-legend span{display:flex;align-items:center;gap:5px;}
   .timeline-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
   .sv-timeline-card{border:1px solid var(--line);border-inline-start:4px solid var(--plum);padding:10px 14px;margin-bottom:10px;}
-  .sv-timeline-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+  .sv-timeline-head{display:flex;align-items:baseline;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
   .sv-timeline-name{font-weight:800;font-size:13.5px;color:var(--ink);}
   .sv-timeline-meta{font-size:10.8px;color:var(--ink-soft);}
-  .sv-timeline-count{font-size:11px;color:#fff;background:var(--plum);padding:2px 10px;border-radius:12px;font-weight:700;}
+  .sv-timeline-range-inline{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--ink-soft);flex:1 1 auto;min-width:120px;}
+  .sv-range-dash{flex:1 1 auto;border-bottom:1.5px dashed var(--line);min-width:30px;}
+  .sv-timeline-count{font-size:11px;color:#fff;background:var(--plum);padding:2px 10px;border-radius:12px;font-weight:700;white-space:nowrap;}
   .sv-timeline-track{position:relative;height:34px;background:linear-gradient(to left, var(--line) 0, var(--line) 100%) left 0 center/100% 2px no-repeat;margin:0 6px;}
   .sv-timeline-dot{position:absolute;top:50%;transform:translate(50%,-50%);width:13px;height:13px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15);cursor:pointer;}
-  .sv-timeline-range{display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink-soft);margin-top:4px;}
+  .sv-timeline-dot-merged{width:19px;height:19px;display:flex;align-items:center;justify-content:center;}
+  .sv-dot-badge{font-size:8.5px;font-weight:800;color:#fff;line-height:1;}
   .sv-timeline-dot.active{box-shadow:0 0 0 3px rgba(37,99,235,.35);z-index:2;}
   .sv-timeline-detail{display:none;margin-top:10px;}
   .sv-detail-box{border:1.5px solid var(--line);border-inline-start-width:4px;padding:9px 12px;background:var(--panel);display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:11px;color:var(--ink-soft);}
@@ -239,12 +245,6 @@
   tr.clickable-row:hover{background:var(--plum-soft);}
   .empty-msg{text-align:center;color:var(--ink-soft);font-size:12.5px;padding:24px 0;}
 
-  .sm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-  #smallMultiplesTypesGrid.sm-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
-  .sm-card{background:#fff;border-radius:0;padding:9px 11px;box-shadow:0 1px 5px rgba(61,38,71,.06);}
-  .sm-title{font-size:10.5px;font-weight:700;color:var(--plum);margin-bottom:2px;}
-  .sm-count{font-family:'El Messiri',sans-serif;font-weight:800;font-size:15px;color:var(--ink);margin-bottom:4px;}
-  .sm-card canvas{height:70px !important;}
 
   .heat-details .heat-grid{margin-top:10px;}
   .heat-summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -339,7 +339,9 @@
   @media (max-width:700px){ .daily-kpi-grid{grid-template-columns:1fr;} }
   .daily-kpi-card{height:auto;min-height:64px;overflow:visible;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:2px;padding:7px 10px;border-inline-start-width:4px;box-sizing:border-box;}
   .daily-kpi-card .daily-kpi-title{font-size:10px;color:var(--ink-soft);font-weight:700;}
-  .daily-kpi-card.daily-kpi-total .daily-kpi-value{font-family:'El Messiri',sans-serif;font-weight:800;font-size:26px;color:var(--plum);line-height:1;}
+  .daily-kpi-card.daily-kpi-total{min-height:96px;}
+  .daily-kpi-card.daily-kpi-total .daily-kpi-title{font-size:13px;}
+  .daily-kpi-card.daily-kpi-total .daily-kpi-value{font-family:'El Messiri',sans-serif;font-weight:800;font-size:46px;color:var(--plum);line-height:1;}
   .daily-kpi-list{width:100%;display:flex;flex-direction:column;gap:0;}
   .daily-kpi-list-row{display:flex;align-items:center;justify-content:space-between;width:100%;font-size:10.3px;padding:1.5px 0;border-bottom:1px dashed var(--line);}
   .daily-kpi-list-row:last-child{border-bottom:none;}
@@ -460,7 +462,7 @@
 
         <div class="row-3">
           <div class="card">
-            <h3><span>عدد المخالفات حسب الصف والشعبة <span class="hint">— اضغط عموداً للفلترة</span></span></h3>
+            <h3><span>عدد المخالفات حسب الصف والشعبة</span></h3>
             <div class="class-legend" id="classLegend"></div>
             <div class="chart-holder"><canvas id="chartClass"></canvas></div>
           </div>
@@ -475,21 +477,16 @@
           </div>
         </div>
 
-        <div class="row-2 balanced">
-          <div class="card">
-            <h3><span>الاتجاه الزمني الأسبوعي للمخالفات</span></h3>
-            <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
-          </div>
-          <div class="card">
-            <h3><span>أكثر أنواع المخالفات تكراراً</span></h3>
-            <div class="chart-holder chart-holder-lg"><canvas id="chartTypes"></canvas></div>
-          </div>
+        <div class="card">
+          <h3><span>الاتجاه الزمني الأسبوعي للمخالفات <span class="hint">— خط سميك لإجمالي المدرسة، وخط أنحف لكل مرحلة بلونها</span></span></h3>
+          <div class="trend-legend" id="trendLegend"></div>
+          <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
         </div>
 
-        <div class="row-2 balanced">
+        <div class="row-2 split-65-35">
           <div class="card">
-            <h3><span>مخططات مصغّرة لكل صف دراسي <span class="hint">— اتجاه أسبوعي لكل صف</span></span></h3>
-            <div class="sm-grid" id="smallMultiplesGrid"></div>
+            <h3><span>أكثر أنواع المخالفات تكراراً</span></h3>
+            <div class="chart-holder"><canvas id="chartTypes"></canvas></div>
           </div>
           <div class="card">
             <h3><span>مقارنة المخالفات حسب الحصة الدراسية</span></h3>
@@ -501,11 +498,6 @@
           <summary class="heat-summary"><h3 style="display:inline;"><span>خريطة حرارية لأيام الفصل الدراسي <span class="hint">— أيام الاثنين إلى الجمعة فقط، أخضر = هادئ، أحمر = حرج</span></span></h3><span class="heat-chevron">▾</span></summary>
           <div class="heat-grid" id="calendarHeatmapGrid"></div>
         </details>
-
-        <div class="card">
-          <h3><span>مخططات مصغّرة لكل صف دراسي <span class="hint">— أكثر أنواع المخالفات تكراراً</span></span></h3>
-          <div class="sm-grid" id="smallMultiplesTypesGrid"></div>
-        </div>
 
       </div>
     </div>
@@ -581,12 +573,12 @@
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
           <h3 style="margin:0;"><span>الطلاب الأكثر تكراراً للمخالفات <span class="hint">— مع خط زمني يوضّح توقيت ودرجة كل مخالفة</span></span></h3>
         </div>
-        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+        <div class="sem-filter-row" style="margin-bottom:10px;">
           <div class="chip-row" id="peopleSemesterChips"></div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;" id="peopleCustomDateRow">
-            <span style="color:var(--ink-soft);">من</span>
+          <div class="sem-date-range" id="peopleCustomDateRow">
+            <span class="sem-date-lbl">من</span>
             <input type="date" id="peopleDateFrom">
-            <span style="color:var(--ink-soft);">إلى</span>
+            <span class="sem-date-lbl">إلى</span>
             <input type="date" id="peopleDateTo">
           </div>
         </div>
@@ -696,7 +688,6 @@ let fileNameLabel = '';
 let termConfig = null; // {segments:[{label,start,end,weeks:[{localIndex,start,end}]}], year}
 let filters = { grades:new Set(), sections:new Set(), degrees:new Set(), recorder:'', student:'', dateFrom:null, dateTo:null, search:'', semester:'all' };
 let charts = {};
-let smallMultipleCharts = [];
 let classChartItems = [];
 
 /* ---------- helpers ---------- */
@@ -709,6 +700,14 @@ function applyStatusTone(el, msg){
   else if(/^(⚠️|❌|🔒)/.test(msg||'')) el.classList.add('status-bad');
 }
 function fmt(n){ return Number(n||0).toLocaleString(AR_LOCALE); }
+/* صياغة عدد المخالفات بالجمع الصحيح: مخالفة واحدة / مخالفتان / 3-10 مخالفات / 11+ مخالفة */
+function violationCountText(n){
+  n = Number(n||0);
+  if(n===1) return 'مخالفة واحدة';
+  if(n===2) return 'مخالفتان';
+  if(n>=3 && n<=10) return fmt(n)+' مخالفات';
+  return fmt(n)+' مخالفة';
+}
 /* يعزل أي نص يحتوي أرقام/تواريخ (LTR) داخل فقرة عربية RTL بعلامات bdi — يمنع مشاكل انعكاس
    ترتيب الأحرف عند نسخ النص من الطباعة/PDF حين يجاور نص عربي أرقاماً بلا عزل. */
 function bdi(x){ return '<bdi>'+x+'</bdi>'; }
@@ -1953,7 +1952,7 @@ function updateContextBar(){
   if(!ctx || ctx.type==='student'){ bar.style.display='none'; inner.innerHTML=''; return; }
   const typeLabel = {recorder:'تقرير المعلم / المسجِّل', class:'تقرير الصف'}[ctx.type];
   bar.style.display='block';
-  inner.innerHTML = `<span>🔎 ${typeLabel}: <b>${ctx.label}</b> — ${fmt(filtered.length)} مخالفة</span>
+  inner.innerHTML = `<span>🔎 ${typeLabel}: <b>${ctx.label}</b> — ${violationCountText(filtered.length)}</span>
     <span style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn small primary" id="btnPrintEntity">🖨️ طباعة تقرير A4</button>
       <button class="btn small" id="btnClearEntity">✕ إلغاء التحديد</button>
@@ -2034,12 +2033,10 @@ function renderAll(){
   renderClassChart();
   renderDegreeDonut(agg);
   renderTrendChart(agg);
-  renderSmallMultiples();
   renderPeriodBarChart(agg);
   renderRecorderBarChart(agg);
   renderTypesChart(agg);
   renderCalendarHeatmap();
-  renderSmallMultiplesTypes();
   renderTopViolatorsTimeline();
   renderDetailTable(filtered);
   renderRecommendationsTab();
@@ -2074,35 +2071,6 @@ function lastNWeeks(data, n, refDate){
     arr.push({label: fmtDateShort(start), count});
   }
   return arr;
-}
-
-/* ---------- مخططات مصغّرة لكل صف دراسي — أكثر أنواع المخالفات تكراراً ---------- */
-let smallMultipleTypeCharts = [];
-function renderSmallMultiplesTypes(){
-  smallMultipleTypeCharts.forEach(c=>c.destroy());
-  smallMultipleTypeCharts = [];
-  const container = document.getElementById('smallMultiplesTypesGrid');
-  if(!container) return;
-  container.innerHTML = '';
-  const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
-  if(!grades.length){ container.innerHTML = '<p class="empty-msg">لا توجد بيانات ضمن الفلاتر الحالية</p>'; return; }
-  grades.forEach(g=>{
-    const data = filtered.filter(r=>r.grade===g);
-    const typeMap = new Map();
-    data.forEach(r=>{ if(!r.type) return; typeMap.set(r.type, (typeMap.get(r.type)||0)+1); });
-    const top = [...typeMap.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4);
-    const wrap = document.createElement('div'); wrap.className='sm-card';
-    wrap.innerHTML = `<div class="sm-title">${g}</div><div class="sm-count">${fmt(data.length)} مخالفة</div><canvas></canvas>`;
-    container.appendChild(wrap);
-    const canvas = wrap.querySelector('canvas');
-    const c = new Chart(canvas, {
-      type:'bar',
-      data:{ labels: top.map(t=>shortLabel(t[0])), datasets:[{ data: top.map(t=>t[1]), backgroundColor: top.map((_,i)=> i===0? berry: forest), borderRadius:3 }] },
-      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:true, callbacks:{ title:(items)=> top[items[0].dataIndex][0] }}},
-        scales:{ x:{display:true, beginAtZero:true, ticks:{font:{size:7},maxTicksLimit:3,precision:0}, grid:{color:GRID}}, y:{display:true, ticks:{font:{size:7}}, grid:{display:false}} } }
-    });
-    smallMultipleTypeCharts.push(c);
-  });
 }
 
 let lastKpiAgg = null;
@@ -2143,7 +2111,7 @@ function renderKPIs(agg){
   totalCard.className = 'kpi plain kpi-hero kpi-clickable' + flipCls('total');
   totalCard.style.borderInlineStartColor = HERO_COLORS[0];
   if(kpiState.totalSevere){
-    totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات الخطيرة</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(severeData.length)}</div><div class="k-sub">من أصل ${fmt(agg.total)} مخالفة</div>`;
+    totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات الخطيرة</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(severeData.length)}</div><div class="k-sub">من أصل ${violationCountText(agg.total)}</div>`;
   } else {
     totalCard.innerHTML = `<div class="k-label">إجمالي المخالفات (بعد الفلترة)</div><div class="k-value" style="color:${HERO_COLORS[0]}">${fmt(agg.total)}</div><div class="k-sub">${agg.dateMin&&agg.dateMax? (fmtDate(agg.dateMin)+' ← '+fmtDate(agg.dateMax)) : 'لا توجد تواريخ'}</div>`;
   }
@@ -2202,7 +2170,7 @@ function renderKPIs(agg){
   if(agg.byStudent.length){
     const [topName, topCount] = agg.byStudent[0];
     const shown = kpiState.studentExpanded ? topName : studentInitials3(topName);
-    addStat('أكثر طالب تسجيلاً للمخالفات', `<span class="stat-eye-toggle">${shown} <span class="stat-eye-icon">${kpiState.studentExpanded?'🙈':'👁️'}</span></span>`, fmt(topCount)+' مخالفة', 'kpi-stat-small',
+    addStat('أكثر طالب تسجيلاً للمخالفات', `<span class="stat-eye-toggle">${shown} <span class="stat-eye-icon">${kpiState.studentExpanded?'🙈':'👁️'}</span></span>`, violationCountText(topCount), 'kpi-stat-small',
       ()=>{ kpiState.studentExpanded = !kpiState.studentExpanded; kpiJustFlipped = 'student'; renderKPIs(lastKpiAgg); }, 'student');
   } else addStat('أكثر طالب تسجيلاً للمخالفات', '—', null, 'kpi-stat-small');
 
@@ -2214,7 +2182,7 @@ function renderKPIs(agg){
     if(kpiState.gradeSevere){
       if(gradeSevereByCount.length) addStat('أكثر مرحلة تسجيلاً للمخالفات الخطيرة', gradeSevereByCount[0][0], fmt(gradeSevereByCount[0][1])+' مخالفة خطيرة', null, toggleGrade, 'grade');
       else addStat('أكثر مرحلة تسجيلاً للمخالفات الخطيرة', 'لا يوجد', null, null, toggleGrade, 'grade');
-    } else if(gradeByCount.length) addStat('أكثر مرحلة تسجيلاً للمخالفات', gradeByCount[0][0], fmt(gradeByCount[0][1])+' مخالفة', null, toggleGrade, 'grade');
+    } else if(gradeByCount.length) addStat('أكثر مرحلة تسجيلاً للمخالفات', gradeByCount[0][0], violationCountText(gradeByCount[0][1]), null, toggleGrade, 'grade');
     else addStat('أكثر مرحلة تسجيلاً للمخالفات', '—');
   }
 
@@ -2226,7 +2194,7 @@ function renderKPIs(agg){
     if(kpiState.sectionSevere){
       if(byGradeSectionSevere.length) addStat('أكثر شعبة تسجيلاً للمخالفات الخطيرة', byGradeSectionSevere[0][0], fmt(byGradeSectionSevere[0][1])+' مخالفة خطيرة', null, toggleSection, 'section');
       else addStat('أكثر شعبة تسجيلاً للمخالفات الخطيرة', 'لا يوجد', null, null, toggleSection, 'section');
-    } else if(byGradeSection.length) addStat('أكثر شعبة تسجيلاً للمخالفات', byGradeSection[0][0], fmt(byGradeSection[0][1])+' مخالفة', null, toggleSection, 'section');
+    } else if(byGradeSection.length) addStat('أكثر شعبة تسجيلاً للمخالفات', byGradeSection[0][0], violationCountText(byGradeSection[0][1]), null, toggleSection, 'section');
     else addStat('أكثر شعبة تسجيلاً للمخالفات', '—');
   }
 
@@ -2275,26 +2243,26 @@ function renderKPIs(agg){
     if(kpiState.dayMode==='week'){
       if(topWeekKey){
         const wkStart = new Date(topWeekKey+'T00:00:00'); const wkEnd = new Date(wkStart); wkEnd.setDate(wkEnd.getDate()+6);
-        addStat('الأسبوع الأكثر تسجيلاً للمخالفات', fmt(weekCounts[topWeekKey])+' مخالفة', fmtDate(wkStart)+' ← '+fmtDate(wkEnd), null, toggleDayWeek, 'dayweek');
+        addStat('الأسبوع الأكثر تسجيلاً للمخالفات', violationCountText(weekCounts[topWeekKey]), fmtDate(wkStart)+' ← '+fmtDate(wkEnd), null, toggleDayWeek, 'dayweek');
       } else addStat('الأسبوع الأكثر تسجيلاً للمخالفات', '—', null, null, toggleDayWeek, 'dayweek');
     } else if(kpiState.dayMode==='month'){
       if(topMonthKey){
         const [y,m] = topMonthKey.split('-').map(Number);
-        addStat('الشهر الأكثر تسجيلاً للمخالفات', fmt(monthCounts[topMonthKey])+' مخالفة', monthNames[m]+' '+y, null, toggleDayWeek, 'dayweek');
+        addStat('الشهر الأكثر تسجيلاً للمخالفات', violationCountText(monthCounts[topMonthKey]), monthNames[m]+' '+y, null, toggleDayWeek, 'dayweek');
       } else addStat('الشهر الأكثر تسجيلاً للمخالفات', '—', null, null, toggleDayWeek, 'dayweek');
     } else if(topDateKey){
       const d = new Date(topDateKey+'T00:00:00');
-      addStat('اليوم الأكثر تسجيلاً للمخالفات', fmt(dateCounts[topDateKey])+' مخالفة', WEEKDAYS_AR[d.getDay()] + ' — ' + fmtDate(d), null, toggleDayWeek, 'dayweek');
+      addStat('اليوم الأكثر تسجيلاً للمخالفات', violationCountText(dateCounts[topDateKey]), WEEKDAYS_AR[d.getDay()] + ' — ' + fmtDate(d), null, toggleDayWeek, 'dayweek');
     } else addStat('اليوم الأكثر تسجيلاً للمخالفات', '—', null, null, toggleDayWeek, 'dayweek');
   }
 
   // 11) الحصة الأكثر تسجيلاً
   const periodByCount = agg.byPeriod.slice().sort((a,b)=>b[1]-a[1]);
-  if(periodByCount.length) addStat('الحصة الأكثر تسجيلاً للمخالفات', periodByCount[0][0], fmt(periodByCount[0][1])+' مخالفة');
+  if(periodByCount.length) addStat('الحصة الأكثر تسجيلاً للمخالفات', periodByCount[0][0], violationCountText(periodByCount[0][1]));
   else addStat('الحصة الأكثر تسجيلاً للمخالفات', '—');
 
   // 12) المعلم الأكثر تسجيلاً
-  if(agg.byRecorder.length) addStat('المعلم الأكثر تسجيلاً للمخالفات', agg.byRecorder[0][0], fmt(agg.byRecorder[0][1])+' مخالفة');
+  if(agg.byRecorder.length) addStat('المعلم الأكثر تسجيلاً للمخالفات', agg.byRecorder[0][0], violationCountText(agg.byRecorder[0][1]));
   else addStat('المعلم الأكثر تسجيلاً للمخالفات', '—');
 
   kpiJustFlipped = null;
@@ -2327,19 +2295,7 @@ function renderClassChart(){
       datasets:[{ label:'عدد المخالفات', data: items.map(it=>it.count), backgroundColor: colors, borderRadius:5 }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false} },
-      scales:{ x:{beginAtZero:true, grid:{color:GRID}, ticks:{precision:0}}, y:{grid:{display:false}, ticks:{font:{size:11}}} },
-      onClick:(evt, elements)=>{
-        if(!elements.length) return;
-        const it = classChartItems[elements[0].index];
-        if(!it) return;
-        filters.grades = new Set([it.grade]);
-        rebuildSectionChips();
-        filters.sections = (it.section && it.section!=='—') ? new Set([it.section]) : new Set();
-        filters.student=''; filters.recorder='';
-        rebuildSectionChips();
-        syncChipStates();
-        applyFilters();
-      }
+      scales:{ x:{beginAtZero:true, grid:{color:GRID}, ticks:{precision:0}}, y:{grid:{display:false}, ticks:{font:{size:11}}} }
     }
   });
 }
@@ -2394,39 +2350,35 @@ function renderDegreeDonut(agg){
 function renderTrendChart(agg){
   destroyChart('trend');
   const ctx = document.getElementById('chartTrend');
+  const legendEl = document.getElementById('trendLegend');
+  if(legendEl) legendEl.innerHTML = '';
   if(!agg.byWeek.length){ return; }
+  const weekKeys = agg.byWeek.map(w=>w[0]);
+  const labels = weekKeys.map(k=> fmtDateShort(new Date(k)));
+  const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
+  const gradeColors = buildGradeColorMap(filtered);
+  const datasets = [{
+    label:'إجمالي المدرسة', data: agg.byWeek.map(w=>w[1]),
+    borderColor: plum, backgroundColor:'rgba(61,38,71,0.08)', fill:true, tension:0.35,
+    borderWidth:3.5, pointBackgroundColor:plum, pointRadius:4, order:0
+  }];
+  grades.forEach(g=>{
+    const weekMap = new Map();
+    filtered.forEach(r=>{ if(r.grade!==g || !r.date) return; const ws=isoDate(mondayOf(r.date)); weekMap.set(ws,(weekMap.get(ws)||0)+1); });
+    datasets.push({
+      label: g, data: weekKeys.map(k=> weekMap.get(k)||0),
+      borderColor: gradeColors[g]||plum, backgroundColor:'transparent', fill:false, tension:0.35,
+      borderWidth:1.5, pointRadius:2, order:1
+    });
+  });
+  if(legendEl){
+    legendEl.innerHTML = `<span class="legend-chip"><span class="legend-dot" style="background:${plum}"></span>إجمالي المدرسة (خط سميك)</span>` +
+      grades.map(g=>`<span class="legend-chip"><span class="legend-dot" style="background:${gradeColors[g]||plum}"></span>${g}</span>`).join('');
+  }
   charts.trend = new Chart(ctx, {
     type:'line',
-    data:{ labels: agg.byWeek.map(w=> fmtDateShort(new Date(w[0]))),
-      datasets:[{ label:'عدد المخالفات', data: agg.byWeek.map(w=>w[1]), borderColor: plum, backgroundColor:'rgba(61,38,71,0.08)', fill:true, tension:0.35, pointBackgroundColor:plum, pointRadius:4 }] },
+    data:{ labels, datasets },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, grid:{color:GRID}, ticks:{precision:0}}, x:{grid:{display:false}} } }
-  });
-}
-
-function renderSmallMultiples(){
-  smallMultipleCharts.forEach(c=>c.destroy());
-  smallMultipleCharts = [];
-  const container = document.getElementById('smallMultiplesGrid');
-  container.innerHTML = '';
-  const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
-  if(!grades.length){ container.innerHTML = '<p class="empty-msg">لا توجد بيانات ضمن الفلاتر الحالية</p>'; return; }
-  const gradeColors = buildGradeColorMap(computeClassAgg(filtered));
-  grades.forEach(g=>{
-    const data = filtered.filter(r=>r.grade===g);
-    const weekMap = new Map();
-    data.forEach(r=>{ if(!r.date) return; const ws=isoDate(mondayOf(r.date)); weekMap.set(ws,(weekMap.get(ws)||0)+1); });
-    const arr = [...weekMap.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
-    const wrap = document.createElement('div'); wrap.className='sm-card';
-    wrap.innerHTML = `<div class="sm-title">${g}</div><div class="sm-count">${fmt(data.length)} مخالفة</div><canvas></canvas>`;
-    container.appendChild(wrap);
-    const canvas = wrap.querySelector('canvas');
-    const c = new Chart(canvas, {
-      type:'line',
-      data:{ labels: arr.map(a=>fmtDateShort(new Date(a[0]))), datasets:[{ data: arr.map(a=>a[1]), borderColor: gradeColors[g]||plum, backgroundColor:'transparent', tension:.4, pointRadius:1.5, borderWidth:2 }] },
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:true}},
-        scales:{ x:{display:true, ticks:{font:{size:7},maxTicksLimit:4}, grid:{display:false}}, y:{display:true, beginAtZero:true, ticks:{font:{size:7},maxTicksLimit:3,precision:0}, grid:{color:GRID}} } }
-    });
-    smallMultipleCharts.push(c);
   });
 }
 
@@ -2501,7 +2453,7 @@ function renderCalendarHeatmap(){
       } else {
         cell.style.background = heatColor(c===0?0:Math.min(1,c/maxCount));
       }
-      cell.title = key + ' — ' + fmt(c) + ' مخالفة';
+      cell.title = key + ' — ' + violationCountText(c);
       grid.appendChild(cell);
     }
   });
@@ -2596,44 +2548,44 @@ function renderTopViolatorsTimeline(){
   const rangeMax = peopleDateTo ? peopleDateTo.getTime() : Math.max(...allDates);
   const span = Math.max(1, rangeMax - rangeMin);
 
-  timelineRecsCache = {};
+  timelineGroupsCache = {};
   wrap.innerHTML = top.map(([name, count], si)=>{
     const recs = data.filter(r=> r.studentName===name && r.date).sort((a,b)=>a.date-b.date);
     if(!recs.length) return '';
-    timelineRecsCache[si] = recs;
+    // دمج المخالفات التي تقع في نفس التاريخ في نقطة واحدة أكبر
+    const groupsMap = new Map();
+    recs.forEach(r=>{
+      const k = isoDate(r.date);
+      if(!groupsMap.has(k)) groupsMap.set(k, []);
+      groupsMap.get(k).push(r);
+    });
+    const groups = [...groupsMap.values()].sort((a,b)=> a[0].date - b[0].date);
+    timelineGroupsCache[si] = groups;
     const first = recs[0], last = recs[recs.length-1];
-    const dots = recs.map((r,ri)=>{
-      const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-      const pct = ((r.date.getTime()-rangeMin)/span)*100;
-      return `<div class="sv-timeline-dot" data-si="${si}" data-ri="${ri}" style="right:${pct}%;background:${color};" title="${fmtDate(r.date)} — ${shortDegreeLabel(r.degree)||'—'}${r.type? (' — '+shortLabel(r.type)) : ''}"></div>`;
+    const dots = groups.map((grp,gi)=>{
+      // نلوّن النقطة بلون أشد درجة موجودة ضمن المجموعة
+      const worst = grp.reduce((w,r)=>{ const i=degreeIndex(r.degree); return (i!=null && (w==null || i>w.i)) ? {i,r} : w; }, null);
+      const color = worst? (sevColors[worst.i]||'#8A7F6B') : '#8A7F6B';
+      const pct = ((grp[0].date.getTime()-rangeMin)/span)*100;
+      const merged = grp.length>1;
+      const titleParts = grp.map(r=> shortDegreeLabel(r.degree)+(r.type? (' — '+shortLabel(r.type)):'')).join(' + ');
+      return `<div class="sv-timeline-dot${merged?' sv-timeline-dot-merged':''}" data-si="${si}" data-gi="${gi}" style="right:${pct}%;background:${color};" title="${fmtDate(grp[0].date)} — ${titleParts}">${merged? `<span class="sv-dot-badge">${grp.length}</span>` : ''}</div>`;
     }).join('');
     return `<div class="sv-timeline-card">
       <div class="sv-timeline-head">
         <span class="sv-timeline-name">${name}</span>
         <span class="sv-timeline-meta">${(first.grade||'—')}${first.section?(' — '+first.section):''}</span>
-        <span class="sv-timeline-count">${fmt(count)} مخالفة</span>
+        <span class="sv-timeline-range-inline"><span>${fmtDate(first.date)}</span><span class="sv-range-dash"></span><span>${fmtDate(last.date)}</span></span>
+        <span class="sv-timeline-count">${violationCountText(count)}</span>
       </div>
       <div class="sv-timeline-track">${dots}</div>
-      <div class="sv-timeline-range"><span>${fmtDate(first.date)}</span><span>${fmtDate(last.date)}</span></div>
       <div class="sv-timeline-detail" id="svDetail-${si}"></div>
     </div>`;
   }).join('');
 
-  wrap.onclick = (e)=>{
-    const dot = e.target.closest('.sv-timeline-dot');
-    if(!dot) return;
-    const si = dot.dataset.si, ri = dot.dataset.ri;
-    const panel = document.getElementById('svDetail-'+si);
-    if(!panel) return;
-    const wasOpenForThis = panel.dataset.openRi === ri && panel.style.display==='block';
-    // إغلاق أي مطوية أخرى مفتوحة أولاً (سواء بنفس البطاقة أو غيرها)
-    document.querySelectorAll('.sv-timeline-detail').forEach(p=>{ p.style.display='none'; p.dataset.openRi=''; p.innerHTML=''; });
-    document.querySelectorAll('.sv-timeline-dot.active').forEach(d=>d.classList.remove('active'));
-    if(wasOpenForThis) return; // كانت مفتوحة لنفس النقطة — أبقها مغلقة (تبديل)
-    const r = (timelineRecsCache[si]||[])[ri];
-    if(!r) return;
+  const detailBoxHtml = (r)=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
-    panel.innerHTML = `<div class="sv-detail-box" style="border-color:${color}">
+    return `<div class="sv-detail-box" style="border-color:${color}">
       <span class="sv-detail-badge" style="background:${color}">${shortDegreeLabel(r.degree)||'—'}</span>
       <span>📅 ${fmtDate(r.date)}</span>
       <span>🕐 ${r.period||'—'}</span>
@@ -2642,12 +2594,28 @@ function renderTopViolatorsTimeline(){
       <div class="sv-detail-type">${shortLabel(r.type)||'مخالفة سلوكية'}</div>
       ${r.notes? `<div class="sv-detail-notes">${shortLabel(r.notes)}</div>` : ''}
     </div>`;
+  };
+
+  wrap.onclick = (e)=>{
+    const dot = e.target.closest('.sv-timeline-dot');
+    if(!dot) return;
+    const si = dot.dataset.si, gi = dot.dataset.gi;
+    const panel = document.getElementById('svDetail-'+si);
+    if(!panel) return;
+    const wasOpenForThis = panel.dataset.openGi === gi && panel.style.display==='block';
+    // إغلاق أي مطوية أخرى مفتوحة أولاً (سواء بنفس البطاقة أو غيرها)
+    document.querySelectorAll('.sv-timeline-detail').forEach(p=>{ p.style.display='none'; p.dataset.openGi=''; p.innerHTML=''; });
+    document.querySelectorAll('.sv-timeline-dot.active').forEach(d=>d.classList.remove('active'));
+    if(wasOpenForThis) return; // كانت مفتوحة لنفس النقطة — أبقها مغلقة (تبديل)
+    const grp = (timelineGroupsCache[si]||[])[gi];
+    if(!grp || !grp.length) return;
+    panel.innerHTML = grp.map(detailBoxHtml).join('');
     panel.style.display = 'block';
-    panel.dataset.openRi = ri;
+    panel.dataset.openGi = gi;
     dot.classList.add('active');
   };
 }
-let timelineRecsCache = {};
+let timelineGroupsCache = {};
 document.getElementById('peopleDateFrom').addEventListener('change', e=>{
   peopleDateFrom = e.target.value? new Date(e.target.value): null;
   peopleSemester = 'custom';
@@ -3149,41 +3117,47 @@ function buildDailyPrintHTML(data, dayDate){
   const printGradeCountMap = new Map(groupCount(data, r=>r.grade||'—'));
   const printAllGrades = sortGradeLabels([...new Set(allRecords.map(r=>r.grade).filter(Boolean))]);
   const gradeBox = printAllGrades.map(l=> `<div class="p-kpi-line">${l}<b>${fmt(printGradeCountMap.get(l)||0)}</b></div>`).join('') || '<div class="p-kpi-line">لا توجد بيانات</div>';
-  const detailCards = data.map(r=>{
+  const DAILY_TABLE_COLS = 7;
+  const detailRows = data.map(r=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
     const phone = getStudentPhone(r.studentName);
-    return `<div class="p-daily-card" style="border-color:${color}">
-      <div class="p-daily-nameline">
-        <span class="p-daily-name">${r.studentName||'—'}</span>
-        <span class="p-daily-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
-        ${phone? `<span class="p-daily-phone">📞 رقم تواصل ولي الأمر: ${formatParentPhone(phone)}</span>` : ''}
-      </div>
-      <div class="p-daily-badges">
-        <span class="p-badge" style="background:${color}">${dailyDegreeBadgeLabel(r.degree)}</span>
-        <span class="p-badge p-badge-out">🕐 ${r.period||'—'}</span>
-        <span class="p-badge p-badge-out">📍 ${r.location||'—'}</span>
-        <span class="p-badge p-badge-out">✍️ ${r.recorder||'—'}</span>
-        <span class="p-daily-context">${formatOrdinalContext(r)}</span>
-      </div>
-      <div class="p-daily-violation">${r.type||'مخالفة سلوكية'}</div>
-      ${r.notes? `<div class="p-daily-desc">${r.notes}</div>` : ''}
-    </div>`;
-  }).join('') || '<div class="empty-note">لا توجد مخالفات مسجّلة</div>';
+    return `<tr class="p-daily-row1" style="border-inline-start:4px solid ${color}">
+        <td class="p-daily-name">${r.studentName||'—'}</td>
+        <td>${r.grade||'—'}${r.section?(' / '+r.section):''}</td>
+        <td><span class="p-badge" style="background:${color}">${dailyDegreeBadgeLabel(r.degree)}</span></td>
+        <td>🕐 ${r.period||'—'}</td>
+        <td>📍 ${r.location||'—'}</td>
+        <td>✍️ ${r.recorder||'—'}</td>
+        <td>${phone? ('📞 '+formatParentPhone(phone)) : '—'}</td>
+      </tr>
+      <tr class="p-daily-row2" style="border-inline-start:4px solid ${color}">
+        <td colspan="${DAILY_TABLE_COLS}">
+          <b class="p-daily-violation">${r.type||'مخالفة سلوكية'}</b>
+          ${r.notes? ` — <span class="p-daily-desc">${r.notes}</span>` : ''}
+          <span class="p-daily-context">${formatOrdinalContext(r)}</span>
+        </td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="${DAILY_TABLE_COLS}" class="empty-note">لا توجد مخالفات مسجّلة</td></tr>`;
+  const detailTableHtml = `<table class="p-daily-table">
+    <thead><tr><th>الطالب</th><th>الصف/الشعبة</th><th>الدرجة</th><th>الحصة</th><th>المكان</th><th>المُسجِّل</th><th>تواصل ولي الأمر</th></tr></thead>
+    <tbody>${detailRows}</tbody>
+  </table>`;
   const filename = dailyReportFilename(dayDate, agg.total);
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${filename}</title>
   <style>${REPORT_BASE_CSS}
-    .p-daily-card{border:1.5px solid #D6C9A3;border-inline-start-width:4px;border-radius:0;padding:9px 12px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .p-daily-nameline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-    .p-daily-phone{margin-inline-start:auto;font-size:10px;font-weight:700;color:#5F2E3D;}
-    .p-daily-name{font-weight:800;font-size:13px;}
-    .p-daily-grade{font-weight:400;font-size:11px;color:#6B5E50;}
-    .p-daily-badges{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin:5px 0;}
     .p-daily-dateline{font-weight:800;font-size:14.5px;color:#3A3226;margin:4px 0 10px;}
+    .p-daily-table{width:100%;border-collapse:collapse;font-size:10.5px;}
+    .p-daily-table thead th{background:#F2EFE9;color:#3A3226;font-weight:700;font-size:10px;padding:5px 8px;text-align:start;border-bottom:1.5px solid #D6C9A3;}
+    .p-daily-table tbody td{padding:4px 8px;border-bottom:0;}
+    .p-daily-table tr.p-daily-row1{break-inside:avoid;page-break-inside:avoid;}
+    .p-daily-table tr.p-daily-row2{break-inside:avoid;page-break-inside:avoid;break-after:auto;}
+    .p-daily-table tr.p-daily-row2 td{padding-top:0;padding-bottom:6px;border-bottom:1px solid #EFE9DD;color:#6B5E50;}
+    .p-daily-table tbody tr:nth-of-type(4n+1), .p-daily-table tbody tr:nth-of-type(4n+2){background:#FBF9F5;}
+    .p-daily-name{font-weight:800;color:#3A3226;}
     .p-badge{font-size:9.5px;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;}
-    .p-badge-out{background:#F2EFE9;color:#3A3226;font-weight:500;}
-    .p-daily-violation{font-weight:800;font-size:11.5px;}
-    .p-daily-desc{font-size:10.5px;color:#6B5E50;margin-top:2px;}
-    .p-daily-context{font-size:9.5px;color:#6B5E50;background:#F7F4EE;padding:3px 8px;border-radius:5px;flex:1 1 140px;}
+    .p-daily-violation{font-weight:800;font-size:11px;color:#3A3226;}
+    .p-daily-desc{font-size:10.5px;}
+    .p-daily-context{font-size:9.5px;color:#8A7F6B;margin-inline-start:6px;}
     .p-kpi-box{flex:1;min-width:150px;text-align:center;}
     .p-kpi-box.p-kpi-total-box{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:74px;}
     .p-kpi-title{font-size:10px;font-weight:700;color:#6B5E50;margin-bottom:4px;}
@@ -3195,14 +3169,14 @@ function buildDailyPrintHTML(data, dayDate){
   </style></head><body>
   ${buildLetterheadHTML('تقرير مخالفات يومي')}
   <div class="p-daily-dateline">${dayDate.toLocaleDateString(AR_LOCALE,{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
-  <div class="meta">${schoolMetaLine()}<br>تاريخ الإصدار: ${bdi(now.toLocaleString(AR_LOCALE))}</div>
+  <div class="meta">${SCHOOL_NAME}<br>تاريخ الإصدار: ${bdi(now.toLocaleString(AR_LOCALE))}</div>
   <div class="kpi-row">
     <div class="kpi-box p-kpi-box p-kpi-total-box"><div class="p-kpi-title">إجمالي المخالفات</div><div class="p-kpi-total-val">${fmt(agg.total)}</div></div>
     <div class="kpi-box p-kpi-box"><div class="p-kpi-title">حسب الدرجة</div>${degreeBox}</div>
     <div class="kpi-box p-kpi-box"><div class="p-kpi-title">حسب الصف</div>${gradeBox}</div>
   </div>
   <h2>السجل التفصيلي</h2>
-  ${detailCards}
+  ${detailTableHtml}
   <footer>تقرير أُعدّ آلياً لأغراض المتابعة الداخلية للمدرسة فقط</footer>
   </body></html>`;
 }
@@ -3716,17 +3690,37 @@ function loadSharedSchoolData(){
         if(row.includes('اسم المدرسة')) infoHeaderRow = i;
         if(row.some(c => String(c).includes('الفصل الدراسي الأول'))) termHeaderRow = i;
       });
-      if(infoHeaderRow >= 0){
-        // ملاحظة: لا نُصفّي (filter) صف العناوين هنا؛ التصفية كانت تزيح فهارس القيم
-        // عن عناوينها الصحيحة كلما وُجد عمود فارغ قبل عمود "اسم مديرة المدرسة"، مما
-        // كان يتسبب أحياناً بعرض نص العنوان نفسه بدل القيمة الفعلية.
-        const headers = grid[infoHeaderRow] || [];
-        const vals = grid[infoHeaderRow+1] || [];
+      {
+        // نجمع القيم من الشيت بطريقتين معاً لأن ترتيب الأعمدة/الصفوف في ملف "بيانات
+        // المدرسة" قد يكون عمودياً (تسمية في العمود الأول وقيمتها بجانبها) أو أفقياً
+        // (صف عناوين وتحته صف قيم) — لا نفترض شكلاً واحداً حتى لا تنعكس القيم.
+        const KNOWN_KEYS = ['اسم المدرسة','اسم مديرة المدرسة','مدير المدرسة','المدير','المديرة','المرشد الأكاديمي','العام الدراسي','نوع الطلاب'];
         const info = {};
-        headers.forEach((h,idx) => { if(h) info[String(h).trim()] = vals[idx] ?? ''; });
-        SCHOOL_NAME = (info['اسم المدرسة'] && info['اسم المدرسة'] !== 'اسم المدرسة') ? info['اسم المدرسة'] : SCHOOL_NAME;
-        PRINCIPAL_NAME = (info['اسم مديرة المدرسة'] && info['اسم مديرة المدرسة'] !== 'اسم مديرة المدرسة') ? info['اسم مديرة المدرسة'] : PRINCIPAL_NAME;
-        ACADEMIC_YEAR = (info['العام الدراسي'] && info['العام الدراسي'] !== 'العام الدراسي') ? info['العام الدراسي'] : ACADEMIC_YEAR;
+        // 1) مسح عمودي: أي صف يبدأ بتسمية معروفة في أول خانة، والقيمة في أول خانة تالية غير فارغة
+        grid.forEach(row=>{
+          if(!row || !row.length) return;
+          const key = String(row[0]||'').trim();
+          if(!KNOWN_KEYS.includes(key)) return;
+          for(let c=1;c<row.length;c++){
+            const v = row[c];
+            if(v!=null && String(v).trim()!==''){ info[key] = String(v).trim(); break; }
+          }
+        });
+        // 2) مسح أفقي احتياطي: صف عناوين وتحته صف قيم (يُستخدم فقط للمفاتيح غير المكتشفة عمودياً)
+        if(infoHeaderRow >= 0){
+          const headers = grid[infoHeaderRow] || [];
+          const vals = grid[infoHeaderRow+1] || [];
+          headers.forEach((h,idx) => {
+            const key = String(h||'').trim();
+            if(!key || info[key]) return;
+            const v = vals[idx];
+            if(v!=null && String(v).trim()!=='') info[key] = String(v).trim();
+          });
+        }
+        const clean = (k)=> (info[k] && info[k] !== k) ? info[k] : null;
+        SCHOOL_NAME = clean('اسم المدرسة') || SCHOOL_NAME;
+        PRINCIPAL_NAME = clean('اسم مديرة المدرسة') || clean('مدير المدرسة') || clean('المدير') || clean('المديرة') || PRINCIPAL_NAME;
+        ACADEMIC_YEAR = clean('العام الدراسي') || ACADEMIC_YEAR;
         STUDENT_TYPE = (info['نوع الطلاب'] === 'بنات') ? 'بنات' : 'بنين';
         updateBrandHeader();
       }
