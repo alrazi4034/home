@@ -1126,11 +1126,20 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   renderAll();
 }
 
+/* تواريخ الإكسل (cellDates:true) تُبنى كمنتصف ليل بتوقيت UTC، لذا نقرأها بدوال UTC
+   حتى لا يظهر التاريخ يوماً أسبق بسبب فرق التوقيت المحلي للمتصفح. */
 function localDateStr(d){
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
   return y + '-' + m + '-' + day;
 }
 function fmtDate(v){ return (v instanceof Date) ? localDateStr(v) : (v || ''); }
+/* تاريخ "اليوم" الفعلي حسب توقيت المتصفح المحلي (لتمييز الأسبوع/اليوم الحالي) - منفصل عمداً
+   عن localDateStr لأنه لا يتعامل مع تاريخ إكسل بل مع اللحظة الحالية. */
+function todayStr(){
+  const d = new Date();
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return y + '-' + m + '-' + day;
+}
 
 /* بصمة سريعة لمحتوى الملف (ليست تشفيرية) — تُستخدم فقط لمعرفة هل الملف تغيّر فعلاً
    عن آخر نسخة قرأناها/كتبناها، لتفادي عرض تنبيه "تحديث متاح" كاذب. */
@@ -1284,12 +1293,12 @@ function generateTermWeeks(ti){
   const count = parseInt(term.weeksCount, 10) || 0;
   if(count <= 0){ alert('أدخل عدد أسابيع صحيح.'); return; }
   if(!term.startDate){ alert('أدخل تاريخ بداية الأسبوع الأول أولاً.'); return; }
-  const start = new Date(term.startDate + 'T00:00:00');
+  const start = new Date(term.startDate + 'T00:00:00Z');
   if(isNaN(start.getTime())){ alert('تاريخ البداية غير صحيح.'); return; }
   const weeks = [];
   for(let i = 0; i < count; i++){
     const d = new Date(start.getTime());
-    d.setDate(d.getDate() + i * 7);
+    d.setUTCDate(d.getUTCDate() + i * 7);
     weeks.push({ week: 'الأسبوع ' + (i+1), date: localDateStr(d) });
   }
   term.weeks = weeks;
@@ -2780,7 +2789,7 @@ function exportWorkbook(){
   const wsCal = XLSX.utils.aoa_to_sheet(aoa);
   XLSX.utils.book_append_sheet(wb, wsCal, 'التقويم المدرسي');
 
-  const today = localDateStr(new Date());
+  const today = todayStr();
   const outName = `بيانات_المدرسة_${today}.xlsx`;
   XLSX.writeFile(wb, outName);
 
