@@ -3219,6 +3219,16 @@ function buildDailyPrintHTML(data, dayDate){
   const printGradeCountMap = new Map(groupCount(data, r=>r.grade||'—'));
   const printAllGrades = sortGradeLabels([...new Set(allRecords.map(r=>r.grade).filter(Boolean))]);
   const gradeBox = printAllGrades.map(l=> `<div class="p-kpi-line">${l}<b>${fmt(printGradeCountMap.get(l)||0)}</b></div>`).join('') || '<div class="p-kpi-line">لا توجد بيانات</div>';
+  // جدول مختصر في الصفحة الأولى: الطالب/الصف/الدرجة/السياق — قبل صفحات التفاصيل الكاملة
+  const summaryRows = data.map(r=>{
+    const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
+    return `<tr>
+      <td>${r.studentName||'—'}</td>
+      <td>${r.grade||'—'}${r.section?(' / '+r.section):''}</td>
+      <td><span class="pill" style="background:${color}">${r.degree||'—'}</span></td>
+      <td>${formatOrdinalContext(r)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4">لا توجد مخالفات مسجّلة</td></tr>';
   const detailCards = data.map(r=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
     const phone = getStudentPhone(r.studentName);
@@ -3262,6 +3272,7 @@ function buildDailyPrintHTML(data, dayDate){
     .p-kpi-line b{color:#5F2E3D;}
     .p-kpi-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
     .empty-note{text-align:center;color:#8A7F6B;padding:20px;}
+    .p-detail-section{page-break-before:always;}
   </style></head><body>
   ${buildLetterheadHTML('تقرير مخالفات يومي')}
   <div class="p-daily-dateline">${dayDate.toLocaleDateString(AR_LOCALE,{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
@@ -3271,8 +3282,12 @@ function buildDailyPrintHTML(data, dayDate){
     <div class="kpi-box p-kpi-box"><div class="p-kpi-title">حسب الدرجة</div>${degreeBox}</div>
     <div class="kpi-box p-kpi-box"><div class="p-kpi-title">حسب الصف</div>${gradeBox}</div>
   </div>
-  <h2>السجل التفصيلي</h2>
-  ${detailCards}
+  <h2>ملخص المخالفات</h2>
+  <table><thead><tr><th>الطالب</th><th>الصف</th><th>الدرجة</th><th>السياق</th></tr></thead><tbody>${summaryRows}</tbody></table>
+  <div class="p-detail-section">
+    <h2>السجل التفصيلي</h2>
+    ${detailCards}
+  </div>
   <footer>تقرير أُعدّ آلياً لأغراض المتابعة الداخلية للمدرسة فقط</footer>
   </body></html>`;
 }
