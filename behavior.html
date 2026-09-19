@@ -227,8 +227,8 @@
   .sv-timeline-table tbody td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle;}
   .sv-timeline-table tr.sv-tt-row{cursor:pointer;}
   .sv-timeline-table tr.sv-tt-row:hover td{background:rgba(61,38,71,.03);}
-  .sv-col-name{width:170px;} .sv-col-grade{width:110px;} .sv-col-count{width:100px;}
-  @media (max-width:900px){ .sv-col-name{width:110px;} .sv-col-grade{width:80px;} .sv-col-count{width:80px;} }
+  .sv-col-name{width:230px;} .sv-col-grade{width:110px;} .sv-col-count{width:100px;}
+  @media (max-width:900px){ .sv-col-name{width:150px;} .sv-col-grade{width:80px;} .sv-col-count{width:80px;} }
   .sv-timeline-name{font-weight:800;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sv-timeline-meta{font-size:10.8px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sv-timeline-edge{font-size:9.5px;color:var(--ink-soft);white-space:nowrap;flex:0 0 auto;}
@@ -502,7 +502,7 @@
         </details>
 
         <div class="card">
-          <h3><span>الاتجاه الزمني الأسبوعي للمخالفات <span class="hint">— خط سميك لإجمالي المدرسة، وخط أنحف لكل مرحلة بلونها</span></span></h3>
+          <h3><span>الاتجاه الزمني الأسبوعي للمخالفات <span class="hint">— عمود لكل أسبوع، ارتفاعه إجمالي المخالفات ومقسّم بالألوان حسب الصف</span></span></h3>
           <div class="trend-legend" id="trendLegend"></div>
           <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
         </div>
@@ -662,6 +662,15 @@ let PRINCIPAL_NAME = "—";
 let ADVISOR_NAME = "—";
 let ACADEMIC_YEAR = "";
 let STUDENT_TYPE = "بنين"; // بنين | بنات — drives gendered language in messages/letters
+// أسماء حقول بيانات المدرسة المعروفة — تُستخدم لرفض أي قيمة "مُلتقَطة" تساوي
+// نص أحد هذه التسميات نفسه (يحدث لو انزلق المسح خطأً على خانة عنوان حقل آخر
+// بدل قيمته الفعلية)، سواء عند القراءة من ملف الشيت أو عند الاسترجاع من التخزين المحلي.
+const SCHOOL_INFO_KNOWN_LABELS = ['اسم المدرسة','اسم مديرة المدرسة','مدير المدرسة','المدير','المديرة','المرشد الأكاديمي','العام الدراسي','نوع الطلاب'];
+function sanitizeSchoolInfoValue(v){
+  const s = (v==null) ? '' : String(v).trim();
+  if(!s) return null;
+  return SCHOOL_INFO_KNOWN_LABELS.includes(s) ? null : s;
+}
 const AR_LOCALE = "ar-EG-u-nu-latn";
 
 const GRID = "#E9E1CE";
@@ -834,9 +843,17 @@ function initFromStorage(){
     const rawInfo = localStorage.getItem(LS_SCHOOLINFO);
     if(rawInfo){
       const info = JSON.parse(rawInfo);
-      SCHOOL_NAME=info.SCHOOL_NAME||SCHOOL_NAME; PRINCIPAL_NAME=info.PRINCIPAL_NAME||PRINCIPAL_NAME;
-      ADVISOR_NAME=info.ADVISOR_NAME||ADVISOR_NAME; ACADEMIC_YEAR=info.ACADEMIC_YEAR||ACADEMIC_YEAR;
-      STUDENT_TYPE=info.STUDENT_TYPE||STUDENT_TYPE;
+      SCHOOL_NAME=sanitizeSchoolInfoValue(info.SCHOOL_NAME)||SCHOOL_NAME; PRINCIPAL_NAME=sanitizeSchoolInfoValue(info.PRINCIPAL_NAME)||PRINCIPAL_NAME;
+      ADVISOR_NAME=sanitizeSchoolInfoValue(info.ADVISOR_NAME)||ADVISOR_NAME; ACADEMIC_YEAR=sanitizeSchoolInfoValue(info.ACADEMIC_YEAR)||ACADEMIC_YEAR;
+      STUDENT_TYPE=sanitizeSchoolInfoValue(info.STUDENT_TYPE)||STUDENT_TYPE;
+      // تنظيف فوري: إن كانت إحدى القيم المخزّنة سابقاً تالفة (تساوي اسم حقل بدل قيمته الفعلية)
+      // نعيد كتابة نسخة سليمة من بيانات المدرسة فوراً — دون لمس بيانات الفصول/الأسابيع
+      // المخزّنة (لأنها تُقرأ لاحقاً من localStorage ولم تُحمَّل بعد في termConfig هنا)
+      const infoWasCorrupted = [info.SCHOOL_NAME, info.PRINCIPAL_NAME, info.ADVISOR_NAME, info.ACADEMIC_YEAR, info.STUDENT_TYPE]
+        .some(v => v && sanitizeSchoolInfoValue(v)===null);
+      if(infoWasCorrupted){
+        try{ localStorage.setItem(LS_SCHOOLINFO, JSON.stringify({SCHOOL_NAME, PRINCIPAL_NAME, ADVISOR_NAME, ACADEMIC_YEAR, STUDENT_TYPE})); }catch(e){}
+      }
       updateBrandHeader();
     }
     const rawTerm = localStorage.getItem(LS_TERM);
@@ -929,7 +946,7 @@ function parseSchoolInfoSheet(sheet){
   infoRows.forEach(row=>{
     if(!row || row.length<2) return;
     const key = String(row[0]||'').trim();
-    const val = row[1];
+    const val = sanitizeSchoolInfoValue(row[1]);
     if(key && val!=null && KEY_MAP[key]) KEY_MAP[key](val);
   });
   updateBrandHeader();
@@ -2365,28 +2382,35 @@ function renderTrendChart(agg){
   const labels = weekKeys.map(k=> fmtDateShort(new Date(k)));
   const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
   const gradeColors = buildGradeColorMap(filtered);
-  const datasets = [{
-    label:'إجمالي المدرسة', data: agg.byWeek.map(w=>w[1]),
-    borderColor: plum, backgroundColor:'rgba(61,38,71,0.08)', fill:true, tension:0.35,
-    borderWidth:3.5, pointBackgroundColor:plum, pointRadius:4, order:0
-  }];
-  grades.forEach(g=>{
+  // عمود واحد لكل أسبوع (مكدّس حسب الصف) بدل عدة خطوط متشابكة — أوضح عند وجود
+  // عدد كبير من الصفوف، وارتفاع العمود الكلي يعطي إجمالي الأسبوع مباشرة
+  const datasets = grades.map(g=>{
     const weekMap = new Map();
     filtered.forEach(r=>{ if(r.grade!==g || !r.date) return; const ws=isoDate(mondayOf(r.date)); weekMap.set(ws,(weekMap.get(ws)||0)+1); });
-    datasets.push({
+    return {
       label: g, data: weekKeys.map(k=> weekMap.get(k)||0),
-      borderColor: gradeColors[g]||plum, backgroundColor:'transparent', fill:false, tension:0.35,
-      borderWidth:1.5, pointRadius:2, order:1
-    });
+      backgroundColor: gradeColors[g]||plum, borderRadius:3, stack:'total'
+    };
   });
   if(legendEl){
-    legendEl.innerHTML = `<span class="legend-chip"><span class="legend-dot" style="background:${plum}"></span>إجمالي المدرسة (خط سميك)</span>` +
-      grades.map(g=>`<span class="legend-chip"><span class="legend-dot" style="background:${gradeColors[g]||plum}"></span>${g}</span>`).join('');
+    legendEl.innerHTML = grades.map(g=>`<span class="legend-chip"><span class="legend-dot" style="background:${gradeColors[g]||plum}"></span>${g}</span>`).join('');
   }
   charts.trend = new Chart(ctx, {
-    type:'line',
+    type:'bar',
     data:{ labels, datasets },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, grid:{color:GRID}, ticks:{precision:0}}, x:{grid:{display:false}} } }
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{ mode:'index', intersect:false, callbacks:{
+          footer: (items)=> 'الإجمالي: ' + fmt(items.reduce((s,it)=> s+(it.parsed.y||0), 0))
+        } }
+      },
+      scales:{
+        y:{ beginAtZero:true, stacked:true, grid:{color:GRID}, ticks:{precision:0} },
+        x:{ stacked:true, grid:{display:false} }
+      }
+    }
   });
 }
 
@@ -2586,7 +2610,7 @@ function renderTopViolatorsTimeline(){
     });
     const groups = [...groupsMap.values()].sort((a,b)=> a[0].date - b[0].date);
     timelineGroupsCache[si] = groups;
-    const first = recs[0], last = recs[recs.length-1];
+    const last = recs[recs.length-1];
     const dots = groups.map((grp,gi)=>{
       // نلوّن النقطة بلون أشد درجة موجودة ضمن المجموعة
       const worst = grp.reduce((w,r)=>{ const i=degreeIndex(r.degree); return (i!=null && (w==null || i>w.i)) ? {i,r} : w; }, null);
@@ -2598,7 +2622,7 @@ function renderTopViolatorsTimeline(){
     }).join('');
     return `<tr class="sv-tt-row" data-si="${si}">
         <td class="sv-timeline-name" title="${name}">${name}</td>
-        <td class="sv-timeline-meta">${(first.grade||'—')}${first.section?(' — '+first.section):''}</td>
+        <td class="sv-timeline-meta">${(last.grade||'—')}${last.section?(' — '+last.section):''}</td>
         <td>
           <div class="sv-timeline-row-inline">
             <span class="sv-timeline-edge">${fmtDate(new Date(rangeMin))}</span>
@@ -3745,7 +3769,7 @@ function loadSharedSchoolData(){
         // نجمع القيم من الشيت بطريقتين معاً لأن ترتيب الأعمدة/الصفوف في ملف "بيانات
         // المدرسة" قد يكون عمودياً (تسمية في العمود الأول وقيمتها بجانبها) أو أفقياً
         // (صف عناوين وتحته صف قيم) — لا نفترض شكلاً واحداً حتى لا تنعكس القيم.
-        const KNOWN_KEYS = ['اسم المدرسة','اسم مديرة المدرسة','مدير المدرسة','المدير','المديرة','المرشد الأكاديمي','العام الدراسي','نوع الطلاب'];
+        const KNOWN_KEYS = SCHOOL_INFO_KNOWN_LABELS;
         const info = {};
         // 1) مسح عمودي: أي صف يبدأ بتسمية معروفة في أول خانة، وقيمتها في الخانة
         // المجاورة مباشرة فقط (وليس أي خانة لاحقة) — البحث في خانات أبعد كان يلتقط
