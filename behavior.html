@@ -485,12 +485,6 @@
           </div>
         </div>
 
-        <div class="card">
-          <h3><span>الاتجاه الزمني الأسبوعي للمخالفات <span class="hint">— خط سميك لإجمالي المدرسة، وخط أنحف لكل مرحلة بلونها</span></span></h3>
-          <div class="trend-legend" id="trendLegend"></div>
-          <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
-        </div>
-
         <div class="row-2 split-65-35">
           <div class="card">
             <h3><span>أكثر أنواع المخالفات تكراراً</span></h3>
@@ -506,6 +500,12 @@
           <summary class="heat-summary"><h3 style="display:inline;"><span>خريطة حرارية لأسابيع الفصل الدراسي <span class="hint">— إجمالي المخالفات لكل أسبوع، أخضر = هادئ، أحمر = حرج</span></span></h3><span class="heat-chevron">▾</span></summary>
           <div class="heat-grid" id="calendarHeatmapGrid"></div>
         </details>
+
+        <div class="card">
+          <h3><span>الاتجاه الزمني الأسبوعي للمخالفات <span class="hint">— خط سميك لإجمالي المدرسة، وخط أنحف لكل مرحلة بلونها</span></span></h3>
+          <div class="trend-legend" id="trendLegend"></div>
+          <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
+        </div>
 
       </div>
     </div>
@@ -3174,47 +3174,41 @@ function buildDailyPrintHTML(data, dayDate){
   const printGradeCountMap = new Map(groupCount(data, r=>r.grade||'—'));
   const printAllGrades = sortGradeLabels([...new Set(allRecords.map(r=>r.grade).filter(Boolean))]);
   const gradeBox = printAllGrades.map(l=> `<div class="p-kpi-line">${l}<b>${fmt(printGradeCountMap.get(l)||0)}</b></div>`).join('') || '<div class="p-kpi-line">لا توجد بيانات</div>';
-  const DAILY_TABLE_COLS = 7;
-  const detailRows = data.map(r=>{
+  const detailCards = data.map(r=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
     const phone = getStudentPhone(r.studentName);
-    return `<tr class="p-daily-row1" style="border-inline-start:4px solid ${color}">
-        <td class="p-daily-name">${r.studentName||'—'}</td>
-        <td>${r.grade||'—'}${r.section?(' / '+r.section):''}</td>
-        <td><span class="p-badge" style="background:${color}">${dailyDegreeBadgeLabel(r.degree)}</span></td>
-        <td>🕐 ${r.period||'—'}</td>
-        <td>📍 ${r.location||'—'}</td>
-        <td>✍️ ${r.recorder||'—'}</td>
-        <td>${phone? ('📞 '+formatParentPhone(phone)) : '—'}</td>
-      </tr>
-      <tr class="p-daily-row2" style="border-inline-start:4px solid ${color}">
-        <td colspan="${DAILY_TABLE_COLS}">
-          <b class="p-daily-violation">${r.type||'مخالفة سلوكية'}</b>
-          ${r.notes? ` — <span class="p-daily-desc">${r.notes}</span>` : ''}
-          <span class="p-daily-context">${formatOrdinalContext(r)}</span>
-        </td>
-      </tr>`;
-  }).join('') || `<tr><td colspan="${DAILY_TABLE_COLS}" class="empty-note">لا توجد مخالفات مسجّلة</td></tr>`;
-  const detailTableHtml = `<table class="p-daily-table">
-    <thead><tr><th>الطالب</th><th>الصف/الشعبة</th><th>الدرجة</th><th>الحصة</th><th>المكان</th><th>المُسجِّل</th><th>تواصل ولي الأمر</th></tr></thead>
-    <tbody>${detailRows}</tbody>
-  </table>`;
+    return `<div class="p-daily-card" style="border-color:${color};border-inline-start-width:4px;">
+      <div class="p-daily-nameline">
+        <span class="p-daily-name">${r.studentName||'—'}</span>
+        <span class="p-daily-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
+        ${phone? `<span class="p-daily-phone">📞 رقم تواصل ولي الأمر: ${formatParentPhone(phone)}</span>` : ''}
+      </div>
+      <div class="p-daily-badges">
+        <span class="p-badge p-badge-degree" style="background:${color}">${dailyDegreeBadgeLabel(r.degree)}</span>
+        <span class="p-badge">🕐 ${r.period||'—'}</span>
+        <span class="p-badge">📍 ${r.location||'—'}</span>
+        <span class="p-badge">✍️ ${r.recorder||'—'}</span>
+        <span class="p-daily-context">${formatOrdinalContext(r)}</span>
+      </div>
+      <div class="p-daily-violation">${r.type||'مخالفة سلوكية'}</div>
+      <div class="p-daily-desc">${r.notes || 'لا توجد ملاحظات إضافية'}</div>
+    </div>`;
+  }).join('') || '<div class="empty-note">لا توجد مخالفات مسجّلة</div>';
   const filename = dailyReportFilename(dayDate, agg.total);
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${filename}</title>
   <style>${REPORT_BASE_CSS}
     .p-daily-dateline{font-weight:800;font-size:14.5px;color:#3A3226;margin:4px 0 10px;}
-    .p-daily-table{width:100%;border-collapse:collapse;font-size:10.5px;}
-    .p-daily-table thead th{background:#F2EFE9;color:#3A3226;font-weight:700;font-size:10px;padding:5px 8px;text-align:start;border-bottom:1.5px solid #D6C9A3;}
-    .p-daily-table tbody td{padding:4px 8px;border-bottom:0;}
-    .p-daily-table tr.p-daily-row1{break-inside:avoid;page-break-inside:avoid;}
-    .p-daily-table tr.p-daily-row2{break-inside:avoid;page-break-inside:avoid;break-after:auto;}
-    .p-daily-table tr.p-daily-row2 td{padding-top:0;padding-bottom:6px;border-bottom:1px solid #EFE9DD;color:#6B5E50;}
-    .p-daily-table tbody tr:nth-of-type(4n+1), .p-daily-table tbody tr:nth-of-type(4n+2){background:#FBF9F5;}
-    .p-daily-name{font-weight:800;color:#3A3226;}
-    .p-badge{font-size:9.5px;padding:2px 9px;border-radius:12px;color:#fff;font-weight:700;}
-    .p-daily-violation{font-weight:800;font-size:11px;color:#3A3226;}
-    .p-daily-desc{font-size:10.5px;}
-    .p-daily-context{font-size:9.5px;color:#8A7F6B;margin-inline-start:6px;}
+    .p-daily-card{border:1.5px solid #D6C9A3;border-radius:0;background:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:7px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .p-daily-nameline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+    .p-daily-name{font-weight:800;font-size:14.5px;color:#3A3226;}
+    .p-daily-grade{font-size:11.5px;color:#7A6F59;white-space:nowrap;}
+    .p-daily-phone{margin-inline-start:auto;font-size:11px;font-weight:700;color:#5F2E3D;background:#F3ECDA;padding:3px 9px;border-radius:6px;white-space:nowrap;}
+    .p-daily-badges{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:2px 0;}
+    .p-badge{font-size:10.8px;padding:3px 11px;border-radius:14px;background:#F3ECDA;color:#3A3226;border:1px solid #D6C9A3;white-space:nowrap;}
+    .p-badge-degree{color:#fff;border:none;font-weight:700;}
+    .p-daily-violation{font-weight:800;font-size:13px;color:#3A3226;}
+    .p-daily-desc{font-size:12px;color:#7A6F59;line-height:1.6;}
+    .p-daily-context{font-size:10.8px;color:#7A6F59;background:#F3ECDA;padding:5px 10px;border-radius:6px;flex:1 1 160px;}
     .p-kpi-box{flex:1;min-width:150px;text-align:center;}
     .p-kpi-box.p-kpi-total-box{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:74px;}
     .p-kpi-title{font-size:10px;font-weight:700;color:#6B5E50;margin-bottom:4px;}
@@ -3233,7 +3227,7 @@ function buildDailyPrintHTML(data, dayDate){
     <div class="kpi-box p-kpi-box"><div class="p-kpi-title">حسب الصف</div>${gradeBox}</div>
   </div>
   <h2>السجل التفصيلي</h2>
-  ${detailTableHtml}
+  ${detailCards}
   <footer>تقرير أُعدّ آلياً لأغراض المتابعة الداخلية للمدرسة فقط</footer>
   </body></html>`;
 }
@@ -3753,15 +3747,16 @@ function loadSharedSchoolData(){
         // (صف عناوين وتحته صف قيم) — لا نفترض شكلاً واحداً حتى لا تنعكس القيم.
         const KNOWN_KEYS = ['اسم المدرسة','اسم مديرة المدرسة','مدير المدرسة','المدير','المديرة','المرشد الأكاديمي','العام الدراسي','نوع الطلاب'];
         const info = {};
-        // 1) مسح عمودي: أي صف يبدأ بتسمية معروفة في أول خانة، والقيمة في أول خانة تالية غير فارغة
+        // 1) مسح عمودي: أي صف يبدأ بتسمية معروفة في أول خانة، وقيمتها في الخانة
+        // المجاورة مباشرة فقط (وليس أي خانة لاحقة) — البحث في خانات أبعد كان يلتقط
+        // أحياناً نص تسمية الحقل التالي (مثل "اسم مديرة المدرسة") ويضعه كقيمة خاطئة
+        // لهذا الحقل إن كانت الخانة المجاورة فارغة.
         grid.forEach(row=>{
           if(!row || !row.length) return;
           const key = String(row[0]||'').trim();
           if(!KNOWN_KEYS.includes(key)) return;
-          for(let c=1;c<row.length;c++){
-            const v = row[c];
-            if(v!=null && String(v).trim()!==''){ info[key] = String(v).trim(); break; }
-          }
+          const v = row[1];
+          if(v!=null && String(v).trim()!=='') info[key] = String(v).trim();
         });
         // 2) مسح أفقي احتياطي: صف عناوين وتحته صف قيم (يُستخدم فقط للمفاتيح غير المكتشفة عمودياً)
         if(infoHeaderRow >= 0){
@@ -3774,12 +3769,15 @@ function loadSharedSchoolData(){
             if(v!=null && String(v).trim()!=='') info[key] = String(v).trim();
           });
         }
-        const clean = (k)=> (info[k] && info[k] !== k) ? info[k] : null;
+        // حارس إضافي: أي "قيمة" مستخرجة تطابق نص أحد أسماء الحقول المعروفة (وليس
+        // فقط حقلها هي) تُعتبر التقاطاً خاطئاً لتسمية حقل مجاور، لا قيمة حقيقية.
+        const clean = (k)=> (info[k] && !KNOWN_KEYS.includes(info[k])) ? info[k] : null;
         SCHOOL_NAME = clean('اسم المدرسة') || SCHOOL_NAME;
         PRINCIPAL_NAME = clean('اسم مديرة المدرسة') || clean('مدير المدرسة') || clean('المدير') || clean('المديرة') || PRINCIPAL_NAME;
         ACADEMIC_YEAR = clean('العام الدراسي') || ACADEMIC_YEAR;
         STUDENT_TYPE = (info['نوع الطلاب'] === 'بنات') ? 'بنات' : 'بنين';
         updateBrandHeader();
+        persistTerm(); // نحفظ اسم المدرسة/المديرة فوراً حتى لو تعذّر اكتشاف جدول الفصول والأسابيع لاحقاً
       }
       if(termHeaderRow >= 0){
         const termHeaders = (grid[termHeaderRow]||[]).map(c=> String(c||'').trim());
