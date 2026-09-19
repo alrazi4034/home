@@ -1191,8 +1191,25 @@ function showDashboard(){
 
 /* ================= Term/weeks (derived from the "بيانات المدرسة" sheet — no manual UI) ================= */
 function getSegments(){
-  if(!termConfig) return [];
-  return termConfig.segments.map((s,i)=>({ ...s, segIndex:i+1, weeks: s.weeks.map(w=>({...w, from:w.start, to:w.end})) }));
+  if(termConfig && termConfig.segments && termConfig.segments.length){
+    return termConfig.segments.map((s,i)=>({ ...s, segIndex:i+1, weeks: s.weeks.map(w=>({...w, from:w.start, to:w.end})) }));
+  }
+  // لا يوجد جدول فصول/أسابيع صالح في ملف البيانات (ورقة "بيانات المدرسة" ناقصة أو بدون TermsWeeks) —
+  // نبني تقسيماً افتراضياً لـ 3 فصول بالتساوي من نطاق تواريخ السجلات الفعلية حتى يبقى فلتر
+  // الفترة (الكل / الأول / الثاني / الثالث / تخصيص) ظاهراً دائماً ولا يختفي أبداً.
+  const dates = allRecords.map(r=>r.date).filter(Boolean).sort((a,b)=>a-b);
+  if(!dates.length) return [];
+  const start = new Date(dates[0]); start.setHours(0,0,0,0);
+  const end = new Date(dates[dates.length-1]); end.setHours(23,59,59,999);
+  const totalMs = Math.max(end - start, 1);
+  const labels = ['الفصل الدراسي الأول','الفصل الدراسي الثاني','الفصل الدراسي الثالث'];
+  const segs = [];
+  for(let i=0;i<3;i++){
+    const segStart = new Date(start.getTime() + Math.round(totalMs*i/3));
+    const segEnd = i===2 ? end : new Date(start.getTime() + Math.round(totalMs*(i+1)/3) - 1);
+    segs.push({ label: labels[i], segIndex: i+1, start: segStart, end: segEnd, weeks: [{localIndex:1, start:segStart, end:segEnd, from:segStart, to:segEnd}] });
+  }
+  return segs;
 }
 function getAllTermWeeksFlat(){
   if(!termConfig) return [];
@@ -1339,24 +1356,40 @@ function rebuildSemesterFilterUI(){
   if(typeof rebuildPeopleSemesterUI === 'function') rebuildPeopleSemesterUI();
   const grp = document.getElementById('semesterFilterGroup');
   if(!grp) return;
-  if(!termConfig || !allRecords.length){ grp.style.display='none'; return; }
+  if(!allRecords.length){ grp.style.display='none'; return; }
   grp.style.display='flex';
-  const segments = getSegments();
+  let segments = [];
+  try{ segments = getSegments(); }catch(e){ console.warn('getSegments failed', e); segments = []; }
   if(!filters.semester) filters.semester = 'all';
   const box = document.getElementById('semesterChips');
 
   const options = [{ key:'all', label:'كل العام الدراسي' }];
-  segments.forEach(seg=> options.push({ key:'seg:'+seg.segIndex, label: seg.label }));
+  const TERM_FALLBACK_WORDS = ['الأول','الثاني','الثالث','الرابع'];
+  segments.forEach((seg,i)=> options.push({ key:'seg:'+(seg.segIndex||(i+1)), label: seg.label || ('الفصل الدراسي '+(TERM_FALLBACK_WORDS[i]||(i+1))) }));
   options.push({ key:'custom', label:'🗓️ تخصيص' });
 
-  box.innerHTML = options.map(o=> `<span class="chip${filters.semester===o.key?' active':''}" data-key="${o.key}">${o.label}</span>`).join('');
-  box.querySelectorAll('.chip').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      filters.semester = el.dataset.key;
-      rebuildSemesterFilterUI();
+  // لا نعيد بناء عناصر الـ DOM بالكامل عند كل ضغطة (كان هذا يسبب اختفاء الفلتر أحياناً في بعض
+  // الحالات)؛ فقط عند تغيّر عدد/تسميات الخيارات فعلياً (تحميل بيانات جديدة) نعيد الإنشاء،
+  // وإلا نكتفي بتحديث الحالة "active" على نفس العناصر الموجودة فعلاً.
+  const sameShape = box.dataset.optKeys === options.map(o=>o.key).join(',');
+  if(!sameShape){
+    box.dataset.optKeys = options.map(o=>o.key).join(',');
+    box.innerHTML = options.map(o=> `<span class="chip${filters.semester===o.key?' active':''}" data-key="${o.key}">${o.label}</span>`).join('');
+    box.querySelectorAll('.chip').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        filters.semester = el.dataset.key;
+        box.querySelectorAll('.chip').forEach(c=> c.classList.toggle('active', c.dataset.key===filters.semester));
+        try{ applySemesterSelection(segments); }catch(e){ console.warn('applySemesterSelection failed', e); }
+        grp.style.display='flex';
+      });
     });
-  });
-  applySemesterSelection(segments);
+  } else {
+    box.querySelectorAll('.chip').forEach(el=>{
+      el.classList.toggle('active', el.dataset.key===filters.semester);
+    });
+  }
+  try{ applySemesterSelection(segments); }catch(e){ console.warn('applySemesterSelection failed', e); }
+  grp.style.display='flex';
 }
 function applySemesterSelection(segments){
   const key = filters.semester || 'all';
@@ -2403,23 +2436,30 @@ function rebuildPeopleSemesterUI(){
   const customRow = document.getElementById('peopleCustomDateRow');
   if(!box) return;
   const segments = getSegments();
-  if(!termConfig || !segments.length){
+  if(!segments.length){
     box.innerHTML = '';
     if(customRow) customRow.style.display = 'flex';
     return;
   }
   const options = [{ key:'all', label:'كل العام الدراسي' }];
-  segments.forEach(seg=> options.push({ key:'seg:'+seg.segIndex, label: seg.label }));
+  const TERM_FALLBACK_WORDS2 = ['الأول','الثاني','الثالث','الرابع'];
+  segments.forEach((seg,i)=> options.push({ key:'seg:'+(seg.segIndex||(i+1)), label: seg.label || ('الفصل الدراسي '+(TERM_FALLBACK_WORDS2[i]||(i+1))) }));
   options.push({ key:'custom', label:'🗓️ تخصيص' });
-  box.innerHTML = options.map(o=> `<span class="chip${peopleSemester===o.key?' active':''}" data-key="${o.key}">${o.label}</span>`).join('');
-  box.querySelectorAll('.chip').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      peopleSemester = el.dataset.key;
-      applyPeopleSemesterSelection(segments);
-      rebuildPeopleSemesterUI();
+  const sameShape = box.dataset.optKeys === options.map(o=>o.key).join(',');
+  if(!sameShape){
+    box.dataset.optKeys = options.map(o=>o.key).join(',');
+    box.innerHTML = options.map(o=> `<span class="chip${peopleSemester===o.key?' active':''}" data-key="${o.key}">${o.label}</span>`).join('');
+    box.querySelectorAll('.chip').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        peopleSemester = el.dataset.key;
+        box.querySelectorAll('.chip').forEach(c=> c.classList.toggle('active', c.dataset.key===peopleSemester));
+        try{ applyPeopleSemesterSelection(segments); }catch(e){ console.warn('applyPeopleSemesterSelection failed', e); }
+      });
     });
-  });
-  applyPeopleSemesterSelection(segments);
+  } else {
+    box.querySelectorAll('.chip').forEach(el=> el.classList.toggle('active', el.dataset.key===peopleSemester));
+  }
+  try{ applyPeopleSemesterSelection(segments); }catch(e){ console.warn('applyPeopleSemesterSelection failed', e); }
 }
 function applyPeopleSemesterSelection(segments){
   const isCustom = peopleSemester==='custom';
