@@ -118,7 +118,7 @@
   .row-60-40{grid-template-columns:1.5fr 1fr;}
   @media (max-width:1100px){ .row-3{grid-template-columns:1fr;} }
   .row-2.balanced{grid-template-columns:1fr 1fr;}
-  .row-2.split-65-35{grid-template-columns:65% 35%;}
+  .row-2.split-65-35{grid-template-columns:2fr 1fr;}
   @media (max-width:980px){ .row-2.split-65-35{grid-template-columns:1fr;} }
   .trend-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;}
   .people-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -138,6 +138,10 @@
   .class-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;flex:0 0 auto;}
   .legend-chip{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft);}
   .legend-dot{width:9px;height:9px;border-radius:0;display:inline-block;}
+  .legend-chip-toggle{cursor:pointer;user-select:none;padding:2px 6px;border-radius:4px;transition:opacity .15s,background .15s;}
+  .legend-chip-toggle:hover{background:rgba(61,38,71,.06);}
+  .legend-chip-toggle.legend-chip-off{opacity:.38;}
+  .legend-chip-toggle.legend-chip-off .legend-dot{background:#B9AF9E !important;}
   .degree-donut-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 16px;margin-top:8px;}
   .degree-donut-legend .ddl-item{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink);}
   .degree-donut-legend .ddl-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:0 0 auto;}
@@ -340,7 +344,7 @@
   .daily-badge-degree{color:#fff;border:none;font-weight:700;}
   .daily-card-violation{font-weight:800;font-size:13px;color:var(--ink);}
   .daily-card-desc{font-size:12px;color:var(--ink-soft);line-height:1.6;}
-  .daily-card-context{font-size:10.8px;color:var(--ink-soft);background:var(--panel);padding:5px 10px;border-radius:6px;cursor:pointer;flex:1 1 160px;}
+  .daily-card-context{font-size:10.8px;color:var(--ink-soft);background:var(--panel);padding:5px 10px;border-radius:6px;cursor:pointer;display:inline-block;align-self:flex-start;}
   .daily-card-context:hover{background:var(--bg);text-decoration:underline;}
   .ctx-num{color:var(--plum);font-weight:800;}
   .daily-kpi-grid{grid-template-columns:repeat(3,1fr);}
@@ -705,6 +709,7 @@ let fileNameLabel = '';
 let termConfig = null; // {segments:[{label,start,end,weeks:[{localIndex,start,end}]}], year}
 let filters = { grades:new Set(), sections:new Set(), degrees:new Set(), recorder:'', student:'', dateFrom:null, dateTo:null, search:'', semester:'all' };
 let charts = {};
+let trendHiddenGrades = new Set(); // الصفوف المخفية مؤقتاً من رسم الاتجاه الزمني الأسبوعي (فلترة بالنقر على وسم الصف)
 let classChartItems = [];
 
 /* ---------- helpers ---------- */
@@ -2382,9 +2387,13 @@ function renderTrendChart(agg){
   const labels = weekKeys.map(k=> fmtDateShort(new Date(k)));
   const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
   const gradeColors = buildGradeColorMap(filtered);
+  // إزالة أي صف مخفي لم يعد موجوداً أصلاً بعد تغيّر الفلاتر
+  [...trendHiddenGrades].forEach(g=>{ if(!grades.includes(g)) trendHiddenGrades.delete(g); });
+  const visibleGrades = grades.filter(g=> !trendHiddenGrades.has(g));
   // عمود واحد لكل أسبوع (مكدّس حسب الصف) بدل عدة خطوط متشابكة — أوضح عند وجود
-  // عدد كبير من الصفوف، وارتفاع العمود الكلي يعطي إجمالي الأسبوع مباشرة
-  const datasets = grades.map(g=>{
+  // عدد كبير من الصفوف، وارتفاع العمود الكلي يعطي إجمالي الأسبوع مباشرة.
+  // يمكن إخفاء/إظهار أي صف بالنقر على وسمه في الأسفل لفلترة الرسم
+  const datasets = visibleGrades.map(g=>{
     const weekMap = new Map();
     filtered.forEach(r=>{ if(r.grade!==g || !r.date) return; const ws=isoDate(mondayOf(r.date)); weekMap.set(ws,(weekMap.get(ws)||0)+1); });
     return {
@@ -2393,7 +2402,19 @@ function renderTrendChart(agg){
     };
   });
   if(legendEl){
-    legendEl.innerHTML = grades.map(g=>`<span class="legend-chip"><span class="legend-dot" style="background:${gradeColors[g]||plum}"></span>${g}</span>`).join('');
+    legendEl.innerHTML = grades.map(g=>{
+      const off = trendHiddenGrades.has(g);
+      return `<span class="legend-chip legend-chip-toggle${off?' legend-chip-off':''}" data-grade="${g}" title="اضغط لإخفاء/إظهار هذا الصف">
+        <span class="legend-dot" style="background:${gradeColors[g]||plum}"></span>${g}
+      </span>`;
+    }).join('');
+    legendEl.querySelectorAll('.legend-chip-toggle').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        const g = chip.dataset.grade;
+        if(trendHiddenGrades.has(g)) trendHiddenGrades.delete(g); else trendHiddenGrades.add(g);
+        renderTrendChart(computeAgg(filtered));
+      });
+    });
   }
   charts.trend = new Chart(ctx, {
     type:'bar',
@@ -3139,17 +3160,17 @@ function renderDailyReport(){
           <div class="daily-card-nameline">
             <span class="daily-card-name" data-student="${studentAttr}" title="اضغط لعرض سجل الطالب الكامل">${r.studentName||'—'}</span>
             <span class="daily-card-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
-            ${phone? `<span class="daily-card-phone">📞 رقم تواصل ولي الأمر: ${formatParentPhone(phone)}</span>` : ''}
+            ${phone? `<span class="daily-card-phone" title="رقم تواصل ولي الأمر">📞 ${formatParentPhone(phone)}</span>` : ''}
           </div>
           <div class="daily-card-badges">
             <span class="daily-badge daily-badge-degree" style="background:${color}">${dailyDegreeBadgeLabel(r.degree)}</span>
             <span class="daily-badge">🕐 ${r.period || '—'}</span>
             <span class="daily-badge">📍 ${r.location || '—'}</span>
             <span class="daily-badge">✍️ ${r.recorder || '—'}</span>
-            <span class="daily-card-context" data-student="${studentAttr}" title="اضغط لعرض سجل الطالب الكامل">${formatOrdinalContext(r)}</span>
           </div>
           <div class="daily-card-violation">${r.type || 'مخالفة سلوكية'}</div>
           <div class="daily-card-desc">${r.notes || 'لا توجد ملاحظات إضافية'}</div>
+          <div class="daily-card-context" data-student="${studentAttr}" title="اضغط لعرض سجل الطالب الكامل">${formatOrdinalContext(r)}</div>
         </div>`;
       }).join('');
     }
@@ -3205,17 +3226,17 @@ function buildDailyPrintHTML(data, dayDate){
       <div class="p-daily-nameline">
         <span class="p-daily-name">${r.studentName||'—'}</span>
         <span class="p-daily-grade">${r.grade||'—'}${r.section?(' — '+r.section):''}</span>
-        ${phone? `<span class="p-daily-phone">📞 رقم تواصل ولي الأمر: ${formatParentPhone(phone)}</span>` : ''}
+        ${phone? `<span class="p-daily-phone">📞 ${formatParentPhone(phone)}</span>` : ''}
       </div>
       <div class="p-daily-badges">
         <span class="p-badge p-badge-degree" style="background:${color}">${dailyDegreeBadgeLabel(r.degree)}</span>
         <span class="p-badge">🕐 ${r.period||'—'}</span>
         <span class="p-badge">📍 ${r.location||'—'}</span>
         <span class="p-badge">✍️ ${r.recorder||'—'}</span>
-        <span class="p-daily-context">${formatOrdinalContext(r)}</span>
       </div>
       <div class="p-daily-violation">${r.type||'مخالفة سلوكية'}</div>
       <div class="p-daily-desc">${r.notes || 'لا توجد ملاحظات إضافية'}</div>
+      <div class="p-daily-context">${formatOrdinalContext(r)}</div>
     </div>`;
   }).join('') || '<div class="empty-note">لا توجد مخالفات مسجّلة</div>';
   const filename = dailyReportFilename(dayDate, agg.total);
@@ -3232,7 +3253,7 @@ function buildDailyPrintHTML(data, dayDate){
     .p-badge-degree{color:#fff;border:none;font-weight:700;}
     .p-daily-violation{font-weight:800;font-size:13px;color:#3A3226;}
     .p-daily-desc{font-size:12px;color:#7A6F59;line-height:1.6;}
-    .p-daily-context{font-size:10.8px;color:#7A6F59;background:#F3ECDA;padding:5px 10px;border-radius:6px;flex:1 1 160px;}
+    .p-daily-context{font-size:10.8px;color:#7A6F59;background:#F3ECDA;padding:5px 10px;border-radius:6px;display:inline-block;align-self:flex-start;}
     .p-kpi-box{flex:1;min-width:150px;text-align:center;}
     .p-kpi-box.p-kpi-total-box{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:74px;}
     .p-kpi-title{font-size:10px;font-weight:700;color:#6B5E50;margin-bottom:4px;}
@@ -3578,7 +3599,7 @@ const REPORT_BASE_CSS = `
   .lh-side{flex:0 0 auto;text-align:center;}
   .lh-side img{height:52px;}
   .lh-center{flex:1;text-align:center;}
-  .lh-report-title{font-family:'El Messiri',sans-serif;font-size:15.5px;color:#5F7A57;font-weight:800;}
+  .lh-report-title{font-family:'El Messiri',sans-serif;font-size:31px;color:#5F7A57;font-weight:800;}
   .lh-rule{border:none;border-top:2px solid #5F7A57;margin:8px 0 14px;}
   .sign-grid{display:flex;justify-content:space-between;gap:16px;margin-top:34px;page-break-inside:avoid;}
   .sign-box{flex:1;text-align:center;font-size:11.5px;color:#3A3226;}
