@@ -222,18 +222,25 @@
   .timeline-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10.8px;color:var(--ink-soft);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line);}
   .timeline-legend span{display:flex;align-items:center;gap:5px;}
   .timeline-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
-  .sv-timeline-card{border:1px solid var(--line);border-inline-start:4px solid var(--plum);padding:10px 14px;margin-bottom:10px;}
-  .sv-timeline-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;}
-  .sv-timeline-name{font-weight:800;font-size:13.5px;color:var(--ink);white-space:nowrap;}
-  .sv-timeline-meta{font-size:10.8px;color:var(--ink-soft);white-space:nowrap;}
-  .sv-timeline-edge{font-size:9.5px;color:var(--ink-soft);white-space:nowrap;}
+  .sv-timeline-table{width:100%;table-layout:fixed;border-collapse:collapse;}
+  .sv-timeline-table thead th{text-align:start;font-size:10.5px;font-weight:700;color:var(--ink-soft);padding:6px 8px;border-bottom:1.5px solid var(--line);}
+  .sv-timeline-table tbody td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  .sv-timeline-table tr.sv-tt-row:hover td{background:rgba(61,38,71,.03);}
+  .sv-col-name{width:170px;} .sv-col-grade{width:110px;} .sv-col-count{width:100px;}
+  @media (max-width:900px){ .sv-col-name{width:110px;} .sv-col-grade{width:80px;} .sv-col-count{width:80px;} }
+  .sv-timeline-name{font-weight:800;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sv-timeline-meta{font-size:10.8px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sv-timeline-edge{font-size:9.5px;color:var(--ink-soft);white-space:nowrap;flex:0 0 auto;}
   .sv-timeline-count{font-size:11px;color:#fff;background:var(--plum);padding:2px 10px;border-radius:12px;font-weight:700;white-space:nowrap;}
-  .sv-timeline-track{position:relative;height:34px;flex:1 1 160px;min-width:80px;background:linear-gradient(to left, var(--line) 0, var(--line) 100%) left 0 center/100% 2px no-repeat;margin:0 4px;}
+  .sv-timeline-count-cell{text-align:center;}
+  .sv-timeline-row-inline{display:flex;align-items:center;gap:8px;}
+  .sv-timeline-track{position:relative;height:34px;flex:1 1 auto;min-width:60px;background:linear-gradient(to left, var(--line) 0, var(--line) 100%) left 0 center/100% 2px no-repeat;margin:0 4px;}
   .sv-timeline-dot{position:absolute;top:50%;transform:translate(50%,-50%);width:13px;height:13px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15);cursor:pointer;}
   .sv-timeline-dot-merged{width:19px;height:19px;display:flex;align-items:center;justify-content:center;}
   .sv-dot-badge{font-size:8.5px;font-weight:800;color:#fff;line-height:1;}
   .sv-timeline-dot.active{box-shadow:0 0 0 3px rgba(37,99,235,.35);z-index:2;}
-  .sv-timeline-detail{display:none;margin-top:10px;}
+  .sv-tt-detail-row td{border-bottom:1px solid var(--line);}
+  .sv-timeline-detail{padding:8px 0 2px;}
   .sv-detail-box{border:1.5px solid var(--line);border-inline-start-width:4px;padding:9px 12px;background:var(--panel);display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:11px;color:var(--ink-soft);}
   .sv-detail-badge{color:#fff;font-weight:700;padding:2px 10px;border-radius:12px;font-size:10.5px;}
   .sv-detail-type{width:100%;font-weight:800;font-size:12.5px;color:var(--ink);}
@@ -251,9 +258,9 @@
   .heat-summary::-webkit-details-marker{display:none;}
   .heat-chevron{font-size:14px;color:var(--ink-soft);transition:transform .15s;flex:0 0 auto;}
   .heat-details:not([open]) .heat-chevron{transform:rotate(-90deg);}
-  .heat-grid{display:grid;grid-template-columns:100px repeat(5,1fr);gap:4px;align-items:center;}
+  .heat-grid{display:grid;grid-template-columns:150px 1fr;gap:4px;align-items:center;}
   .heat-week-label{font-size:10.3px;color:var(--ink-soft);white-space:nowrap;}
-  .heat-cell{height:22px;border-radius:0;}
+  .heat-cell{height:24px;border-radius:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#3A3226;}
   .heat-day-head{font-size:10px;color:var(--ink-soft);text-align:center;font-weight:700;}
 
   .period-btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
@@ -495,7 +502,7 @@
         </div>
 
         <details class="card heat-details" id="calendarHeatmapSection" style="display:none;" open>
-          <summary class="heat-summary"><h3 style="display:inline;"><span>خريطة حرارية لأيام الفصل الدراسي <span class="hint">— أيام الاثنين إلى الجمعة فقط، أخضر = هادئ، أحمر = حرج</span></span></h3><span class="heat-chevron">▾</span></summary>
+          <summary class="heat-summary"><h3 style="display:inline;"><span>خريطة حرارية لأسابيع الفصل الدراسي <span class="hint">— إجمالي المخالفات لكل أسبوع، أخضر = هادئ، أحمر = حرج</span></span></h3><span class="heat-chevron">▾</span></summary>
           <div class="heat-grid" id="calendarHeatmapGrid"></div>
         </details>
 
@@ -2432,30 +2439,37 @@ function renderCalendarHeatmap(){
   const weeks = getAllTermWeeksFlat();
   const counts = {};
   filtered.forEach(r=>{ if(r.date){ const k=isoDate(r.date); counts[k]=(counts[k]||0)+1; } });
-  const maxCount = Math.max(1, ...Object.values(counts));
   const grid = document.getElementById('calendarHeatmapGrid');
   grid.innerHTML = '';
-  const dayNames = ['الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
   grid.appendChild(document.createElement('div'));
-  dayNames.forEach(dn=>{ const h=document.createElement('div'); h.className='heat-day-head'; h.textContent=dn; grid.appendChild(h); });
-  weeks.forEach(w=>{
+  const headCell = document.createElement('div'); headCell.className='heat-day-head'; headCell.textContent='إجمالي مخالفات الأسبوع'; grid.appendChild(headCell);
+
+  const weekTotals = weeks.map(w=>{
+    if(w.mark) return null;
+    let total = 0;
+    for(let i=0;i<5;i++){ const d=new Date(w.from); d.setDate(d.getDate()+i); total += counts[isoDate(d)]||0; }
+    return total;
+  });
+  const validTotals = weekTotals.filter(v=>v!=null);
+  const maxCount = Math.max(1, ...(validTotals.length? validTotals : [0]));
+
+  weeks.forEach((w,wi)=>{
+    const wEnd = new Date(w.from); wEnd.setDate(wEnd.getDate()+4);
     const rowLabel = document.createElement('div');
     rowLabel.className='heat-week-label';
-    rowLabel.textContent = fmtDateShort(w.from) + (w.mark==='break'?' (استراحة)':(w.mark==='termEnd'?' (نهاية فصل)':''));
+    rowLabel.textContent = fmtDateShort(w.from) + ' – ' + fmtDateShort(wEnd) + (w.mark==='break'?' (استراحة)':(w.mark==='termEnd'?' (نهاية فصل)':''));
     grid.appendChild(rowLabel);
-    for(let i=0;i<5;i++){
-      const d = new Date(w.from); d.setDate(d.getDate()+i);
-      const cell = document.createElement('div'); cell.className='heat-cell';
-      const key = isoDate(d);
-      const c = counts[key]||0;
-      if(w.mark){
-        cell.style.background = '#EEE6DD';
-      } else {
-        cell.style.background = heatColor(c===0?0:Math.min(1,c/maxCount));
-      }
-      cell.title = key + ' — ' + violationCountText(c);
-      grid.appendChild(cell);
+    const cell = document.createElement('div'); cell.className='heat-cell';
+    if(w.mark){
+      cell.style.background = '#EEE6DD';
+      cell.title = rowLabel.textContent;
+    } else {
+      const c = weekTotals[wi]||0;
+      cell.style.background = heatColor(c===0?0:Math.min(1,c/maxCount));
+      cell.textContent = fmt(c);
+      cell.title = (fmtDateShort(w.from)+' – '+fmtDateShort(wEnd)) + ' — ' + violationCountText(c);
     }
+    grid.appendChild(cell);
   });
 }
 function heatColor(t){
@@ -2549,7 +2563,7 @@ function renderTopViolatorsTimeline(){
   const span = Math.max(1, rangeMax - rangeMin);
 
   timelineGroupsCache = {};
-  wrap.innerHTML = top.map(([name, count], si)=>{
+  const bodyRows = top.map(([name, count], si)=>{
     const recs = data.filter(r=> r.studentName===name && r.date).sort((a,b)=>a.date-b.date);
     if(!recs.length) return '';
     // دمج المخالفات التي تقع في نفس التاريخ في نقطة واحدة أكبر
@@ -2571,18 +2585,27 @@ function renderTopViolatorsTimeline(){
       const titleParts = grp.map(r=> shortDegreeLabel(r.degree)+(r.type? (' — '+shortLabel(r.type)):'')).join(' + ');
       return `<div class="sv-timeline-dot${merged?' sv-timeline-dot-merged':''}" data-si="${si}" data-gi="${gi}" style="right:${pct}%;background:${color};" title="${fmtDate(grp[0].date)} — ${titleParts}">${merged? `<span class="sv-dot-badge">${grp.length}</span>` : ''}</div>`;
     }).join('');
-    return `<div class="sv-timeline-card">
-      <div class="sv-timeline-row">
-        <span class="sv-timeline-name">${name}</span>
-        <span class="sv-timeline-meta">${(first.grade||'—')}${first.section?(' — '+first.section):''}</span>
-        <span class="sv-timeline-edge">${fmtDate(first.date)}</span>
-        <div class="sv-timeline-track">${dots}</div>
-        <span class="sv-timeline-edge">${fmtDate(last.date)}</span>
-        <span class="sv-timeline-count">${violationCountText(count)}</span>
-      </div>
-      <div class="sv-timeline-detail" id="svDetail-${si}"></div>
-    </div>`;
+    return `<tr class="sv-tt-row">
+        <td class="sv-timeline-name" title="${name}">${name}</td>
+        <td class="sv-timeline-meta">${(first.grade||'—')}${first.section?(' — '+first.section):''}</td>
+        <td>
+          <div class="sv-timeline-row-inline">
+            <span class="sv-timeline-edge">${fmtDate(first.date)}</span>
+            <div class="sv-timeline-track">${dots}</div>
+            <span class="sv-timeline-edge">${fmtDate(last.date)}</span>
+          </div>
+        </td>
+        <td class="sv-timeline-count-cell"><span class="sv-timeline-count">${violationCountText(count)}</span></td>
+      </tr>
+      <tr class="sv-tt-detail-row" id="svDetailRow-${si}" style="display:none;">
+        <td colspan="4"><div class="sv-timeline-detail" id="svDetail-${si}"></div></td>
+      </tr>`;
   }).join('');
+  wrap.innerHTML = `<table class="sv-timeline-table">
+    <colgroup><col class="sv-col-name"><col class="sv-col-grade"><col class="sv-col-track"><col class="sv-col-count"></colgroup>
+    <thead><tr><th>اسم الطالب</th><th>الصف</th><th>الخط الزمني</th><th>عدد المخالفات</th></tr></thead>
+    <tbody>${bodyRows}</tbody>
+  </table>`;
 
   const detailBoxHtml = (r)=>{
     const idx = degreeIndex(r.degree); const color = idx!=null? sevColors[idx] : '#8A7F6B';
@@ -2601,17 +2624,19 @@ function renderTopViolatorsTimeline(){
     const dot = e.target.closest('.sv-timeline-dot');
     if(!dot) return;
     const si = dot.dataset.si, gi = dot.dataset.gi;
+    const row = document.getElementById('svDetailRow-'+si);
     const panel = document.getElementById('svDetail-'+si);
-    if(!panel) return;
-    const wasOpenForThis = panel.dataset.openGi === gi && panel.style.display==='block';
-    // إغلاق أي مطوية أخرى مفتوحة أولاً (سواء بنفس البطاقة أو غيرها)
-    document.querySelectorAll('.sv-timeline-detail').forEach(p=>{ p.style.display='none'; p.dataset.openGi=''; p.innerHTML=''; });
+    if(!row || !panel) return;
+    const wasOpenForThis = panel.dataset.openGi === gi && row.style.display!=='none';
+    // إغلاق أي مطوية أخرى مفتوحة أولاً (سواء بنفس الصف أو غيره)
+    document.querySelectorAll('.sv-tt-detail-row').forEach(p=>{ p.style.display='none'; });
+    document.querySelectorAll('.sv-timeline-detail').forEach(p=>{ p.dataset.openGi=''; p.innerHTML=''; });
     document.querySelectorAll('.sv-timeline-dot.active').forEach(d=>d.classList.remove('active'));
     if(wasOpenForThis) return; // كانت مفتوحة لنفس النقطة — أبقها مغلقة (تبديل)
     const grp = (timelineGroupsCache[si]||[])[gi];
     if(!grp || !grp.length) return;
     panel.innerHTML = grp.map(detailBoxHtml).join('');
-    panel.style.display = 'block';
+    row.style.display = 'table-row';
     panel.dataset.openGi = gi;
     dot.classList.add('active');
   };
