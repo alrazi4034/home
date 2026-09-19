@@ -128,6 +128,7 @@
   .card h3{font-family:'El Messiri',sans-serif;font-size:13.5px;font-weight:700;color:var(--plum);margin:0 0 10px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .card .hint{font-size:10.5px;color:var(--ink-soft);font-weight:400;}
   .chart-holder{position:relative;height:290px;flex:0 0 auto;}
+  .chart-holder-lg{height:479px;}
   .chart-holder.short{height:200px;}
 
   .class-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;flex:0 0 auto;}
@@ -141,20 +142,20 @@
   .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
   @media (max-width:1200px){ .kpi-grid{grid-template-columns:repeat(3,1fr);} }
   @media (max-width:700px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
-  .kpi{background:var(--panel);box-shadow:0 2px 8px rgba(61,38,71,.06);border-radius:0;padding:8px 5%;border-inline-start:4px solid var(--plum);height:114px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
+  .kpi{background:var(--panel);box-shadow:0 2px 8px rgba(61,38,71,.06);border-radius:0;padding:8px 5%;border-inline-start:4px solid var(--plum);height:125px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
   .kpi .k-label{font-size:10.8px;color:var(--ink-soft);font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
   .kpi .k-value{font-family:'El Messiri',sans-serif;font-weight:800;font-size:17px;color:var(--plum);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .kpi .k-sub{font-size:11px;font-weight:600;color:var(--ink-soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
   .kpi.sev1{border-inline-start-color:var(--sev1);} .kpi.sev2{border-inline-start-color:var(--sev2);}
   .kpi.sev3{border-inline-start-color:var(--sev3);} .kpi.sev4{border-inline-start-color:var(--sev4);}
   .kpi.plain{border-inline-start-color:var(--plum);}
-  .kpi.multi{height:114px;display:flex;flex-direction:column;justify-content:center;overflow-y:auto;}
+  .kpi.multi{height:125px;display:flex;flex-direction:column;justify-content:center;overflow-y:auto;}
   .kpi.multi .k-label{flex:0 0 auto;}
   .kpi.multi .kmi-row{display:flex;justify-content:space-between;align-items:center;width:100%;font-size:9.6px;padding:1px 0;border-bottom:1px dashed var(--line);}
   .kpi.multi .kmi-row:last-child{border-bottom:none;}
   .kpi.multi .kmi-dot{width:7px;height:7px;border-radius:0;display:inline-block;margin-inline-end:5px;}
   .kpi.multi .kmi-val{font-weight:700;color:var(--plum);font-size:11px;}
-  .kpi.gauge-kpi{height:114px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;text-align:start;}
+  .kpi.gauge-kpi{height:125px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;text-align:start;}
   .kpi.gauge-kpi .k-label, .kpi.gauge-kpi .k-sub{text-align:start;}
   .gauge-ring-wrap{position:relative;width:48px;height:48px;flex:0 0 auto;}
   .gauge-ring{width:100%;height:100%;border-radius:0;background:conic-gradient(var(--ring-color) calc(var(--pct)*1%), #EEE6DD 0);}
@@ -239,6 +240,7 @@
   .empty-msg{text-align:center;color:var(--ink-soft);font-size:12.5px;padding:24px 0;}
 
   .sm-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  #smallMultiplesTypesGrid.sm-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
   .sm-card{background:#fff;border-radius:0;padding:9px 11px;box-shadow:0 1px 5px rgba(61,38,71,.06);}
   .sm-title{font-size:10.5px;font-weight:700;color:var(--plum);margin-bottom:2px;}
   .sm-count{font-family:'El Messiri',sans-serif;font-weight:800;font-size:15px;color:var(--ink);margin-bottom:4px;}
@@ -253,18 +255,6 @@
   .heat-week-label{font-size:10.3px;color:var(--ink-soft);white-space:nowrap;}
   .heat-cell{height:22px;border-radius:0;}
   .heat-day-head{font-size:10px;color:var(--ink-soft);text-align:center;font-weight:700;}
-  .cmp-block h3{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
-  .cmp-nav{display:flex;gap:4px;}
-  .cmp-nav .btn.tiny{padding:3px 9px;font-size:11px;}
-  .cmp-rows{display:flex;flex-direction:column;gap:7px;margin-top:8px;}
-  .cmp-row{display:grid;grid-template-columns:78px 1fr 34px;align-items:center;gap:8px;}
-  .cmp-label{font-size:10.8px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .cmp-bar-wrap{background:var(--plum-soft);height:14px;border-radius:0;overflow:hidden;}
-  .cmp-bar{height:100%;background:var(--plum);border-radius:0;transition:width .25s;}
-  .cmp-val{font-size:11px;font-weight:700;color:var(--plum);text-align:left;}
-  .cmp-row.cmp-current .cmp-bar{background:var(--berry);}
-  .cmp-row.cmp-current .cmp-val{color:var(--berry);}
-  .cmp-row.cmp-current .cmp-bar-wrap{background:var(--berry-soft);}
 
   .period-btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
   .period-chip{padding:7px 14px;border-radius:0;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink);}
@@ -488,11 +478,11 @@
         <div class="row-2 balanced">
           <div class="card">
             <h3><span>الاتجاه الزمني الأسبوعي للمخالفات</span></h3>
-            <div class="chart-holder"><canvas id="chartTrend"></canvas></div>
+            <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
           </div>
           <div class="card">
             <h3><span>أكثر أنواع المخالفات تكراراً</span></h3>
-            <div class="chart-holder"><canvas id="chartTypes"></canvas></div>
+            <div class="chart-holder chart-holder-lg"><canvas id="chartTypes"></canvas></div>
           </div>
         </div>
 
@@ -512,19 +502,9 @@
           <div class="heat-grid" id="calendarHeatmapGrid"></div>
         </details>
 
-        <div class="row-2 balanced">
-          <div class="card cmp-block">
-            <h3><span>مقارنة أسبوعية <span class="hint">— آخر 4 أسابيع</span></span>
-              <span class="cmp-nav"><button type="button" class="btn tiny" id="weekNavPrev">◀</button><button type="button" class="btn tiny" id="weekNavNext">▶</button></span>
-            </h3>
-            <div class="cmp-rows" id="weeklyCompareRows"></div>
-          </div>
-          <div class="card cmp-block">
-            <h3><span>مقارنة شهرية <span class="hint">— آخر 4 أشهر</span></span>
-              <span class="cmp-nav"><button type="button" class="btn tiny" id="monthNavPrev">◀</button><button type="button" class="btn tiny" id="monthNavNext">▶</button></span>
-            </h3>
-            <div class="cmp-rows" id="monthlyCompareRows"></div>
-          </div>
+        <div class="card">
+          <h3><span>مخططات مصغّرة لكل صف دراسي <span class="hint">— أكثر أنواع المخالفات تكراراً</span></span></h3>
+          <div class="sm-grid" id="smallMultiplesTypesGrid"></div>
         </div>
 
       </div>
@@ -2059,7 +2039,7 @@ function renderAll(){
   renderRecorderBarChart(agg);
   renderTypesChart(agg);
   renderCalendarHeatmap();
-  renderTermComparisons();
+  renderSmallMultiplesTypes();
   renderTopViolatorsTimeline();
   renderDetailTable(filtered);
   renderRecommendationsTab();
@@ -2096,35 +2076,34 @@ function lastNWeeks(data, n, refDate){
   return arr;
 }
 
-/* ---------- مقارنة أسبوعية/شهرية (أعيدت بناءً على طلب المستخدم — كانت أُزيلت بالخطأ) ---------- */
-let weeklyCompareOffset = 0, monthlyCompareOffset = 0;
-function renderComparisonBox(rows, wrapId){
-  const wrap = document.getElementById(wrapId);
-  if(!wrap) return;
-  const max = Math.max(1, ...rows.map(r=>r.count));
-  wrap.innerHTML = rows.map((r,i)=>{
-    const pct = Math.round((r.count/max)*100);
-    const isCurrent = i===rows.length-1;
-    return `<div class="cmp-row${isCurrent?' cmp-current':''}">
-      <span class="cmp-label">${r.label}</span>
-      <span class="cmp-bar-wrap"><span class="cmp-bar" style="width:${pct}%;"></span></span>
-      <span class="cmp-val">${fmt(r.count)}</span>
-    </div>`;
-  }).join('');
+/* ---------- مخططات مصغّرة لكل صف دراسي — أكثر أنواع المخالفات تكراراً ---------- */
+let smallMultipleTypeCharts = [];
+function renderSmallMultiplesTypes(){
+  smallMultipleTypeCharts.forEach(c=>c.destroy());
+  smallMultipleTypeCharts = [];
+  const container = document.getElementById('smallMultiplesTypesGrid');
+  if(!container) return;
+  container.innerHTML = '';
+  const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
+  if(!grades.length){ container.innerHTML = '<p class="empty-msg">لا توجد بيانات ضمن الفلاتر الحالية</p>'; return; }
+  grades.forEach(g=>{
+    const data = filtered.filter(r=>r.grade===g);
+    const typeMap = new Map();
+    data.forEach(r=>{ if(!r.type) return; typeMap.set(r.type, (typeMap.get(r.type)||0)+1); });
+    const top = [...typeMap.entries()].sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const wrap = document.createElement('div'); wrap.className='sm-card';
+    wrap.innerHTML = `<div class="sm-title">${g}</div><div class="sm-count">${fmt(data.length)} مخالفة</div><canvas></canvas>`;
+    container.appendChild(wrap);
+    const canvas = wrap.querySelector('canvas');
+    const c = new Chart(canvas, {
+      type:'bar',
+      data:{ labels: top.map(t=>shortLabel(t[0])), datasets:[{ data: top.map(t=>t[1]), backgroundColor: top.map((_,i)=> i===0? berry: forest), borderRadius:3 }] },
+      options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{enabled:true, callbacks:{ title:(items)=> top[items[0].dataIndex][0] }}},
+        scales:{ x:{display:true, beginAtZero:true, ticks:{font:{size:7},maxTicksLimit:3,precision:0}, grid:{color:GRID}}, y:{display:true, ticks:{font:{size:7}}, grid:{display:false}} } }
+    });
+    smallMultipleTypeCharts.push(c);
+  });
 }
-function renderTermComparisons(){
-  if(!allRecords.length) return;
-  const dates = filtered.map(r=>r.date).filter(Boolean);
-  const baseRef = (dates.length? dates[dates.length-1] : new Date());
-  const weekRef = new Date(baseRef); weekRef.setDate(weekRef.getDate() + weeklyCompareOffset*7);
-  const monthRef = new Date(baseRef.getFullYear(), baseRef.getMonth()+monthlyCompareOffset, 1);
-  renderComparisonBox(lastNWeeks(filtered, 4, weekRef), 'weeklyCompareRows');
-  renderComparisonBox(lastNMonths(filtered, 4, monthRef), 'monthlyCompareRows');
-}
-document.getElementById('weekNavPrev').addEventListener('click', ()=>{ weeklyCompareOffset--; renderTermComparisons(); });
-document.getElementById('weekNavNext').addEventListener('click', ()=>{ weeklyCompareOffset=Math.min(0,weeklyCompareOffset+1); renderTermComparisons(); });
-document.getElementById('monthNavPrev').addEventListener('click', ()=>{ monthlyCompareOffset--; renderTermComparisons(); });
-document.getElementById('monthNavNext').addEventListener('click', ()=>{ monthlyCompareOffset=Math.min(0,monthlyCompareOffset+1); renderTermComparisons(); });
 
 let lastKpiAgg = null;
 let kpiState = { studentExpanded:false, typeIdx:0, lastRecMode:'avg', gradeSevere:false, sectionSevere:false, totalSevere:false, studentsRepeat:false, timeView:'days', dayMode:'day' };
@@ -3738,13 +3717,16 @@ function loadSharedSchoolData(){
         if(row.some(c => String(c).includes('الفصل الدراسي الأول'))) termHeaderRow = i;
       });
       if(infoHeaderRow >= 0){
-        const headers = grid[infoHeaderRow].filter(h => h);
+        // ملاحظة: لا نُصفّي (filter) صف العناوين هنا؛ التصفية كانت تزيح فهارس القيم
+        // عن عناوينها الصحيحة كلما وُجد عمود فارغ قبل عمود "اسم مديرة المدرسة"، مما
+        // كان يتسبب أحياناً بعرض نص العنوان نفسه بدل القيمة الفعلية.
+        const headers = grid[infoHeaderRow] || [];
         const vals = grid[infoHeaderRow+1] || [];
         const info = {};
-        headers.forEach((h,idx) => info[h] = vals[idx] ?? '');
-        SCHOOL_NAME = info['اسم المدرسة'] || SCHOOL_NAME;
-        PRINCIPAL_NAME = info['اسم مديرة المدرسة'] || PRINCIPAL_NAME;
-        ACADEMIC_YEAR = info['العام الدراسي'] || ACADEMIC_YEAR;
+        headers.forEach((h,idx) => { if(h) info[String(h).trim()] = vals[idx] ?? ''; });
+        SCHOOL_NAME = (info['اسم المدرسة'] && info['اسم المدرسة'] !== 'اسم المدرسة') ? info['اسم المدرسة'] : SCHOOL_NAME;
+        PRINCIPAL_NAME = (info['اسم مديرة المدرسة'] && info['اسم مديرة المدرسة'] !== 'اسم مديرة المدرسة') ? info['اسم مديرة المدرسة'] : PRINCIPAL_NAME;
+        ACADEMIC_YEAR = (info['العام الدراسي'] && info['العام الدراسي'] !== 'العام الدراسي') ? info['العام الدراسي'] : ACADEMIC_YEAR;
         STUDENT_TYPE = (info['نوع الطلاب'] === 'بنات') ? 'بنات' : 'بنين';
         updateBrandHeader();
       }
