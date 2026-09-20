@@ -2582,17 +2582,16 @@ function buildMasterScheduleTableHtml(forPrint){
   const SEP_COLOR = '#1a1a1a';
   const DAY_SEP = `border-right:3px solid ${SEP_COLOR};`;
 
-  let thead = '<thead><tr><th rowspan="2" style="min-width:170px">المعلم / المادة</th><th rowspan="2" style="min-width:60px">النصاب</th>';
+  let thead = `<thead><tr><th rowspan="2" style="min-width:170px">المعلم / المادة</th><th rowspan="2" style="min-width:60px;${DAY_SEP}">النصاب</th>`;
   DAYS.forEach((d,di) => {
     const count = d === 'الجمعة' ? 4 : 8;
-    const sep = di > 0 ? DAY_SEP : '';
-    thead += `<th colspan="${count}" style="${sep}">${d}</th>`;
+    thead += `<th colspan="${count}" style="${DAY_SEP}">${d}</th>`;
   });
   thead += '</tr><tr>';
   DAYS.forEach((d,di) => {
     const count = d === 'الجمعة' ? 4 : 8;
     for(let p=1;p<=count;p++){
-      const sep = (di > 0 && p === 1) ? DAY_SEP : '';
+      const sep = (p === 1) ? DAY_SEP : '';
       thead += `<th style="font-size:10px;${sep}">${p}</th>`;
     }
   });
@@ -2605,12 +2604,12 @@ function buildMasterScheduleTableHtml(forPrint){
     const subjectDisplay = forPrint ? abbrevSubject(subject) : subject;
     const sepStyle = (prevSubject !== null && subject !== prevSubject) ? `border-top:3px solid ${SEP_COLOR};` : '';
     prevSubject = subject;
-    tbody += `<tr style="${sepStyle}"><td style="text-align:right;white-space:nowrap;"><b>${subjectDisplay}</b> <span style="font-size:10px;color:var(--ink-soft)">(${t['اسم المعلم']||''})</span></td><td style="text-align:center;font-weight:700">${teacherLoad(t)}</td>`;
+    tbody += `<tr style="${sepStyle}"><td style="text-align:right;white-space:nowrap;"><b>${t['اسم المعلم']||''}</b> <span style="font-size:10px;color:var(--ink-soft)">(${subjectDisplay})</span></td><td style="text-align:center;font-weight:700;${DAY_SEP}">${teacherLoad(t)}</td>`;
     DAYS.forEach((d,di) => {
       const count = d === 'الجمعة' ? 4 : 8;
       const arr = t['_'+d] || Array(8).fill('0');
       for(let p=0;p<count;p++){
-        const daySep = (di > 0 && p === 0) ? DAY_SEP : '';
+        const daySep = (p === 0) ? DAY_SEP : '';
         const val = arr[p] || '0';
         if(val === '0'){
           tbody += `<td style="${daySep}"></td>`;
