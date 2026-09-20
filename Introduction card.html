@@ -866,7 +866,7 @@ function idcClassesPanel(person, type){
       <span class="idc-chip" style="background:#eef2f8;border-color:#dbe3ee;color:#12365e;font-size:22px;min-height:60px;grid-column:1/-1;">${job||'—'}</span>
     </div></div>`;
 }
-function idcCardHTML(person, type){
+function idcCardHTML(person, type, photoOverride){
   const isTeacher = type === 'teacher';
   const name = idcEsc(person[isTeacher ? 'اسم المعلم' : 'اسم الموظف'] || '');
   const oracle = idcEsc(person['رقم الاوراكل'] || '');
@@ -891,7 +891,10 @@ function idcCardHTML(person, type){
   </div>
   <div class="idc-rule"></div>
   <div class="idc-body">
-    <div class="idc-photoFrame"><div class="idc-photoIn">${photo ? `<img src="${photo}" style="transform:translate(${person._px||0}%, ${person._py||0}%) scale(${person._pz||1})">` : 'الصورة الشخصية'}</div></div>
+    <div class="idc-photoFrame"><div class="idc-photoIn">${
+      photoOverride ? `<img src="${photoOverride}" style="width:100%;height:100%;display:block;">`
+      : (photo ? `<img src="${photo}" style="transform:translate(${person._px||0}%, ${person._py||0}%) scale(${person._pz||1})">` : 'الصورة الشخصية')
+    }</div></div>
     <div class="idc-info">
       <div class="idc-nameBox"><div class="idc-nameLbl">${nameLbl}</div><div class="idc-nameVal">${name || '—'}</div>
         <div class="idc-roleRow">${oracle ? `<span class="idc-orc"><b>رقم الموظف</b> ${oracle}</span>` : ''}${roleVal ? `<span class="idc-roleVal">${roleVal}</span>` : ''}</div></div>
@@ -1276,10 +1279,40 @@ function idcGetOffscreenCardEl(){
   }
   return el;
 }
+/* html2canvas (المستخدمة لتصدير PDF) لا تدعم خاصية CSS "object-fit" على الصور — فتقوم بتمديد/ضغط
+   الصورة لملء الإطار بدل قصّها كما يظهر في المعاينة الحيّة داخل المتصفح. لتفادي هذا، نُركّب الصورة
+   يدوياً على Canvas بنفس القياسات والموضع والتكبير اللي حدّده المستخدم بالضبط، وننتج صورة نهائية
+   مقصوصة مسبقاً بأبعاد إطار الصورة على البطاقة (312×366) فنستخدمها مباشرة بدون الحاجة لـ object-fit. */
+function idcComposePhotoDataUrl(photoSrc, px, py, pz, boxW, boxH){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = boxW; canvas.height = boxH;
+        const ctx = canvas.getContext('2d');
+        const baseScale = Math.max(boxW / img.naturalWidth, boxH / img.naturalHeight);
+        const scale = baseScale * (pz || 1);
+        const drawW = img.naturalWidth * scale, drawH = img.naturalHeight * scale;
+        const dx = (boxW - drawW) / 2 + (boxW * (px || 0) / 100);
+        const dy = (boxH - drawH) / 2 + (boxH * (py || 0) / 100);
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+        resolve(canvas.toDataURL('image/png'));
+      }catch(err){ console.warn('idcComposePhotoDataUrl failed', err); resolve(photoSrc); }
+    };
+    img.onerror = () => resolve(photoSrc);
+    img.src = photoSrc;
+  });
+}
 async function idcRenderToCanvas(person, type){
   const el = idcGetOffscreenCardEl();
   el.style.setProperty('--idc-acc', idcAccentColor(person, type));
-  el.innerHTML = idcCardHTML(person, type);
+  let photoOverride = null;
+  if(person._photo){
+    // 300×354 = مقاس .idc-photoFrame (312×366) ناقص الحاشية الداخلية padding:6px من كل جهة
+    photoOverride = await idcComposePhotoDataUrl(person._photo, person._px, person._py, person._pz, 300, 354);
+  }
+  el.innerHTML = idcCardHTML(person, type, photoOverride);
   return await html2canvas(el, {scale:2, backgroundColor:'#ffffff', useCORS:true, width:1123, height:794, windowWidth:1400});
 }
 async function idcRenderToPdfBlob(person, type){
