@@ -606,12 +606,30 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <span class="hint" id="idcBulkMsg" style="margin:0;"></span>
-        <button class="btn btn-primary" onclick="generateAllIdCards()">🖨️ توليد بطاقات PDF للمحدّدين</button>
+        <button class="btn btn-primary" onclick="openBulkPhotosModal()">🖼️ توليد بطاقات للمحدّدين</button>
       </div>
     </div>
   </div>
 
 </main>
+
+<!-- إضافة صور جماعية للمحدّدين ثم توليد بطاقاتهم -->
+<div class="modal-overlay" id="idcBulkPhotosModal">
+  <div class="modal" style="max-width:900px;">
+    <div class="modal-head"><h3>🖼️ إضافة صور جماعية وتوليد بطاقات</h3><button class="modal-close" onclick="closeModal('idcBulkPhotosModal')">×</button></div>
+    <p class="hint" style="margin-top:-8px;">اختر عدة صور دفعة واحدة وسيتم توزيعها بالترتيب على الأشخاص المحدّدين أدناه (نفس ترتيب القائمة)، ثم عدّل كل صورة بتحريكها أو تكبيرها، أو استبدلها يدوياً — وأخيراً ولّد بطاقات PDF جاهزة للطباعة لجميع من له صورة.</p>
+    <div style="margin:12px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="document.getElementById('idcBulkFilesInput').click()">📸 اختيار صور بالجملة (بالترتيب)</button>
+      <input type="file" id="idcBulkFilesInput" accept="image/*" multiple hidden>
+      <span class="hint" id="idcBulkPhotosMsg"></span>
+    </div>
+    <div id="idcBulkPhotosList" style="display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow-y:auto;padding-left:4px;"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <span class="hint" id="idcBulkGenMsg" style="margin:0;"></span>
+      <button class="btn btn-primary" onclick="generateAllIdCards()">🖨️ توليد بطاقات PDF وطباعة</button>
+    </div>
+  </div>
+</div>
 
 <!-- ID card (single person) modal -->
 <div class="modal-overlay" id="idCardModal">
@@ -1009,6 +1027,72 @@ function idcBulkSelectedList(){
   const set = window._idcSelected[type];
   return list.filter((_,i) => set.has(i));
 }
+function idcBulkSelectedIndices(){
+  const type = window._idcHubType;
+  const set = window._idcSelected[type];
+  return Array.from(set).sort((a,b) => a-b);
+}
+
+/* ---------- نافذة إضافة صور جماعية للمحدّدين ثم توليد بطاقاتهم ---------- */
+function openBulkPhotosModal(){
+  const indices = idcBulkSelectedIndices();
+  if(!indices.length){
+    const msg = document.getElementById('idcBulkMsg');
+    if(msg) msg.textContent = 'اختر شخصاً واحداً على الأقل قبل فتح نافذة الصور.';
+    return;
+  }
+  window._idcBulkType = window._idcHubType;
+  window._idcBulkIndices = indices;
+  document.getElementById('idcBulkPhotosMsg').textContent = '';
+  document.getElementById('idcBulkGenMsg').textContent = '';
+  renderBulkPhotosList();
+  document.getElementById('idcBulkPhotosModal').classList.add('open');
+}
+function renderBulkPhotosList(){
+  const type = window._idcBulkType;
+  const indices = window._idcBulkIndices || [];
+  const box = document.getElementById('idcBulkPhotosList');
+  box.innerHTML = indices.map((idx, ord) => {
+    const p = idcGetPerson(type, idx);
+    idcEnsurePhotoDefaults(p);
+    const name = idcEsc(p[type==='teacher' ? 'اسم المعلم' : 'اسم الموظف'] || 'بدون اسم');
+    return `<div class="idc-hubRow">
+      <div class="idc-frame idc-bulkFrame" data-type="${type}" data-idx="${idx}" style="width:70px;height:82px;flex:none;">
+        ${p._photo ? `<img src="${p._photo}" style="transform:translate(${p._px||0}%, ${p._py||0}%) scale(${p._pz||1})">` : '<div class="idc-ph" style="font-size:10px;padding:2px;">لا صورة</div>'}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="idc-hubName">${ord+1}. ${name}</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-soft);">تكبير
+          <input type="range" min="1" max="3" step="0.02" value="${p._pz||1}" style="width:130px;" oninput="idcBulkZoom('${type}', ${idx}, this.value)">
+        </label>
+      </div>
+      <button class="btn" style="padding:6px 10px;font-size:12px;flex:none;" type="button" onclick="document.getElementById('idcBulkSingleInput_${ord}').click()">📷 استبدال</button>
+      <input type="file" id="idcBulkSingleInput_${ord}" accept="image/*" hidden onchange="idcBulkSinglePhoto('${type}', ${idx}, this)">
+    </div>`;
+  }).join('');
+}
+function idcBulkZoom(type, idx, val){
+  const p = idcGetPerson(type, idx);
+  if(!p) return;
+  p._pz = +val;
+  const frame = document.querySelector(`.idc-bulkFrame[data-type="${type}"][data-idx="${idx}"]`);
+  const img = frame && frame.querySelector('img');
+  if(img) img.style.transform = `translate(${p._px||0}%, ${p._py||0}%) scale(${p._pz||1})`;
+  idcSaveLocalPhotoStorage();
+}
+function idcBulkSinglePhoto(type, idx, inputEl){
+  const f = inputEl.files[0]; if(!f) return;
+  const p = idcGetPerson(type, idx); if(!p) return;
+  const r = new FileReader();
+  r.onload = () => {
+    p._photo = r.result; p._pz = 1; p._px = 0; p._py = 0;
+    renderBulkPhotosList();
+    renderIdCardHubGrid();
+    idcSaveLocalPhotoStorage();
+  };
+  r.readAsDataURL(f);
+  inputEl.value = '';
+}
 
 /* ---------- نسخة احتياطية JSON للصور والمواضع/التكبير (لاستعادتها بسرعة بعد إعادة تحميل الملف) ---------- */
 function idcHubSaveBackup(){
@@ -1063,6 +1147,9 @@ function idcFrameOwner(frame){
   if(frame.id === 'idcFrame'){
     const cur = window._idcCurrent; if(!cur) return null;
     return idcGetPerson(cur.type, cur.idx);
+  }
+  if(frame.classList.contains('idc-bulkFrame')){
+    return idcGetPerson(frame.dataset.type, +frame.dataset.idx);
   }
   return null;
 }
@@ -1144,6 +1231,35 @@ document.addEventListener('touchend', idcDragEnd);
     r.readAsText(f);
     e.target.value = '';
   };
+  const bulkFilesInput = document.getElementById('idcBulkFilesInput');
+  if(bulkFilesInput) bulkFilesInput.onchange = e => {
+    const files = Array.from(e.target.files || []);
+    if(!files.length) return;
+    const type = window._idcBulkType;
+    const indices = window._idcBulkIndices || [];
+    const msg = document.getElementById('idcBulkPhotosMsg');
+    const n = Math.min(files.length, indices.length);
+    let done = 0;
+    for(let i=0; i<n; i++){
+      const idx = indices[i];
+      const p = idcGetPerson(type, idx);
+      const r = new FileReader();
+      r.onload = () => {
+        if(p){ p._photo = r.result; p._pz = 1; p._px = 0; p._py = 0; }
+        done += 1;
+        if(done === n){
+          renderBulkPhotosList();
+          renderIdCardHubGrid();
+          idcSaveLocalPhotoStorage();
+          if(msg) msg.textContent = files.length > indices.length
+            ? `تم توزيع ${n} صورة بالترتيب على الأشخاص المحدّدين — تجاهلنا ${files.length - n} صورة زائدة (عدد الأشخاص أقل).`
+            : `تم توزيع ${n} صورة بالترتيب على الأشخاص المحدّدين ✓`;
+        }
+      };
+      r.readAsDataURL(files[i]);
+    }
+    e.target.value = '';
+  };
 })();
 
 /* ---------- التصدير كملف PDF جاهز للطباعة ---------- */
@@ -1198,10 +1314,14 @@ async function downloadIdCard(){
   }
 }
 async function generateAllIdCards(){
-  const type = window._idcHubType;
-  const list = idcBulkSelectedList();
-  const msg = document.getElementById('idcBulkMsg');
+  const type = window._idcBulkType || window._idcHubType;
+  const indices = (window._idcBulkIndices && window._idcBulkIndices.length) ? window._idcBulkIndices : null;
+  const list = indices ? indices.map(idx => idcGetPerson(type, idx)) : idcBulkSelectedList();
+  const msg = document.getElementById('idcBulkGenMsg') && document.getElementById('idcBulkPhotosModal').classList.contains('open')
+    ? document.getElementById('idcBulkGenMsg')
+    : document.getElementById('idcBulkMsg');
   if(!list || !list.length){ msg.textContent = 'اختر شخصاً واحداً على الأقل.'; return; }
+  const withoutPhoto = list.filter(p => !p._photo).length;
   for(let i=0; i<list.length; i++){
     const person = list[i];
     const nm = person[type==='teacher' ? 'اسم المعلم' : 'اسم الموظف'] || ('شخص_'+(i+1));
@@ -1212,7 +1332,8 @@ async function generateAllIdCards(){
     }catch(err){ console.warn('idc bulk error', err); }
     await new Promise(r => setTimeout(r, 350));
   }
-  msg.textContent = 'تم توليد وتحميل جميع بطاقات PDF ✓ (' + list.length + ')';
+  msg.textContent = 'تم توليد وتحميل جميع بطاقات PDF ✓ (' + list.length + ')'
+    + (withoutPhoto ? ` — تنبيه: ${withoutPhoto} بدون صورة شخصية.` : '');
 }
 
 tryAutoLoadFromPortal();
