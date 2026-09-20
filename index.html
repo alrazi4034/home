@@ -696,19 +696,15 @@
 </div>
 
 
-<!-- Add teacher: pick subject first -->
+<!-- Add teacher: full details in one shot -->
 <div class="modal-overlay" id="addTeacherModal">
-  <div class="modal" style="max-width:420px;">
+  <div class="modal" style="max-width:520px;">
     <div class="modal-head"><h3>+ إضافة معلم</h3><button class="modal-close" onclick="closeModal('addTeacherModal')">×</button></div>
-    <div class="field">
-      <label>مادة التدريس</label>
-      <select id="addTeacherSubjectSelect">
-        <option value="">— اختر —</option>
-      </select>
-    </div>
+    <div class="form-grid" id="addTeacherFields"></div>
+    <p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">يمكنك تحديد الصفوف التي يدرّسها المعلم وجدول حصصه بعد الإضافة مباشرة.</p>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('addTeacherModal')">إلغاء</button>
-      <button class="btn btn-primary" onclick="confirmAddTeacher()">➕ إضافة</button>
+      <button class="btn btn-primary" onclick="confirmAddTeacher()">➕ إضافة المعلم</button>
     </div>
   </div>
 </div>
@@ -1092,18 +1088,23 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   if(wsAdmins){
     const rows = XLSX.utils.sheet_to_json(wsAdmins, {defval:''});
     const headerRow = readSheetHeaders(wsAdmins);
-    state.adminHeaders = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : ['اسم الموظف','رقم الاوراكل','الوظيفة','رقم التواصل']);
+    let adminHeadersRaw = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : ['اسم الموظف','رقم الاوراكل','الوظيفة','رقم التواصل']);
+    // تنظيف أي أعمدة داخلية تسرّبت بالخطأ لملفات قديمة (مثل "_editing") فلا تظهر كحقول بيانات
+    state.adminHeaders = adminHeadersRaw.filter(h => !String(h||'').startsWith('_'));
+    if(!state.adminHeaders.includes('رقم التواصل')) state.adminHeaders.push('رقم التواصل');
     if(!state.adminHeaders.includes('البريد الإلكتروني')) state.adminHeaders.push('البريد الإلكتروني');
-    state.admins = rows;
+    state.admins = rows.map(r => { const clean = {...r}; delete clean._editing; return clean; });
   }
 
   const wsTeachers = wb.Sheets['المعلمين والجداول'];
   if(wsTeachers){
     const rows = XLSX.utils.sheet_to_json(wsTeachers, {defval:''});
     const headerRow = readSheetHeaders(wsTeachers);
-    state.teacherHeaders = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : ['اسم المعلم','رقم الاوراكل','مادة التدريس','رقم التواصل','الصفوف',...DAYS]);
+    let teacherHeadersRaw = headerRow.length ? headerRow : (rows.length ? Object.keys(rows[0]) : ['اسم المعلم','رقم الاوراكل','مادة التدريس','رقم التواصل','الصفوف',...DAYS]);
+    state.teacherHeaders = teacherHeadersRaw.filter(h => !String(h||'').startsWith('_'));
     state.teachers = rows.map(r => {
       const t = {...r};
+      delete t._editing; delete t._collapsed; delete t._photo; delete t._px; delete t._py; delete t._pz;
       t._classes = classesFromString(r['الصفوف']);
       DAYS.forEach(d => { t['_'+d] = String(r[d]||'').split('-'); while(t['_'+d].length < 8) t['_'+d].push('0'); });
       return t;
@@ -2491,17 +2492,34 @@ function applyQuickSchedule(ti, day, maxPeriods){
   renderTeachers();
 }
 function openAddTeacherModal(){
-  const sel = document.getElementById('addTeacherSubjectSelect');
-  sel.innerHTML = '<option value="">— اختر —</option>' + SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('');
+  const baseFields = state.teacherHeaders.filter(h => !DAYS.includes(h) && h !== 'الصفوف' && h !== 'مادة التدريس');
+  const box = document.getElementById('addTeacherFields');
+  box.innerHTML = baseFields.map(h => `
+    <div class="field">
+      <label>${h}</label>
+      <input id="addTeacherField_${idcFieldId(h)}" data-header="${h}">
+    </div>`).join('') + `
+    <div class="field">
+      <label>مادة التدريس</label>
+      <select id="addTeacherSubjectSelect">
+        <option value="">— اختر —</option>
+        ${SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join('')}
+      </select>
+    </div>`;
   document.getElementById('addTeacherModal').classList.add('open');
 }
+function idcFieldId(h){ return String(h).replace(/[^a-zA-Z0-9]/g,'_'); }
 function confirmAddTeacher(){
+  const baseFields = state.teacherHeaders.filter(h => !DAYS.includes(h) && h !== 'الصفوف' && h !== 'مادة التدريس');
+  const values = {};
+  baseFields.forEach(h => { values[h] = document.getElementById('addTeacherField_' + idcFieldId(h)).value.trim(); });
   const subject = document.getElementById('addTeacherSubjectSelect').value;
-  addTeacherRow(subject);
+  addTeacherRow(subject, values);
   closeModal('addTeacherModal');
 }
-function addTeacherRow(subject){
+function addTeacherRow(subject, values){
   const row = {}; state.teacherHeaders.forEach(h => row[h] = '');
+  if(values) Object.keys(values).forEach(h => { row[h] = values[h]; });
   if(subject) row['مادة التدريس'] = subject;
   row._classes = [];
   row._editing = true;
