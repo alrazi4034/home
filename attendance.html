@@ -3859,6 +3859,7 @@ document.getElementById('classReportShowPeriod').addEventListener('change', (e) 
 
 function buildClassReportPrintHTML(ctx){
   const { range, data } = ctx;
+  const showPeriod = classReportShowPeriod;
   const logos = Array.from(document.querySelectorAll('header.topbar .brand-logo')).map(img => img.src);
   const moeLogo = logos[0] || '', schoolLogo = logos[1] || '';
 
@@ -3869,15 +3870,15 @@ function buildClassReportPrintHTML(ctx){
         <td>${fmt(i+1)}</td>
         <td style="text-align:start;font-weight:700;">${escapeHtml(row.student.studentName)} (${escapeHtml(row.student.studentId)})</td>
         <td>${fmt(row.fullDayTotal)}</td>
-        <td>${fmt(row.partialTotal)}</td>
-        ${row.cells.map(c => c.type === 'full' ? '<td style="background:#F5D9D9;color:#7A2E3D;font-weight:800;">✕</td>' : c.type === 'partial' ? `<td style="background:#FBF3D9;color:#8A6A1E;font-weight:800;">${fmt(c.count)}</td>` : '<td></td>').join('')}
+        ${showPeriod ? `<td>${fmt(row.partialTotal)}</td>` : ''}
+        ${row.cells.map(c => c.type === 'full' ? '<td style="background:#F5D9D9;color:#7A2E3D;font-weight:800;">✕</td>' : (c.type === 'partial' && showPeriod) ? `<td style="background:#FBF3D9;color:#8A6A1E;font-weight:800;">${fmt(c.count)}</td>` : '<td></td>').join('')}
       </tr>`).join('');
 
-    // عرض كل عمود متناسب مع محتواه: # ضيق جداً، اسم الطالب أوسع عمود (نص)، عمودا المجموع ضيقان (رقم فقط)، وأعمدة الأيام تتقاسم الباقي بالتساوي
-    const fixedPct = 3 + 24 + 7 + 7;
+    // عرض كل عمود متناسب مع محتواه: # ضيق جداً، اسم الطالب أوسع عمود (نص)، عمود/عمودا المجموع ضيقان (رقم فقط)، وأعمدة الأيام تتقاسم الباقي بالتساوي
+    const fixedPct = showPeriod ? (3 + 24 + 7 + 7) : (3 + 24 + 7);
     const dayPct = pc.days.length ? ((100 - fixedPct) / pc.days.length) : 0;
     const colgroup = `<colgroup>
-      <col style="width:3%"><col style="width:24%"><col style="width:7%"><col style="width:7%">
+      <col style="width:3%"><col style="width:24%"><col style="width:7%">${showPeriod ? '<col style="width:7%">' : ''}
       ${pc.days.map(() => `<col style="width:${dayPct.toFixed(2)}%">`).join('')}
     </colgroup>`;
 
@@ -3888,13 +3889,13 @@ function buildClassReportPrintHTML(ctx){
           <div class="prh-text">
             <h1>سجل غياب الصف</h1>
             <h2>${escapeHtml(SCHOOL_NAME)} — شعبة ${escapeHtml(pc.className)}</h2>
-            <p>${escapeHtml(range.label)} — ${fmt(pc.days.length)} يوم × ${fmt(pc.matrix.length)} طالب. ✕ = غياب يوم كامل، رقم = عدد حصص الغياب الجزئي</p>
+            <p>${escapeHtml(range.label)} — ${fmt(pc.days.length)} يوم × ${fmt(pc.matrix.length)} طالب. ✕ = غياب يوم كامل${showPeriod ? '، رقم = عدد حصص الغياب الجزئي' : ''}</p>
           </div>
           ${schoolLogo ? `<img src="${schoolLogo}">` : ''}
         </div>
         <table class="print-report-table entry-print-table cr-print-table" style="table-layout:fixed;">
           ${colgroup}
-          <thead><tr><th>#</th><th style="text-align:start;">الطالب</th><th>مج.أيام</th><th>مج.حصص</th>${dayHeaders}</tr></thead>
+          <thead><tr><th>#</th><th style="text-align:start;">الطالب</th><th>مج.أيام</th>${showPeriod ? '<th>مج.حصص</th>' : ''}${dayHeaders}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <div class="print-report-footer">
@@ -3919,21 +3920,28 @@ window.addEventListener('afterprint', () => {
    شيت منفصل لكل شعبة (نفس منطق PDF: صفحة/شيت لكل شعبة، بأيامها الفعلية فقط دون أعمدة "لا دوام" مقحمة) */
 function exportClassReportExcel(ctx){
   const { range, data } = ctx;
+  const showPeriod = classReportShowPeriod;
   const wb = XLSX.utils.book_new();
+  const baseHeader = showPeriod
+    ? ['#', 'الطالب', 'الرقم', 'الصف', 'مجموع غياب الأيام', 'مجموع غياب الحصص']
+    : ['#', 'الطالب', 'الرقم', 'الصف', 'مجموع غياب الأيام'];
+  const baseCols = showPeriod
+    ? [{ wch: 4 }, { wch: 26 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }]
+    : [{ wch: 4 }, { wch: 26 }, { wch: 14 }, { wch: 10 }, { wch: 12 }];
+  const cellsFor = (row) => row.cells.map(c => c.type === 'full' ? 'غ' : (c.type === 'partial' && showPeriod) ? c.count : '');
+  const rowValues = (idOrSerial, row, cls) => showPeriod
+    ? [idOrSerial, row.student.studentName, row.student.studentId || '', cls, row.fullDayTotal, row.partialTotal, ...cellsFor(row)]
+    : [idOrSerial, row.student.studentName, row.student.studentId || '', cls, row.fullDayTotal, ...cellsFor(row)];
 
   // شيت إضافي "كل المدرسة" يجمع كل الشعب معاً بجدول واحد موحَّد (فقط عند اختيار "كل الصفوف")
   if(data.perClass.length > 1){
-    const header = ['#', 'الطالب', 'الرقم', 'الصف', 'مجموع غياب الأيام', 'مجموع غياب الحصص', ...data.days];
+    const header = [...baseHeader, ...data.days];
     const aoa = [header];
     data.matrix.forEach(row => {
-      const cells = row.cells.map(c => c.type === 'full' ? 'غ' : c.type === 'partial' ? c.count : '');
-      aoa.push([row.serial, row.student.studentName, row.student.studentId || '', row.className, row.fullDayTotal, row.partialTotal, ...cells]);
+      aoa.push(rowValues(row.serial, row, row.className));
     });
     const wsAll = XLSX.utils.aoa_to_sheet(aoa);
-    wsAll['!cols'] = [
-      { wch: 4 }, { wch: 26 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
-      ...data.days.map(() => ({ wch: 11 }))
-    ];
+    wsAll['!cols'] = [...baseCols, ...data.days.map(() => ({ wch: 11 }))];
     const allRange = XLSX.utils.decode_range(wsAll['!ref']);
     for(let c = allRange.s.c; c <= allRange.e.c; c++){
       const cellRef = XLSX.utils.encode_cell({ r: 0, c });
@@ -3943,19 +3951,15 @@ function exportClassReportExcel(ctx){
   }
 
   data.perClass.forEach(pc => {
-    const header = ['#', 'الطالب', 'الرقم', 'الصف', 'مجموع غياب الأيام', 'مجموع غياب الحصص', ...pc.days];
+    const header = [...baseHeader, ...pc.days];
     const aoa = [header];
     pc.matrix.forEach((row, i) => {
-      const cells = row.cells.map(c => c.type === 'full' ? 'غ' : c.type === 'partial' ? c.count : '');
-      aoa.push([i+1, row.student.studentName, row.student.studentId || '', pc.className, row.fullDayTotal, row.partialTotal, ...cells]);
+      aoa.push(rowValues(i+1, row, pc.className));
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
 
     // تنسيق بسيط وعملي: عرض أعمدة مناسب + رأس بارز
-    ws['!cols'] = [
-      { wch: 4 }, { wch: 26 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
-      ...pc.days.map(() => ({ wch: 11 }))
-    ];
+    ws['!cols'] = [...baseCols, ...pc.days.map(() => ({ wch: 11 }))];
     const headerRowRange = XLSX.utils.decode_range(ws['!ref']);
     for(let c = headerRowRange.s.c; c <= headerRowRange.e.c; c++){
       const cellRef = XLSX.utils.encode_cell({ r: 0, c });
