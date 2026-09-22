@@ -627,7 +627,6 @@
       <button class="btn" onclick="openPasswordBulkModal()">🔑 إضافة باسووردات سريع</button>
       <button class="btn" onclick="openPhoneBulkModal()">📱 إضافة أرقام هواتف جماعياً</button>
       <button class="btn btn-primary" onclick="openStudentCardsModal()">🪪 طباعة بطاقات الطلاب</button>
-      <button class="btn" onclick="openCommListModal('student')">📞 التواصل مع أولياء الطلاب</button>
     </div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">الطلاب مرتّبون تلقائياً أبجدياً داخل كل شعبة (وليس بترتيب المسلسل في ملف الإكسل)، مع ترقيم مسلسل تلقائي حسب هذا الترتيب. كل شعبة قابلة للطي والتمدد. اضغط على أي طالب لعرض كامل بياناته وتعديلها أو نقله أو حذفه.</p>
     <div id="studentsContainer"></div>
@@ -768,7 +767,7 @@ stu2018016503@alefedu.net - Zq9xxxxx"></textarea>
       <br><span style="font-family:monospace;direction:ltr;display:inline-block;margin-top:4px">51 محمد احمد سعيد 2012004636</span>
       <br><span style="font-family:monospace;direction:ltr;display:inline-block">51 محمد احمد سعيد (2012004636)</span>
       <br><span style="font-family:monospace;direction:ltr;display:inline-block">51 2012004636 محمد احمد سعيد</span>
-      <br>يتم التعرف تلقائياً على رمز الشعبة (أول كلمة) ورقم الطالب (الرقم الطويل بأي مكان بالسطر، بقوسين أو بدونها) والاسم — بغض النظر عن الترتيب.
+      <br>يتم التعرف تلقائياً على رمز الشعبة (أول كلمة) ورقم الطالب (بأي مكان بالسطر، بقوسين أو بدونها — أرقاماً فقط أو أرقاماً مع حروف إنجليزية) والاسم — بغض النظر عن الترتيب.
       الطالب المفقود من القائمة الجديدة ضمن الشعب المختارة يُعتبر <b>حذف</b>، الموجود برقمه لكن بشعبة مختلفة عن شعبته الحالية يُعتبر <b>نقل</b> (مع الاحتفاظ بكل بياناته الأخرى كما هي)، والرقم غير الموجود أصلاً يُعتبر <b>إضافة جديدة</b>.
     </p>
     <div class="classes-block-head" style="margin-bottom:8px;">
@@ -1928,11 +1927,13 @@ function studentEffectiveId(s){
   if(direct) return direct.replace(/[^0-9A-Za-z]/g,'') || direct;
   const nm = String(s['اسم الطالب']||s['NAME IN ARABIC']||'').trim();
   const m = nm.match(/[(（]([^)）]*\d[^)）]*)[)）]\s*$/);
-  if(m) return m[1].replace(/[^0-9]/g,'') || m[1].trim();
-  const m2 = nm.match(/(\d{4,})\s*$/);
-  if(m2) return m2[1];
+  if(m) return m[1].replace(/[^0-9A-Za-z]/g,'') || m[1].trim();
+  const m2 = nm.match(/([0-9A-Za-z]{4,})\s*$/);
+  if(m2 && /\d/.test(m2[1])) return m2[1];
   return '';
 }
+/* رقم الطالب قد يحتوي أحرفاً إنجليزية مع الأرقام (مثال: 2012SHJ636) — لذلك يُكتشف كأي
+   كلمة بحروف/أرقام لاتينية فقط (بدون حروف عربية) وتحتوي رقماً واحداً على الأقل، بطول 4+. */
 function parseRosterLine(line){
   line = line.trim();
   if(!line) return null;
@@ -1944,10 +1945,10 @@ function parseRosterLine(line){
   let idIdx = -1;
   for(let i=0; i<rest.length; i++){
     const clean = rest[i].replace(/[()（）]/g,'');
-    if(/^\d{4,}$/.test(clean)){ idIdx = i; break; }
+    if(/^[0-9A-Za-z]+$/.test(clean) && /\d/.test(clean) && clean.length >= 4){ idIdx = i; break; }
   }
   if(idIdx === -1) return null;
-  const id = rest[idIdx].replace(/[^0-9]/g,'');
+  const id = rest[idIdx].replace(/[^0-9A-Za-z]/g,'');
   const name = rest.filter((_,i)=>i!==idIdx).join(' ').trim();
   if(!name || !id) return null;
   return {classCode, id, name};
