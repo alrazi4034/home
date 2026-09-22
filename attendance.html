@@ -577,12 +577,12 @@
     <section class="tab-panel active" id="panel-daily">
       <div class="wrap">
         <div class="daily-nav-bar">
-          <button class="btn small primary" id="btnDailyPrev">اليوم التالي ▶</button>
+          <button class="btn small primary" id="btnDailyPrev">◀ اليوم السابق</button>
           <div class="daily-date-picker">
             <input type="date" id="dailyDateInput">
             <span id="dailyDateWeekday" class="daily-weekday"></span>
           </div>
-          <button class="btn small primary" id="btnDailyNext">◀ اليوم السابق</button>
+          <button class="btn small primary" id="btnDailyNext">اليوم التالي ▶</button>
           <button class="btn small" id="btnDailyLatest">📍 أحدث يوم</button>
           <button class="btn small primary" id="btnDailyReportPrint" style="margin-inline-start:auto;">🖨️ إصدار التقرير اليومي</button>
         </div>
@@ -702,12 +702,12 @@
     <section class="tab-panel" id="panel-entry">
       <div class="wrap">
         <div class="daily-nav-bar">
-          <button class="btn small primary" id="btnEntryPrev">اليوم التالي ▶</button>
+          <button class="btn small primary" id="btnEntryPrev">◀ اليوم السابق</button>
           <div class="daily-date-picker">
             <input type="date" id="entryDateInput">
             <span id="entryDateWeekday" class="daily-weekday"></span>
           </div>
-          <button class="btn small primary" id="btnEntryNext">◀ اليوم السابق</button>
+          <button class="btn small primary" id="btnEntryNext">اليوم التالي ▶</button>
           <button class="btn small" id="btnEntryLatest">📍 أحدث يوم</button>
           <button class="btn small primary" id="btnEntryReportPrint" style="margin-inline-start:auto;">🖨️ إصدار تقرير إدخال الغياب</button>
         </div>
@@ -771,6 +771,10 @@
               <span class="filter-label">الأسبوع</span>
               <select id="classReportWeekSelect"></select>
             </div>
+            <label class="filter-group" style="flex-direction:row;align-items:center;gap:6px;cursor:pointer;">
+              <input type="checkbox" id="classReportShowPeriod" checked>
+              <span class="filter-label" style="margin:0;">إظهار غيابات الحصص</span>
+            </label>
             <button class="btn small primary" id="btnGenerateClassReport">عرض التقرير</button>
           </div>
           <div class="report-actions" id="classReportExportActions" style="display:none;">
@@ -3748,14 +3752,18 @@ function generateClassReportData(classNameOrAll, dateFrom, dateTo){
   return { days: unionDays, matrix, perClass };
 }
 
-function classReportCellHtml(cell){
+function classReportCellHtml(cell, showPeriod){
   if(cell.type === 'full') return '<td class="cr-cell cr-full" title="غياب يوم كامل">✕</td>';
-  if(cell.type === 'partial') return `<td class="cr-cell cr-partial" title="غياب جزئي (${cell.count} حصة)">${fmt(cell.count)}</td>`;
+  if(cell.type === 'partial'){
+    if(!showPeriod) return '<td class="cr-cell cr-present"></td>';
+    return `<td class="cr-cell cr-partial" title="غياب جزئي (${cell.count} حصة)">${fmt(cell.count)}</td>`;
+  }
   if(cell.type === 'na') return '<td class="cr-cell cr-na" title="لا يوجد دوام لهذه الشعبة هذا اليوم">—</td>';
   return '<td class="cr-cell cr-present"></td>';
 }
 
 let classReportSort = { key: null, dir: 1 };
+let classReportShowPeriod = true;
 
 function sortClassReportMatrix(matrix){
   if(!classReportSort.key) return matrix;
@@ -3780,6 +3788,7 @@ function renderClassReportPreview(classNameOrAll, range, data){
     return;
   }
   const showClassCol = classNameOrAll === '__ALL__';
+  const showPeriod = classReportShowPeriod;
   const sortedMatrix = sortClassReportMatrix(data.matrix);
 
   const CLASS_W = 64, SERIAL_W = 34, NAME_W = 150;
@@ -3794,12 +3803,12 @@ function renderClassReportPreview(classNameOrAll, range, data){
       <td class="cr-student-cell" style="position:sticky;right:${rightSerial}px;width:${SERIAL_W}px;text-align:center;">${fmt(row.serial)}</td>
       <td class="cr-student-cell" style="position:sticky;right:${rightName}px;min-width:${NAME_W}px;">${escapeHtml(row.student.studentName)} <span class="hint mono">(${escapeHtml(row.student.studentId)})</span></td>
       <td class="mono cr-total-col">${fmt(row.fullDayTotal)}</td>
-      <td class="mono cr-total-col">${fmt(row.partialTotal)}</td>
-      ${row.cells.map(classReportCellHtml).join('')}
+      ${showPeriod ? `<td class="mono cr-total-col">${fmt(row.partialTotal)}</td>` : ''}
+      ${row.cells.map(c => classReportCellHtml(c, showPeriod)).join('')}
     </tr>`).join('');
 
   box.innerHTML = `
-    <div class="note-box">${escapeHtml(range.label)} — ${fmt(data.days.length)} يوم دوام × ${fmt(data.matrix.length)} طالب. <span class="cr-full" style="padding:1px 6px;">✕</span> غياب يوم كامل — <span class="cr-partial" style="padding:1px 6px;">٢</span> عدد حصص الغياب الجزئي — خلية فارغة = حاضر</div>
+    <div class="note-box">${escapeHtml(range.label)} — ${fmt(data.days.length)} يوم دوام × ${fmt(data.matrix.length)} طالب. <span class="cr-full" style="padding:1px 6px;">✕</span> غياب يوم كامل${showPeriod ? ' — <span class="cr-partial" style="padding:1px 6px;">٢</span> عدد حصص الغياب الجزئي' : ''} — خلية فارغة = حاضر</div>
     <div class="table-scroll">
       <table class="data-table cr-matrix-table" dir="rtl" style="direction:rtl;">
         <thead><tr>
@@ -3807,7 +3816,7 @@ function renderClassReportPreview(classNameOrAll, range, data){
           <th class="cr-student-cell cr-sortable" data-sort="serial" style="position:sticky;right:${rightSerial}px;width:${SERIAL_W}px;">#${sortArrow('serial')}</th>
           <th class="cr-student-cell cr-sortable" data-sort="name" style="position:sticky;right:${rightName}px;min-width:${NAME_W}px;">الطالب${sortArrow('name')}</th>
           <th class="cr-sortable cr-total-col" data-sort="fullDay">مجموع غياب الأيام${sortArrow('fullDay')}</th>
-          <th class="cr-sortable cr-total-col" data-sort="partial">مجموع غياب الحصص${sortArrow('partial')}</th>
+          ${showPeriod ? `<th class="cr-sortable cr-total-col" data-sort="partial">مجموع غياب الحصص${sortArrow('partial')}</th>` : ''}
           ${dayHeaders}
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -3836,6 +3845,16 @@ document.getElementById('btnGenerateClassReport').addEventListener('click', () =
   renderClassReportPreview(classNameOrAll, range, data);
   lastClassReportContext = { classNameOrAll, range, data };
   document.getElementById('classReportExportActions').style.display = 'flex';
+});
+
+document.getElementById('classReportShowPeriod').addEventListener('change', (e) => {
+  classReportShowPeriod = e.target.checked;
+  if(!classReportShowPeriod && classReportSort.key === 'partial'){
+    classReportSort = { key: null, dir: 1 };
+  }
+  if(lastClassReportContext){
+    renderClassReportPreview(lastClassReportContext.classNameOrAll, lastClassReportContext.range, lastClassReportContext.data);
+  }
 });
 
 function buildClassReportPrintHTML(ctx){
