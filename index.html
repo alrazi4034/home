@@ -623,6 +623,7 @@
       <input class="search" id="studentSearch" placeholder="بحث بالاسم أو رقم الطالب..." oninput="renderStudents()">
       <select class="search" id="classFilter" onchange="renderStudents()"><option value="">كل الصفوف</option></select>
       <button class="btn" onclick="addStudentRow()">+ إضافة طالب</button>
+      <button class="btn" onclick="openRosterRefreshModal()">🔄 تحديث قوائم الطلبة</button>
       <button class="btn" onclick="openPasswordBulkModal()">🔑 إضافة باسووردات سريع</button>
       <button class="btn" onclick="openPhoneBulkModal()">📱 إضافة أرقام هواتف جماعياً</button>
       <button class="btn btn-primary" onclick="openStudentCardsModal()">🪪 طباعة بطاقات الطلاب</button>
@@ -754,6 +755,40 @@ stu2018016503@alefedu.net - Zq9xxxxx"></textarea>
     <div id="ph-bulk-preview" style="margin-top:14px;max-height:340px;overflow-y:auto;"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('phoneBulkModal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Roster refresh: pick classes, bulk-paste new roster, review نقل/إضافة/حذف before applying -->
+<div class="modal-overlay" id="rosterRefreshModal">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-head"><h3>🔄 تحديث قوائم الطلبة</h3><button class="modal-close" onclick="closeModal('rosterRefreshModal')">×</button></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.8;">
+      <b>1)</b> اختر الشعب المراد تحديث قوائمها (تحديد متعدد أو "تحديد الكل"). <b>2)</b> الصق القائمة الجديدة الكاملة لتلك الشعب — سطر واحد لكل طالب، بأي من الصيغ التالية:
+      <br><span style="font-family:monospace;direction:ltr;display:inline-block;margin-top:4px">51 محمد احمد سعيد 2012004636</span>
+      <br><span style="font-family:monospace;direction:ltr;display:inline-block">51 محمد احمد سعيد (2012004636)</span>
+      <br><span style="font-family:monospace;direction:ltr;display:inline-block">51 2012004636 محمد احمد سعيد</span>
+      <br>يتم التعرف تلقائياً على رمز الشعبة (أول كلمة) ورقم الطالب (الرقم الطويل بأي مكان بالسطر، بقوسين أو بدونها) والاسم — بغض النظر عن الترتيب.
+      الطالب المفقود من القائمة الجديدة ضمن الشعب المختارة يُعتبر <b>حذف</b>، الموجود برقمه لكن بشعبة مختلفة عن شعبته الحالية يُعتبر <b>نقل</b> (مع الاحتفاظ بكل بياناته الأخرى كما هي)، والرقم غير الموجود أصلاً يُعتبر <b>إضافة جديدة</b>.
+    </p>
+    <div class="classes-block-head" style="margin-bottom:8px;">
+      <h3 style="font-size:13px;margin:0;">1) الشعب المطلوب تحديثها</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" type="button" onclick="toggleAllRosterClasses(true)">تحديد الكل</button>
+        <button class="btn" type="button" onclick="toggleAllRosterClasses(false)">إلغاء التحديد</button>
+      </div>
+    </div>
+    <div id="rosterClassesBody" style="max-height:180px;overflow-y:auto;margin-bottom:14px;"></div>
+
+    <h3 style="font-size:13px;margin:0 0 8px;">2) القائمة الجديدة (لصق جماعي)</h3>
+    <textarea class="search" id="roster-bulk-text" rows="8" style="width:100%;font-family:monospace;direction:rtl;resize:vertical;padding:10px;"
+      placeholder="51 محمد احمد سعيد 2012004636
+51 خالد سالم مبارك (2012004711)
+52 2012004890 سلطان راشد حميد"></textarea>
+    <button class="btn btn-primary" style="margin-top:10px;" onclick="analyzeRosterBulk()">🔎 تحليل ومقارنة</button>
+    <div id="roster-bulk-preview" style="margin-top:14px;max-height:380px;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('rosterRefreshModal')">إغلاق</button>
     </div>
   </div>
 </div>
@@ -1881,6 +1916,216 @@ function applyPhoneBulk(){
   closeModal('phoneBulkModal');
   renderStudents();
   setStatus('✅ تم تحديث أرقام هواتف ' + count + ' طالب بنجاح.');
+}
+
+/* ---------- تحديث قوائم الطلبة (نقل/إضافة/حذف جماعي حسب الشعبة) ---------- */
+function studentBareName(s){
+  const nm = String(s['اسم الطالب']||s['NAME IN ARABIC']||'').trim();
+  return nm.replace(/\s*[(（][^)）]*[)）]\s*$/, '').trim();
+}
+function studentEffectiveId(s){
+  const direct = String(s['رقم الطالب']||'').trim();
+  if(direct) return direct.replace(/[^0-9A-Za-z]/g,'') || direct;
+  const nm = String(s['اسم الطالب']||s['NAME IN ARABIC']||'').trim();
+  const m = nm.match(/[(（]([^)）]*\d[^)）]*)[)）]\s*$/);
+  if(m) return m[1].replace(/[^0-9]/g,'') || m[1].trim();
+  const m2 = nm.match(/(\d{4,})\s*$/);
+  if(m2) return m2[1];
+  return '';
+}
+function parseRosterLine(line){
+  line = line.trim();
+  if(!line) return null;
+  const tokens = line.split(/\s+/);
+  if(tokens.length < 3) return null;
+  const classCode = tokens[0].replace(/[^0-9A-Za-z]/g,'');
+  if(!classCode) return null;
+  const rest = tokens.slice(1);
+  let idIdx = -1;
+  for(let i=0; i<rest.length; i++){
+    const clean = rest[i].replace(/[()（）]/g,'');
+    if(/^\d{4,}$/.test(clean)){ idIdx = i; break; }
+  }
+  if(idIdx === -1) return null;
+  const id = rest[idIdx].replace(/[^0-9]/g,'');
+  const name = rest.filter((_,i)=>i!==idIdx).join(' ').trim();
+  if(!name || !id) return null;
+  return {classCode, id, name};
+}
+function openRosterRefreshModal(){
+  const classesInData = [...new Set(state.students.map(s => String(s['الصف']||'')))].filter(Boolean);
+  let orderedClasses = state.schoolClasses.length ? state.schoolClasses.slice() : [];
+  classesInData.forEach(c => { if(!orderedClasses.includes(c)) orderedClasses.push(c); });
+  const map = {};
+  orderedClasses.forEach(c => { const g=c[0]; (map[g]=map[g]||[]).push(c); });
+  const grades = Object.keys(map).sort();
+  const body = document.getElementById('rosterClassesBody');
+  body.innerHTML = grades.length ? grades.map(g => `
+    <div class="grade-group">
+      <div class="grade-label"><span>الصف ${g}</span></div>
+      <div class="chip-row">
+        ${[...new Set(map[g])].sort().map(c => `<label class="check-chip"><input type="checkbox" class="roster-class-cb" value="${c}" style="margin-inline-end:4px"> ${codeToDisplay(c)}</label>`).join('')}
+      </div>
+    </div>`).join('') : '<p style="font-size:12px;color:var(--ink-soft);">لا توجد شعب معرّفة بعد.</p>';
+  document.getElementById('roster-bulk-text').value = '';
+  document.getElementById('roster-bulk-preview').innerHTML = '';
+  document.getElementById('rosterRefreshModal').classList.add('open');
+}
+function toggleAllRosterClasses(checked){
+  document.querySelectorAll('.roster-class-cb').forEach(cb => cb.checked = checked);
+}
+function toggleAllRosterDeletes(checked){
+  document.querySelectorAll('.roster-del-apply').forEach(cb => cb.checked = checked);
+}
+function analyzeRosterBulk(){
+  const selectedClasses = [...document.querySelectorAll('.roster-class-cb:checked')].map(cb => cb.value);
+  if(!selectedClasses.length){ alert('اختر شعبة واحدة على الأقل (أو اضغط "تحديد الكل").'); return; }
+  const text = document.getElementById('roster-bulk-text').value;
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){ alert('الصق القائمة الجديدة أولاً.'); return; }
+
+  const invalid = [];
+  const parsedRows = [];
+  lines.forEach(line => {
+    const p = parseRosterLine(line);
+    if(!p) invalid.push(line); else parsedRows.push(p);
+  });
+
+  const idMap = new Map();
+  state.students.forEach((s,i) => { const id = studentEffectiveId(s); if(id && !idMap.has(id)) idMap.set(id, i); });
+
+  const additions = [], transfers = [];
+  const matchedIds = new Set();
+  parsedRows.forEach(p => {
+    matchedIds.add(p.id);
+    const idx = idMap.get(p.id);
+    if(idx === undefined){ additions.push(p); return; }
+    const s = state.students[idx];
+    const currentClass = String(s['الصف']||'').trim();
+    if(currentClass !== p.classCode) transfers.push({...p, idx, fromClass: currentClass});
+  });
+
+  const deletions = [];
+  state.students.forEach((s,i) => {
+    const cls = String(s['الصف']||'').trim();
+    if(!selectedClasses.includes(cls)) return;
+    const id = studentEffectiveId(s);
+    if(id && matchedIds.has(id)) return;
+    deletions.push({idx:i, s, cls});
+  });
+
+  window._rosterReport = {additions, transfers, deletions, invalid, selectedClasses};
+  renderRosterPreview(window._rosterReport);
+}
+function renderRosterPreview(report){
+  const box = document.getElementById('roster-bulk-preview');
+  const {additions, transfers, deletions, invalid} = report;
+  if(!additions.length && !transfers.length && !deletions.length && !invalid.length){
+    box.innerHTML = '<div style="font-size:12px;color:var(--ink-soft)">لا يوجد أي تغيير — القائمة الملصقة مطابقة تماماً للبيانات الحالية بالشعب المختارة.</div>';
+    return;
+  }
+  let html = `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;font-weight:700;margin-bottom:12px;">
+    <span style="color:#16A34A">➕ إضافة: ${additions.length}</span>
+    <span style="color:var(--accent)">🔀 نقل: ${transfers.length}</span>
+    <span style="color:var(--danger)">🗑️ حذف: ${deletions.length}</span>
+    ${invalid.length ? `<span style="color:var(--danger)">⚠️ أسطر غير مفهومة: ${invalid.length}</span>` : ''}
+  </div>`;
+
+  if(invalid.length){
+    html += `<div style="border:1px solid var(--danger);background:rgba(184,92,66,.08);border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:12px">
+      <b>أسطر لم يتم فهمها (تأكد من وجود رمز شعبة + اسم + رقم طالب) — ${invalid.length}:</b>
+      ${invalid.map(l=>`<div style="font-family:monospace;direction:ltr;text-align:left;margin-top:4px">${l}</div>`).join('')}
+    </div>`;
+  }
+
+  if(additions.length){
+    html += `<div style="font-size:12.5px;font-weight:700;color:#16A34A;margin:10px 0 6px;">➕ طلاب جدد (${additions.length})</div>`;
+    additions.forEach((p,i) => {
+      html += `<div style="border:1px solid #16A34A;background:rgba(22,163,74,.07);border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px">
+        <span><b>${p.name}</b> <span style="color:var(--ink-soft)">(${p.id})</span> — ${codeToDisplay(p.classCode)}</span>
+        <label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="roster-add-apply" data-i="${i}" checked> تطبيق</label>
+      </div>`;
+    });
+  }
+
+  if(transfers.length){
+    html += `<div style="font-size:12.5px;font-weight:700;color:var(--accent);margin:10px 0 6px;">🔀 نقل شعبة (${transfers.length})</div>`;
+    transfers.forEach((t,i) => {
+      html += `<div style="border:1px solid var(--accent);background:rgba(201,123,90,.08);border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px">
+        <span><b>${t.name}</b> <span style="color:var(--ink-soft)">(${t.id})</span> — ${codeToDisplay(t.fromClass)} ← ${codeToDisplay(t.classCode)}</span>
+        <label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="roster-transfer-apply" data-i="${i}" checked> تطبيق</label>
+      </div>`;
+    });
+  }
+
+  if(deletions.length){
+    html += `<div style="font-size:12.5px;font-weight:700;color:var(--danger);margin:10px 0 6px;">🗑️ غير موجودين بالقائمة الجديدة (${deletions.length})</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <button class="btn" type="button" onclick="toggleAllRosterDeletes(true)" style="font-size:11px;padding:4px 10px;">تحديد الكل للحذف</button>
+        <button class="btn" type="button" onclick="toggleAllRosterDeletes(false)" style="font-size:11px;padding:4px 10px;">إلغاء تحديد الحذف</button>
+      </div>`;
+    deletions.forEach((d,i) => {
+      const nm = studentBareName(d.s);
+      const id = studentEffectiveId(d.s);
+      html += `<div style="border:1px solid var(--danger);background:rgba(184,92,66,.08);border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px">
+        <span><b>${nm}</b> ${id?`<span style="color:var(--ink-soft)">(${id})</span>`:''} — ${codeToDisplay(d.cls)}</span>
+        <label style="font-size:11px;display:flex;align-items:center;gap:4px"><input type="checkbox" class="roster-del-apply" data-i="${i}"> حذف</label>
+      </div>`;
+    });
+  }
+
+  html += `<button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="applyRosterBulk()">✅ تطبيق التغييرات المحددة</button>`;
+  box.innerHTML = html;
+}
+function applyRosterBulk(){
+  const report = window._rosterReport;
+  if(!report) return;
+  let addCount = 0, transferCount = 0, delCount = 0;
+
+  document.querySelectorAll('.roster-add-apply:checked').forEach(cb => {
+    const i = parseInt(cb.dataset.i, 10);
+    const p = report.additions[i];
+    if(!p) return;
+    const row = {};
+    state.studentHeaders.forEach(h => { row[h] = ''; });
+    row['اسم الطالب'] = `${p.name} (${p.id})`;
+    row['الصف'] = p.classCode;
+    row['معتمد'] = '1';
+    if(state.studentHeaders.includes('رقم الطالب')) row['رقم الطالب'] = p.id;
+    state.students.push(row);
+    addCount++;
+  });
+
+  document.querySelectorAll('.roster-transfer-apply:checked').forEach(cb => {
+    const i = parseInt(cb.dataset.i, 10);
+    const t = report.transfers[i];
+    if(!t) return;
+    state.students[t.idx]['الصف'] = t.classCode;
+    transferCount++;
+  });
+
+  const delIndices = [];
+  document.querySelectorAll('.roster-del-apply:checked').forEach(cb => {
+    const i = parseInt(cb.dataset.i, 10);
+    const d = report.deletions[i];
+    if(!d) return;
+    delIndices.push(d.idx);
+  });
+  if(delIndices.length){
+    if(!confirm('سيتم حذف ' + delIndices.length + ' طالب نهائياً من بيانات المدرسة. متابعة؟')) return;
+  }
+  delIndices.sort((a,b)=>b-a).forEach(idx => { state.students.splice(idx, 1); delCount++; });
+
+  if(!addCount && !transferCount && !delCount){ setStatus('⚠️ لم يتم تحديد أي تغيير للتطبيق.'); return; }
+
+  sortStudentsArr();
+  populateClassFilter();
+  closeModal('rosterRefreshModal');
+  document.getElementById('roster-bulk-text').value = '';
+  document.getElementById('roster-bulk-preview').innerHTML = '';
+  window._rosterReport = null;
+  renderStudents();
+  setStatus(`✅ تم تحديث قوائم الطلبة — إضافة: ${addCount}، نقل: ${transferCount}، حذف: ${delCount}.`);
 }
 
 /* ---------- بطاقات الطلاب (طباعة A4 عرضي + إرسال واتساب + QR) ---------- */
