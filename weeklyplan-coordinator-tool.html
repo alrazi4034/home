@@ -187,9 +187,19 @@
   table.report-table td.notavail{background:#FBE7E4; color:#A03A2C;}
   /* فاصل غليظ بين كل مرحلة (صف) وبداية اللي بعدها */
   table.report-table tbody tr.grade-sep td{border-top:3px solid #2B2A28;}
-  .report-legend{display:flex; gap:16px; margin-top:12px; font-size:12px; color:#555;}
+  .report-legend{display:flex; gap:16px; margin-top:12px; font-size:12px; color:#555; flex-wrap:wrap;}
   .report-legend span{display:flex; align-items:center; gap:5px;}
   .report-legend i{width:12px; height:12px; border-radius:3px; display:inline-block;}
+
+  /* ===== الترتيب الزمني للإدخالات ===== */
+  .entry-timeline{background:#F7F5EE; border:1px solid #E3DED2; border-radius:8px; padding:12px 14px; margin-bottom:16px;}
+  .timeline-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:320px; overflow:auto;}
+  .timeline-list li{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #E3DED2; border-radius:6px; padding:6px 10px; font-size:12.5px;}
+  .timeline-list li.first-entry{background:#FFF7DE; border-color:#D8B742;}
+  .tl-rank{flex-shrink:0; width:22px; height:22px; border-radius:50%; background:#4F7A3D; color:#fff; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center;}
+  .timeline-list li.first-entry .tl-rank{background:#D8B742;}
+  .tl-main{flex:1; min-width:0;}
+  .tl-time{flex-shrink:0; color:#777; font-size:11.5px; direction:ltr;}
   table.plan tbody td.cell .txt{display:block; overflow:hidden; max-height:100%; white-space:pre-line;}
   table.plan tbody td.row-label{border:var(--tableCellBorderWidth) solid var(--tableCellBorderColor); text-align:center; vertical-align:middle; font-size:var(--tableRowLabelFontSize); font-weight:700; padding:2px; background:var(--rowLabelBg); overflow:hidden;}
   table.plan tbody td.row-label .en{display:block; font-size:9px; font-weight:600; color:#5a4a20;}
@@ -299,7 +309,10 @@
   <div class="report-box">
     <div class="report-head">
       <h2>تقرير الإدخال — توفر الملفات لكل صف وشعبة ومادة</h2>
-      <button class="ghost" onclick="closeInputReport()">إغلاق ✕</button>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="ghost" onclick="toggleEntryTimeline()">⏱ الترتيب الزمني للإدخالات</button>
+        <button class="ghost" onclick="closeInputReport()">إغلاق ✕</button>
+      </div>
     </div>
     <div class="report-filters">
       <div class="filter-group">
@@ -313,6 +326,7 @@
         <div id="reportSectionFilters" class="section-filter-grid"></div>
       </div>
     </div>
+    <div id="entryTimelineWrap" class="entry-timeline" style="display:none;"></div>
     <div id="reportTableWrap"></div>
   </div>
 </div>
@@ -450,6 +464,7 @@ function handleFiles(files){
         try{
           const data = JSON.parse(ev.target.result);
           data._fileName = file.name;
+          data._lastModified = file.lastModified; // توقيت آخر تعديل للملف المقروء
           loadedData.push(data);
           renderFileList();
         }catch(err){
@@ -815,8 +830,71 @@ function buildWeekFilterOptions(){
   if(Array.from(select.options).some(o=> o.value === current)) select.value = current;
 }
 
+// يرجّع كل الإدخالات (اللي فيها توقيت تعديل معروف) مرتبة من الأقدم للأحدث،
+// مع مراعاة فلتر الأسبوع الحالي إن كان مفعّلاً
+function getSortedEntriesByTime(weekFilterVal){
+  let entries = loadedData.filter(d=> typeof d._lastModified === 'number');
+  if(weekFilterVal !== 'all'){
+    entries = entries.filter(d=> String(d.week) === String(weekFilterVal));
+  }
+  return entries.slice().sort((a,b)=> a._lastModified - b._lastModified);
+}
+
+// أول إدخال وصل زمنيًا (حسب توقيت آخر تعديل لملفه) ضمن الفلتر الحالي
+function getFirstEntry(weekFilterVal){
+  const sorted = getSortedEntriesByTime(weekFilterVal);
+  return sorted.length ? sorted[0] : null;
+}
+
+function formatEntryTimestamp(ts){
+  if(!ts) return '—';
+  const d = new Date(ts);
+  const day = String(d.getDate()).padStart(2,'0');
+  const month = String(d.getMonth()+1).padStart(2,'0');
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2,'0');
+  const ampm = hours >= 12 ? 'م' : 'ص';
+  hours = hours % 12; if(hours === 0) hours = 12;
+  return `${day}/${month}/${year} - ${hours}:${minutes} ${ampm}`;
+}
+
+// يبني القائمة الزمنية: كل معلم مع صفوفه، بالترتيب من أول إدخال إلى آخر إدخال
+function buildEntryTimeline(){
+  const weekFilterVal = document.getElementById('reportWeekFilter').value;
+  const entries = getSortedEntriesByTime(weekFilterVal);
+
+  if(entries.length === 0){
+    return '<p style="text-align:center; color:#888; padding:10px 0;">لا توجد ملفات محمّلة بتوقيت تعديل معروف بعد.</p>';
+  }
+
+  let html = '<ol class="timeline-list">';
+  entries.forEach((d, i)=>{
+    const isFirst = i === 0;
+    html += `<li class="${isFirst ? 'first-entry' : ''}">
+      <span class="tl-rank">${i+1}</span>
+      <span class="tl-main"><b>${d.teacherName || '—'}</b> — ${d.subject || '—'} — ${GRADE_NAMES[d.grade] || d.grade}/${(d.sections||[]).join('،')}${isFirst ? ' 👑' : ''}</span>
+      <span class="tl-time">${formatEntryTimestamp(d._lastModified)}</span>
+    </li>`;
+  });
+  html += '</ol>';
+  return html;
+}
+
+function toggleEntryTimeline(){
+  const wrap = document.getElementById('entryTimelineWrap');
+  const isOpen = wrap.style.display !== 'none';
+  if(isOpen){
+    wrap.style.display = 'none';
+  } else {
+    wrap.innerHTML = buildEntryTimeline();
+    wrap.style.display = 'block';
+  }
+}
+
 function buildInputReportTable(){
   const weekFilterVal = document.getElementById('reportWeekFilter').value;
+  const firstEntry = getFirstEntry(weekFilterVal);
 
   let html = '<table class="report-table"><thead><tr><th>الصف / الشعبة</th>';
   SUBJECTS.forEach(s=> html += `<th>${s}</th>`);
@@ -837,7 +915,9 @@ function buildInputReportTable(){
           Array.isArray(d.sections) && d.sections.includes(sec) &&
           (weekFilterVal === 'all' || String(d.week) === String(weekFilterVal))
         );
-        html += `<td class="${available ? 'avail' : 'notavail'}">${available ? 'متاح' : 'غير متاح'}</td>`;
+        const isFirst = !!(firstEntry && available && firstEntry.grade === g && firstEntry.subject === subj &&
+          Array.isArray(firstEntry.sections) && firstEntry.sections.includes(sec));
+        html += `<td class="${available ? 'avail' : 'notavail'}">${available ? ('متاح' + (isFirst ? ' 👑' : '')) : 'غير متاح'}</td>`;
       });
       html += '</tr>';
       prevGrade = g;
@@ -852,18 +932,24 @@ function buildInputReportTable(){
   html += `<div class="report-legend">
     <span><i style="background:#DFF3E1;"></i>متاح — تم رفع الملف</span>
     <span><i style="background:#FBE7E4;"></i>غير متاح — لسا ما توصل</span>
+    <span>👑 أول إدخال وصل زمنيًا</span>
   </div>`;
   return html;
 }
 
 function refreshReportTable(){
   document.getElementById('reportTableWrap').innerHTML = buildInputReportTable();
+  const wrap = document.getElementById('entryTimelineWrap');
+  if(wrap && wrap.style.display !== 'none'){
+    wrap.innerHTML = buildEntryTimeline();
+  }
 }
 
 function showInputReport(){
   buildWeekFilterOptions();
   buildSectionFilterUI();
   refreshReportTable();
+  document.getElementById('entryTimelineWrap').style.display = 'none';
   document.getElementById('reportOverlay').classList.add('open');
 }
 function closeInputReport(){
