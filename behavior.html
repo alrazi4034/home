@@ -121,6 +121,11 @@
   .row-2.split-65-35{grid-template-columns:2fr 1fr;}
   @media (max-width:980px){ .row-2.split-65-35{grid-template-columns:1fr;} }
   .trend-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:8px;}
+  .trend-mode-toggle{display:inline-flex;flex:0 0 auto;border:1px solid var(--line);background:var(--panel);}
+  .trend-mode-toggle button{font-family:inherit;font-size:11.5px;font-weight:700;padding:4px 14px;border:none;background:transparent;color:var(--ink-soft);cursor:pointer;transition:.15s;}
+  .trend-mode-toggle button + button{border-inline-start:1px solid var(--line);}
+  .trend-mode-toggle button:hover{color:var(--plum);background:var(--plum-soft);}
+  .trend-mode-toggle button.active{background:var(--plum);color:#fff;}
   .people-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .detail-grid{display:flex;flex-direction:column;}
   .reports-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -506,7 +511,7 @@
         </details>
 
         <div class="card">
-          <h3><span>الاتجاه الزمني الأسبوعي للمخالفات <span class="hint">— عمود لكل أسبوع، ارتفاعه إجمالي المخالفات ومقسّم بالألوان حسب الصف</span></span></h3>
+          <h3><span><span id="trendTitleText">الاتجاه الزمني الأسبوعي للمخالفات</span> <span class="hint" id="trendHint">— عمود لكل أسبوع، ارتفاعه إجمالي المخالفات ومقسّم بالألوان حسب الصف</span></span><span class="trend-mode-toggle" id="trendModeToggle" role="group" aria-label="وحدة العرض الزمني"><button type="button" data-mode="day">يومي</button><button type="button" data-mode="week" class="active">أسبوعي</button></span></h3>
           <div class="trend-legend" id="trendLegend"></div>
           <div class="chart-holder chart-holder-lg"><canvas id="chartTrend"></canvas></div>
         </div>
@@ -710,6 +715,7 @@ let termConfig = null; // {segments:[{label,start,end,weeks:[{localIndex,start,e
 let filters = { grades:new Set(), sections:new Set(), degrees:new Set(), recorder:'', student:'', dateFrom:null, dateTo:null, search:'', semester:'all' };
 let charts = {};
 let trendHiddenGrades = new Set(); // الصفوف المخفية مؤقتاً من رسم الاتجاه الزمني الأسبوعي (فلترة بالنقر على وسم الصف)
+let trendMode = 'week'; // وحدة الاتجاه الزمني: 'week' (أسبوعي) أو 'day' (يومي)
 let classChartItems = [];
 
 /* ---------- helpers ---------- */
@@ -2382,23 +2388,49 @@ function renderTrendChart(agg){
   const ctx = document.getElementById('chartTrend');
   const legendEl = document.getElementById('trendLegend');
   if(legendEl) legendEl.innerHTML = '';
+  // تحديث العنوان والتلميح وحالة زرّي التبديل حسب الوحدة المختارة (يومي / أسبوعي)
+  const isDaily = trendMode==='day';
+  const titleEl = document.getElementById('trendTitleText');
+  const hintEl = document.getElementById('trendHint');
+  if(titleEl) titleEl.textContent = isDaily ? 'الاتجاه الزمني اليومي للمخالفات' : 'الاتجاه الزمني الأسبوعي للمخالفات';
+  if(hintEl) hintEl.textContent = isDaily
+    ? '— عمود لكل يوم دراسي، ارتفاعه إجمالي المخالفات ومقسّم بالألوان حسب الصف'
+    : '— عمود لكل أسبوع، ارتفاعه إجمالي المخالفات ومقسّم بالألوان حسب الصف';
+  document.querySelectorAll('#trendModeToggle button').forEach(btn=> btn.classList.toggle('active', btn.dataset.mode===trendMode));
   if(!agg.byWeek.length){ return; }
-  const weekKeys = agg.byWeek.map(w=>w[0]);
-  const labels = weekKeys.map(k=> fmtDateShort(new Date(k)));
+  const localDate = k=> new Date(k+'T00:00:00');
+  // مفاتيح الفترات: أيام دراسية (من أول تسجيل إلى آخر تسجيل) أو بدايات الأسابيع
+  let periodKeys, keyOfRecord;
+  if(isDaily){
+    // نستبعد تلقائياً أيام الأسبوع التي لا توجد فيها أي مخالفات إطلاقاً (عطلة نهاية الأسبوع)
+    // حتى لا تظهر أعمدة فارغة كل أسبوع؛ أما الأيام الدراسية الخالية فتظهر بصفر.
+    const activeDows = new Set(filtered.filter(r=>r.date).map(r=>r.date.getDay()));
+    const start = new Date(agg.dateMin); start.setHours(0,0,0,0);
+    const end = new Date(agg.dateMax); end.setHours(0,0,0,0);
+    periodKeys = [];
+    for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+      if(activeDows.has(d.getDay())) periodKeys.push(isoDate(d));
+    }
+    keyOfRecord = r=> isoDate(r.date);
+  } else {
+    periodKeys = agg.byWeek.map(w=>w[0]);
+    keyOfRecord = r=> isoDate(mondayOf(r.date));
+  }
+  const labels = periodKeys.map(k=> fmtDateShort(localDate(k)));
   const grades = sortGradeLabels([...new Set(filtered.map(r=>r.grade).filter(Boolean))]);
   const gradeColors = buildGradeColorMap(filtered);
   // إزالة أي صف مخفي لم يعد موجوداً أصلاً بعد تغيّر الفلاتر
   [...trendHiddenGrades].forEach(g=>{ if(!grades.includes(g)) trendHiddenGrades.delete(g); });
   const visibleGrades = grades.filter(g=> !trendHiddenGrades.has(g));
-  // عمود واحد لكل أسبوع (مكدّس حسب الصف) بدل عدة خطوط متشابكة — أوضح عند وجود
-  // عدد كبير من الصفوف، وارتفاع العمود الكلي يعطي إجمالي الأسبوع مباشرة.
+  // عمود واحد لكل فترة (مكدّس حسب الصف) بدل عدة خطوط متشابكة — أوضح عند وجود
+  // عدد كبير من الصفوف، وارتفاع العمود الكلي يعطي إجمالي الفترة مباشرة.
   // يمكن إخفاء/إظهار أي صف بالنقر على وسمه في الأسفل لفلترة الرسم
   const datasets = visibleGrades.map(g=>{
-    const weekMap = new Map();
-    filtered.forEach(r=>{ if(r.grade!==g || !r.date) return; const ws=isoDate(mondayOf(r.date)); weekMap.set(ws,(weekMap.get(ws)||0)+1); });
+    const periodMap = new Map();
+    filtered.forEach(r=>{ if(r.grade!==g || !r.date) return; const k=keyOfRecord(r); periodMap.set(k,(periodMap.get(k)||0)+1); });
     return {
-      label: g, data: weekKeys.map(k=> weekMap.get(k)||0),
-      backgroundColor: gradeColors[g]||plum, borderRadius:3, stack:'total'
+      label: g, data: periodKeys.map(k=> periodMap.get(k)||0),
+      backgroundColor: gradeColors[g]||plum, borderRadius: isDaily?2:3, stack:'total'
     };
   });
   if(legendEl){
@@ -2424,16 +2456,31 @@ function renderTrendChart(agg){
       plugins:{
         legend:{display:false},
         tooltip:{ mode:'index', intersect:false, callbacks:{
+          title: (items)=>{
+            if(!items.length) return '';
+            const d = localDate(periodKeys[items[0].dataIndex]);
+            if(isDaily) return WEEKDAYS_AR[d.getDay()] + ' — ' + fmtDate(d);
+            return 'أسبوع يبدأ ' + fmtDate(d);
+          },
           footer: (items)=> 'الإجمالي: ' + fmt(items.reduce((s,it)=> s+(it.parsed.y||0), 0))
         } }
       },
       scales:{
         y:{ beginAtZero:true, stacked:true, grid:{color:GRID}, ticks:{precision:0} },
-        x:{ stacked:true, grid:{display:false} }
+        x:{ stacked:true, grid:{display:false}, ticks:{ autoSkip:true, maxRotation:isDaily?60:0, autoSkipPadding:8 } }
       }
     }
   });
 }
+
+/* مفتاح التبديل بين العرض اليومي والأسبوعي للاتجاه الزمني */
+document.querySelectorAll('#trendModeToggle button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(trendMode===btn.dataset.mode) return;
+    trendMode = btn.dataset.mode;
+    renderTrendChart(computeAgg(filtered));
+  });
+});
 
 function renderPeriodBarChart(agg){
   destroyChart('periodBar');
