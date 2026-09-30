@@ -521,9 +521,9 @@
 
     <div class="tab-panel" id="panel-daily">
       <div class="daily-nav-bar">
-        <button class="btn tiny" id="dailyPrev">▶ السابق</button>
+        <button class="btn tiny" id="dailyPrev">◀ السابق</button>
         <div class="daily-date-display" id="dailyDateDisplay"></div>
-        <button class="btn tiny" id="dailyNext">التالي ◀</button>
+        <button class="btn tiny" id="dailyNext">التالي ▶</button>
         <button class="btn tiny" id="dailyLatest">📅 أحدث يوم</button>
         <input type="date" id="dailyDatePicker">
         <button class="btn small primary" id="btnPrintDaily">🖨️ طباعة هذا التقرير</button>
@@ -2120,7 +2120,7 @@ function lastNSchoolDays(data, n, refDate){
   let guard = 0;
   while(days.length < n && guard < 60){
     const dow = d.getDay();
-    if(dow !== 5 && dow !== 6) days.unshift(new Date(d));
+    if(dow !== 0 && dow !== 6) days.unshift(new Date(d)); // الإجازة: الأحد (0) والسبت (6)
     d.setDate(d.getDate()-1);
     guard++;
   }
@@ -2402,14 +2402,16 @@ function renderTrendChart(agg){
   // مفاتيح الفترات: أيام دراسية (من أول تسجيل إلى آخر تسجيل) أو بدايات الأسابيع
   let periodKeys, keyOfRecord;
   if(isDaily){
-    // نستبعد تلقائياً أيام الأسبوع التي لا توجد فيها أي مخالفات إطلاقاً (عطلة نهاية الأسبوع)
-    // حتى لا تظهر أعمدة فارغة كل أسبوع؛ أما الأيام الدراسية الخالية فتظهر بصفر.
-    const activeDows = new Set(filtered.filter(r=>r.date).map(r=>r.date.getDay()));
+    // عطلة نهاية الأسبوع: السبت (6) والأحد (0) — لا تظهر كأيام فارغة. والأيام الدراسية الخالية تظهر بصفر.
+    // استثناء: لو سُجّلت مخالفة فعلية في يوم عطلة يُضاف ذلك اليوم حتى يطابق مجموع الرسم الإجمالي.
+    const recordedDays = new Set(filtered.filter(r=>r.date).map(r=>isoDate(r.date)));
     const start = new Date(agg.dateMin); start.setHours(0,0,0,0);
     const end = new Date(agg.dateMax); end.setHours(0,0,0,0);
     periodKeys = [];
     for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-      if(activeDows.has(d.getDay())) periodKeys.push(isoDate(d));
+      const dow = d.getDay(), key = isoDate(d);
+      const isWeekend = (dow===6 || dow===0);
+      if(!isWeekend || recordedDays.has(key)) periodKeys.push(key);
     }
     keyOfRecord = r=> isoDate(r.date);
   } else {
