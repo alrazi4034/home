@@ -579,6 +579,12 @@ body.light-mode .leader-name-3 { color: #92400e !important; }
   opacity: 0.7;
 }
 /* ===================== 🪑 تاب الجلوس ===================== */
+.sx-sw{flex-shrink:0;width:26px;height:26px;border-radius:8px;border:1.5px solid #a29bfe;background:rgba(162,155,254,.2);color:var(--text);font-size:14px;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sx-sw:hover{background:rgba(162,155,254,.45);transform:rotate(90deg)}
+.sx-sw.on{background:linear-gradient(135deg,#a29bfe,#6c5ce7);border-color:transparent;box-shadow:0 0 12px rgba(108,92,231,.7);animation:sxspin 1.2s linear infinite}
+@keyframes sxspin{to{transform:rotate(360deg)}}
+body.light-mode .sx-sw{background:rgba(108,92,231,.15)}
+
 .sx-act.swapon{background:linear-gradient(135deg,#a29bfe,#6c5ce7);color:#fff;border-color:transparent;box-shadow:0 3px 14px rgba(108,92,231,.5)}
 .sx-swapbar{margin:6px 0 8px;padding:8px 12px;border-radius:10px;background:rgba(162,155,254,.18);border:1.5px solid #a29bfe;color:var(--text);font-size:13px;font-weight:700}
 .sx-swapmode .sx-seat{cursor:pointer}
@@ -7821,11 +7827,10 @@ function sxToggleSwap(){
   toast(SX.swap?'وضع التبديل مفعّل: اضغط الطالب الأول ثم الثاني':'تم إيقاف وضع التبديل','🔄');
 }
 function sxPick(i){
-  if(!SX.swap) return;
   const cls=sxCls(); if(!cls) return;
   const slot=sxSlot(cls,SX.type), sel=SX.sel;
   if(!sel){
-    if(!slot.seats[i]){ toast('اضغط على طالب أولاً','⚠️'); return; }
+    if(!slot.seats[i]){ toast('اضغط 🔄 على بطاقة طالب أولاً','⚠️'); return; }
     SX.sel={k:'seat',i}; sxRenderAll(); return;
   }
   if(sel.k==='seat'){
@@ -7852,7 +7857,6 @@ function sxPlaceFromPool(id,i){
   toast(`تم تجليس ${s.name}`,'🪑');
 }
 function sxPickPool(id){
-  if(!SX.swap){ toast('فعّل زر 🔄 التبديل أولاً','⚠️'); return; }
   if(SX.sel && SX.sel.k==='seat'){
     // طالب محدد على مقعد ثم ضغط طالباً غير موزَّع => استبدال
     const cls=sxCls(); const slot=sxSlot(cls,SX.type);
@@ -7868,7 +7872,6 @@ function sxUnseat(i){
 function sxDragStart(e,kind,val){ e.dataTransfer.setData('text/plain',kind+':'+val); e.dataTransfer.effectAllowed='move'; }
 function sxDrop(e,i){
   e.preventDefault(); e.stopPropagation();
-  if(!SX.swap) return;
   const d=(e.dataTransfer.getData('text/plain')||'').split(':');
   if(d[0]==='seat') sxSwapSeats(parseInt(d[1]),i);
   else if(d[0]==='pool') sxPlaceFromPool(parseInt(d[1]),i);
@@ -7952,7 +7955,7 @@ function sxPrint(){
 /* ---------- الرسم ---------- */
 function sxSeatHTML(i,ref,cls,type){
   if(!ref){
-    return `<div class="sx-seat empty ${SX.swap&&SX.sel?'can-drop':''}" ${SX.swap?`onclick="sxPick(${i})"`:''} ondragover="event.preventDefault()" ondrop="sxDrop(event,${i})"><span>＋ مقعد فارغ</span>${type==='lab'?`<small>🖥️ ${i+1}</small>`:''}</div>`;
+    return `<div class="sx-seat empty ${SX.sel?'can-drop':''}" onclick="sxPick(${i})" ondragover="event.preventDefault()" ondrop="sxDrop(event,${i})"><span>＋ مقعد فارغ</span>${type==='lab'?`<small>🖥️ ${i+1}</small>`:''}</div>`;
   }
   const s=cls.students.find(x=>x.id===ref.id); if(!s) return '';
   const att=s._todayAtt||'unmarked', d=sxDay(s);
@@ -7960,8 +7963,9 @@ function sxSeatHTML(i,ref,cls,type){
   const noteCls=last ? (last.type==='negative'?'neg':'pos') : '';
   const sel=SX.sel&&SX.sel.k==='seat'&&SX.sel.i===i;
   const attIcon=att==='present'?'✅':att==='absent'?'❌':'○';
-  return `<div class="sx-seat ${att} ${sel?'sel':''}" ${SX.swap?`onclick="sxPick(${i})" draggable="true" ondragstart="sxDragStart(event,'seat',${i})"`:''} ondragover="event.preventDefault()" ondrop="sxDrop(event,${i})">
+  return `<div class="sx-seat ${att} ${sel?'sel':''}" draggable="true" ondragstart="sxDragStart(event,'seat',${i})" ondragover="event.preventDefault()" ondrop="sxDrop(event,${i})">
     <div class="sx-top">
+      <button class="sx-sw ${sel?'on':''}" onclick="event.stopPropagation();sxPick(${i})" title="${sel?'إلغاء الاختيار':'تبديل — اضغط هنا ثم اضغط 🔄 طالب آخر'}">🔄</button>
       ${type==='lab'?`<span class="sx-no">🖥️${i+1}</span>`:''}
       <span class="sx-name">${sxEsc(s.name)}</span>
       <span class="sx-pts" title="مجموع النقاط">⭐${s.points||0}</span>
@@ -8059,7 +8063,6 @@ function sxRenderAll(){
     <div class="sx-line">
       <button class="sx-act pri" onclick="sxBuild(true)" title="يوزّع الطلاب بحيث يجلس بجانب كل طالب زملاء بمستويات نقاط مختلفة">🎲 خلط ذكي حسب النقاط</button>
       <button class="sx-act" onclick="sxBuild(false)">🔀 خلط عشوائي</button>
-      <button class="sx-act ${SX.swap?'swapon':''}" onclick="sxToggleSwap()" title="فعّل ثم اضغط طالباً ثم طالباً آخر لتبديلهما">🔄 تبديل ${SX.swap?'(مفعّل)':''}</button>
       <button class="sx-act" onclick="sxUndo()" ${SX.undo.length?'':'disabled'}>↩️ تراجع</button>
       <button class="sx-act red" onclick="sxClear()">🗑️ تفريغ</button>
       <button class="sx-act grn" onclick="sxSaveLayout()">💾 حفظ المخطط</button>
@@ -8072,8 +8075,8 @@ function sxRenderAll(){
       <button class="sx-act pri" onclick="sxSaveSession()" title="يثبّت الحضور والمشاركات والخصومات في سجل الحصة">💾 حفظ الحصة</button>
       <span class="sx-sum">📅 ${sxEsc(sessionDate)} · حاضر <b>${present}</b> · غائب <b>${absent}</b> · جالس <b>${seated}</b> / ${cap}</span>
     </div>
-    ${SX.swap?`<div class="sx-swapbar">🔄 وضع التبديل: ${SX.sel&&SX.sel.k==='seat'?`تم اختيار <b>${sxEsc((sxStu(slot.seats[SX.sel.i]&&slot.seats[SX.sel.i].id)||{name:''}).name)}</b> — اضغط الطالب الثاني (أو مقعداً فارغاً) للتبديل`:'اضغط على الطالب الأول'}</div>`:''}
-    <div class="sx-hint">لتبديل طالبين: فعّل زر 🔄 تبديل ثم اضغط الأول ثم الثاني. ✋ مشاركة · ➖ خصم (أرقام اليوم) · ✅ حضور · 📝 ملاحظة · ⭐ مجموع النقاط. تُحفظ تغييرات المخطط تلقائياً لكل صف ولكل نوع مكان.</div>`;
+    ${SX.sel&&SX.sel.k==='seat'?`<div class="sx-swapbar">🔄 تم اختيار <b>${sxEsc((sxStu(slot.seats[SX.sel.i]&&slot.seats[SX.sel.i].id)||{name:''}).name)}</b> — اضغط 🔄 على الطالب الثاني (أو مقعداً فارغاً) للتبديل</div>`:''}
+    <div class="sx-hint">لتبديل طالبين: اضغط 🔄 على بطاقة الأول ثم 🔄 على بطاقة الثاني (أو اسحب وأفلت). ✋ مشاركة · ➖ خصم (أرقام اليوم) · ✅ حضور · 📝 ملاحظة · ⭐ مجموع النقاط. تُحفظ تغييرات المخطط تلقائياً لكل صف ولكل نوع مكان.</div>`;
 
   if(!cls.students.length){
     stage.innerHTML='<div class="empty-state"><div class="icon">👤</div><p>لا يوجد طلاب في هذا الصف</p></div>';
