@@ -844,18 +844,44 @@ function getSortedEntriesByTime(weekFilterVal){
   return entries.slice().sort((a,b)=> a._lastModified - b._lastModified);
 }
 
-// أول 3 إدخالات وصلت زمنيًا (حسب توقيت آخر تعديل للملف) ضمن الفلتر الحالي
+// ترتيب المعلمين أنفسهم (لا الملفات) حسب أول إدخال وصل لكل معلم.
+// معلم يدرّس أكثر من مرحلة ويدخل خططه على التوالي (مثلاً السادس والسابع والثامن)
+// يُحسب له مركز واحد فقط (حسب أول إدخال له)، وتُعطى كل إدخالاته نفس الميدالية
+// — بدل أن يأخذ المراكز الثلاثة الأولى لنفسه.
 const MEDALS = ['🥇','🥈','🥉'];
-function getTopEntries(weekFilterVal){
-  return getSortedEntriesByTime(weekFilterVal).slice(0, 3);
-}
-// يرجّع الميدالية (إن وجدت) للخلية المطابقة لصف/شعبة/مادة معيّنة
-function getMedalForCell(top3, g, subj, sec){
-  for(let i=0; i<top3.length; i++){
-    const e = top3[i];
-    if(e.grade === g && e.subject === subj && Array.isArray(e.sections) && e.sections.includes(sec)){
-      return MEDALS[i];
+function getTeacherRanking(weekFilterVal){
+  const entries = getSortedEntriesByTime(weekFilterVal);
+  const order = [];
+  const index = new Map();
+  entries.forEach(d=>{
+    const name = (d.teacherName || '').trim() || '—';
+    if(!index.has(name)){
+      index.set(name, order.length);
+      order.push({ name, firstTime: d._lastModified, items: [] });
     }
+    order[index.get(name)].items.push({ subject: d.subject, grade: d.grade, sections: d.sections || [] });
+  });
+  order.forEach((t, i)=>{ t.medal = i < 3 ? MEDALS[i] : ''; });
+  return order;
+}
+
+// خريطة: اسم المعلم -> الميدالية (لمن هم ضمن أول 3 معلمين فقط)
+function getTeacherMedalMap(weekFilterVal){
+  const map = new Map();
+  getTeacherRanking(weekFilterVal).forEach(t=>{ if(t.medal) map.set(t.name, t.medal); });
+  return map;
+}
+
+// يرجّع الميدالية (إن وجدت) للخلية المطابقة لصف/شعبة/مادة معيّنة، حسب معلّمها
+function getMedalForCell(teacherMedalMap, weekFilterVal, g, subj, sec){
+  const matches = loadedData.filter(d=>
+    d.grade === g && d.subject === subj &&
+    Array.isArray(d.sections) && d.sections.includes(sec) &&
+    (weekFilterVal === 'all' || String(d.week) === String(weekFilterVal))
+  );
+  for(const e of matches){
+    const name = (e.teacherName || '').trim() || '—';
+    if(teacherMedalMap.has(name)) return teacherMedalMap.get(name);
   }
   return '';
 }
@@ -913,19 +939,20 @@ function getFirstCompletedSubject(weekFilterVal){
   return complete.reduce((min, s)=> (s.completionTime < min.completionTime ? s : min), complete[0]).subject;
 }
 
-// القائمة اليمنى: ترتيب المعلمين حسب وقت الإدخال
+// القائمة اليمنى: ترتيب المعلمين حسب وقت أول إدخال لكل معلم (معلم واحد = مرتبة واحدة
+// فقط، حتى لو أدخل عدة مراحل/شعب على التوالي)
 function buildTeacherTimelineList(weekFilterVal){
-  const entries = getSortedEntriesByTime(weekFilterVal);
-  if(entries.length === 0){
+  const ranking = getTeacherRanking(weekFilterVal);
+  if(ranking.length === 0){
     return '<p style="text-align:center; color:#888; padding:10px 0;">لا توجد ملفات محمّلة بتوقيت تعديل معروف بعد.</p>';
   }
   let html = '<ol class="timeline-list">';
-  entries.forEach((d, i)=>{
-    const medal = i < 3 ? MEDALS[i] : '';
-    html += `<li class="${medal ? 'top-entry' : ''}">
+  ranking.forEach((t, i)=>{
+    const itemsText = t.items.map(it=> `${it.subject || '—'} — ${GRADE_NAMES[it.grade] || it.grade}/${(it.sections||[]).join('،')}`).join('، ');
+    html += `<li class="${t.medal ? 'top-entry' : ''}">
       <span class="tl-rank">${i+1}</span>
-      <span class="tl-main"><b>${d.teacherName || '—'}</b> — ${d.subject || '—'} — ${GRADE_NAMES[d.grade] || d.grade}/${(d.sections||[]).join('،')}${medal ? ' '+medal : ''}</span>
-      <span class="tl-time">${formatEntryTimestamp(d._lastModified)}</span>
+      <span class="tl-main"><b>${t.name}</b>${t.medal ? ' '+t.medal : ''} — ${itemsText}</span>
+      <span class="tl-time">${formatEntryTimestamp(t.firstTime)}</span>
     </li>`;
   });
   html += '</ol>';
@@ -989,7 +1016,7 @@ function toggleEntryTimeline(){
 
 function buildInputReportTable(){
   const weekFilterVal = document.getElementById('reportWeekFilter').value;
-  const top3 = getTopEntries(weekFilterVal);
+  const teacherMedalMap = getTeacherMedalMap(weekFilterVal);
   const firstCompletedSubject = getFirstCompletedSubject(weekFilterVal);
 
   let html = '<table class="report-table"><thead><tr><th>الصف / الشعبة</th>';
@@ -1011,7 +1038,7 @@ function buildInputReportTable(){
           Array.isArray(d.sections) && d.sections.includes(sec) &&
           (weekFilterVal === 'all' || String(d.week) === String(weekFilterVal))
         );
-        const medal = available ? getMedalForCell(top3, g, subj, sec) : '';
+        const medal = available ? getMedalForCell(teacherMedalMap, weekFilterVal, g, subj, sec) : '';
         html += `<td class="${available ? 'avail' : 'notavail'}">${available ? ('✓' + (medal ? ' '+medal : '')) : '✗'}</td>`;
       });
       html += '</tr>';
@@ -1027,8 +1054,8 @@ function buildInputReportTable(){
   html += `<div class="report-legend">
     <span><i style="background:#DFF3E1;"></i>✓ — تم استكمال الخطة</span>
     <span><i style="background:#FBE7E4;"></i>✗ — الخطة غير مكتملة</span>
-    <span>🥇🥈🥉 أول 3 معلمين إدخالات للخطة</span>
-    <span>🏆  المادة التي اكتملت أولًا</span>
+    <span>🥇🥈🥉 لأول 3 معلمين أدخلوا خططهم (مركز واحد لكل معلم مهما تعددت مراحله)</span>
+    <span>🏆 بجانب اسم المادة التي اكتملت أولًا</span>
   </div>`;
   return html;
 }
