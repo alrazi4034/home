@@ -288,6 +288,8 @@
   <div class="row">
     <div class="drop" id="drop">اسحب ملفات JSON + صورة الخلفية + الشعارين هنا، أو اضغط للاختيار</div>
     <input type="file" id="fileInput" multiple accept=".json,image/png,image/jpeg,image/svg+xml,image/webp">
+    <button class="ghost" onclick="document.getElementById('folderInput').click()">📁 اختيار فولدر كامل</button>
+    <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;">
     <select id="gradeSelect">
       <option value="5">الصف الخامس</option>
       <option value="6">الصف السادس</option>
@@ -458,8 +460,10 @@ drop.addEventListener('click', ()=> fileInput.click());
 ['dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{e.preventDefault(); drop.classList.remove('over');}));
 drop.addEventListener('drop', e=>{ handleFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', e=> handleFiles(e.target.files));
+document.getElementById('folderInput').addEventListener('change', e=> handleFiles(e.target.files));
 
 function handleFiles(files){
+  const skipped = []; // ملفات غير مدعومة (مفيد عند اختيار فولدر كامل فيه ملفات غريبة)
   Array.from(files).forEach(file=>{
     const lname = file.name.toLowerCase();
     if(lname.endsWith('.json')){
@@ -492,9 +496,12 @@ function handleFiles(files){
       };
       reader.readAsDataURL(file);
     } else {
-      alert('نوع ملف غير مدعوم: ' + file.name);
+      skipped.push(file.name);
     }
   });
+  if(skipped.length){
+    alert('تم تجاهل ' + skipped.length + ' ملف/ملفات غير مدعومة (ليست JSON أو صورة):\n' + skipped.slice(0, 15).join('، ') + (skipped.length > 15 ? ' ...' : ''));
+  }
 }
 
 function classifyImage(lname){
