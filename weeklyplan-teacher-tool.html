@@ -119,7 +119,7 @@
       </div>
       <div class="field">
         <label data-i18n="teacherName">اسم المعلم</label>
-        <input type="text" id="teacherName" data-i18n-ph="teacherNamePh" placeholder="اكتب اسمك">
+        <select id="teacherName"></select>
       </div>
     </div>
     <div class="row" style="margin-top:12px;">
@@ -138,9 +138,14 @@
         </select>
       </div>
       <div class="field">
+        <label data-i18n="termLabel">الفصل الدراسي</label>
+        <select id="termSel"></select>
+      </div>
+      <div class="field">
         <label data-i18n="weekNum">رقم الأسبوع</label>
-        <input type="number" id="weekNum" min="1" max="20" value="1">
+        <input type="number" id="weekNum" min="1" value="1">
         <div class="week-info"><span data-i18n="dateLabel">التاريخ:</span> <b id="dateRange" dir="ltr">—</b></div>
+        <div class="week-info" id="weekWarn" style="display:none; color:#C97B5A; font-weight:600;"></div>
       </div>
     </div>
   </div>
@@ -190,13 +195,14 @@ const I18N = {
     importBtn:'اختيار ملف JSON', basicInfo:'بيانات أساسية', subject:'المادة', grade:'الصف',
     teacherName:'اسم المعلم', teacherNamePh:'اكتب اسمك', sections:'الشعب (يمكن اختيار أكثر من شعبة)',
     frequency:'عدد الحصص أسبوعيًا', freq5:'يومي (5 حصص: الاثنين - الجمعة)', freq4:'4 حصص أسبوعيًا',
-    freq3:'3 حصص أسبوعيًا', freq2:'حصتان أسبوعيًا', freq1:'حصة واحدة أسبوعيًا', weekNum:'رقم الأسبوع',
+    freq3:'3 حصص أسبوعيًا', freq2:'حصتان أسبوعيًا', freq1:'حصة واحدة أسبوعيًا', weekNum:'رقم الأسبوع', termLabel:'الفصل الدراسي', chooseTeacher:'— اختر المعلم —',
+    weekOutOfRange:'⚠️ رقم الأسبوع خارج حدود هذا الفصل (الحد الأقصى: ', weeksSuffix:' أسبوع).', breakNote:'ملاحظة: هذا التاريخ ضمن إجازة (TERM BREAK).',
     dateLabel:'التاريخ:', lessonPlan:'خطة الدروس', exams:'الاختبارات', examDayLabel:'يوم اختبار هذه المادة:',
     hasExamLabel:'يوجد اختبار هذا الأسبوع', examDetailPh:'تفاصيل الاختبار (المنهج، الصفحات...)',
     exportBtn:'تصدير الملف (JSON)',
     exportNote:'سيتم تنزيل ملف باسم الأسبوع والمادة والصف والشعب — أرسله للمنسق كما هو، بدون تعديل اسمه.',
     section:'شعبة', miniHeading:'حدد اليوم الفعلي لكل حصة أسبوعية حسب كل شعبة:',
-    needSection:'رجاءً اختر شعبة واحدة على الأقل', needTeacher:'رجاءً اكتب اسم المعلم',
+    needSection:'رجاءً اختر شعبة واحدة على الأقل', needTeacher:'رجاءً اختر اسم المعلم',
     badFile:'ملف غير صالح أو تالف', imported:'✓ تم استيراد: ', langBtn:'English',
     previewBtn:'معاينة الخطة', previewTitle:'معاينة الخطة', previewNote:'هكذا ستظهر صفحتك في ملف المنسق النهائي', closeBtn:'إغلاق ✕'
   },
@@ -205,13 +211,14 @@ const I18N = {
     importBtn:'Choose JSON File', basicInfo:'Basic Information', subject:'Subject', grade:'Grade',
     teacherName:'Teacher Name', teacherNamePh:'Enter your name', sections:'Sections (you can select more than one)',
     frequency:'Periods per Week', freq5:'Daily (5 periods: Mon - Fri)', freq4:'4 periods a week',
-    freq3:'3 periods a week', freq2:'2 periods a week', freq1:'1 period a week', weekNum:'Week Number',
+    freq3:'3 periods a week', freq2:'2 periods a week', freq1:'1 period a week', weekNum:'Week Number', termLabel:'Term', chooseTeacher:'— Select teacher —',
+    weekOutOfRange:'⚠️ Week number is outside this term (max: ', weeksSuffix:' weeks).', breakNote:'Note: this date falls in a TERM BREAK.',
     dateLabel:'Date:', lessonPlan:'Lesson Plan', exams:'Exams', examDayLabel:'Exam day for this subject:',
     hasExamLabel:'There is an exam this week', examDetailPh:'Exam details (syllabus, pages...)',
     exportBtn:'Export File (JSON)',
     exportNote:'A file named after the week, subject, grade, and sections will download — send it to the coordinator as-is, without renaming it.',
     section:'Section', miniHeading:'Set the actual weekday for each weekly period, per section:',
-    needSection:'Please select at least one section', needTeacher:'Please enter the teacher name',
+    needSection:'Please select at least one section', needTeacher:'Please select the teacher name',
     badFile:'Invalid or corrupted file', imported:'✓ Imported: ', langBtn:'العربية',
     previewBtn:'Preview Plan', previewTitle:'Plan Preview', previewNote:'This is how your page will look in the coordinator\'s final file', closeBtn:'Close ✕'
   }
@@ -225,6 +232,9 @@ function applyLang(lang){
   document.getElementById('langToggle').textContent = t('langBtn');
   document.querySelectorAll('.sec-lbl-text').forEach(el=>{ el.textContent = t('section') + ' ' + el.dataset.i; });
   if(typeof rebuildGradeOptions === 'function') rebuildGradeOptions();
+  if(typeof rebuildTermOptions === 'function') rebuildTermOptions();
+  if(typeof rebuildTeacherOptions === 'function') rebuildTeacherOptions(teacherSel.value);
+  if(typeof updateDateRange === 'function') updateDateRange();
   if(typeof rebuildExamDayOptions === 'function') rebuildExamDayOptions();
   if(typeof checkExamDayConflict === 'function') checkExamDayConflict();
   if(typeof buildMiniTable === 'function') buildMiniTable(); // يعيد رسم الجدول الفرعي وخياراته بنفس اللغة (بدون مسح الجدول الرئيسي)
@@ -262,8 +272,49 @@ const GRADES = [
 ];
 const SECTIONS_PER_GRADE = 4; // عدد الشعب لكل صف (1 إلى هذا الرقم)
 
-// تاريخ بداية الأسبوع الأول من الفصل الدراسي الأول (يوم الاثنين)
-const SEMESTER1_WEEK1_MONDAY = "2026-08-31";
+/* ┌──────────────────────────────────────────────────────────────────┐
+   │  📅  الفصول الدراسية — للسنة القادمة غيّر التواريخ هنا فقط        │
+   │  الصيغة: "YYYY-MM-DD"  (سنة-شهر-يوم)                              │
+   │  • start = أول يوم بالفصل (يُفضّل أن يكون يوم الاثنين)            │
+   │  • end   = آخر يوم بالفصل                                         │
+   │  • الأسبوع الأول يبدأ من الاثنين الذي يقع فيه تاريخ start         │
+   │  • id    = رقم الفصل (1 أو 2 أو 3) — لا تغيّره                    │
+   └──────────────────────────────────────────────────────────────────┘ */
+const TERMS = [
+  { id:1, ar:"الفصل الدراسي الأول",  en:"First Term",  start:"2026-08-31", end:"2026-12-13" },
+  { id:2, ar:"الفصل الدراسي الثاني", en:"Second Term", start:"2027-01-04", end:"2027-04-04" },
+  { id:3, ar:"الفصل الدراسي الثالث", en:"Third Term",  start:"2027-04-12", end:"2027-07-02" }
+];
+const DEFAULT_TERM = 1; // الفصل الافتراضي عند فتح الصفحة
+
+/* ┌──────────────────────────────────────────────────────────────────┐
+   │  🏖️  TERM BREAK — أسابيع الإجازة (تُتجاهل عند احتساب الأسابيع)   │
+   │  لإضافة إجازة: أضف سطرًا جديدًا بنفس الصيغة                       │
+   │      { term: رقم_الفصل, weekStart: "تاريخ يوم الاثنين لبداية الأسبوع" }│
+   │  مثال: { term:2, weekStart:"2027-02-15" }                         │
+   │  لحذف إجازة: احذف السطر الخاص بها                                  │
+   │  ملاحظة: يجب أن يكون التاريخ يوم الاثنين (بداية الأسبوع)          │
+   └──────────────────────────────────────────────────────────────────┘ */
+const TERM_BREAKS = [
+  { term:1, weekStart:"2026-10-12" }   // إجازة الأسبوع من 12/10 (الفصل الأول)
+];
+
+/* ┌──────────────────────────────────────────────────────────────────┐
+   │  👨‍🏫  المعلمون حسب المادة — القائمة الثانية تعتمد على المادة       │
+   │  • اسم المادة هنا يجب أن يطابق تمامًا اسمها في SUBJECTS أعلاه     │
+   │  • لإضافة معلم: أضف اسمه بين علامتي " " داخل مادته                 │
+   │  • لحذف معلم: احذف اسمه                                           │
+   └──────────────────────────────────────────────────────────────────┘ */
+const TEACHERS = {
+  "التربية الإسلامية":   ["عبدالحفيظ الددو","عمادالدين حسن"],
+  "الدراسات الاجتماعية": ["محمود أمين"],
+  "AI & Technology":     ["Hany Salah","Mahmoud Shehada"],
+  "الرياضيات":           ["حسام الدين مصطفى","علي عاشور","محمد مطاوع","أسامة هنداوي","أحمد عبدالواحد"],
+  "العلوم":              ["السيد عبدالغفار","مسعود محمود","بلال اسعد","أفراح الحمادي"],
+  "English":             ["Ammatullah Hussein","Faisal Maqsood","Mohammad Shareef"],
+  "اللغة العربية":       ["أحمد رضوان","أحمد عرفات","آلاء عبدالحفيظ"],
+  "اللغة الفرنسية":      ["نادر السعيدي"]
+};
 
 /* ┌──────────────────────────────────────────────────────────────────┐
    │  ✏️  هنا فقط: اليوم "المقترح" افتراضيًا لكل مادة (يظهر تلقائي     │
@@ -304,6 +355,29 @@ SUBJECTS.forEach(s=>{
   subjectSel.appendChild(o);
 });
 
+// ---------- قائمة المعلمين المعتمدة على المادة ----------
+const teacherSel = document.getElementById('teacherName');
+function rebuildTeacherOptions(selected){
+  const subj = subjectSel.value;
+  const list = TEACHERS[subj] || [];
+  teacherSel.innerHTML = '';
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = t('chooseTeacher');
+  teacherSel.appendChild(ph);
+  list.forEach(n=>{
+    const o = document.createElement('option'); o.value = n; o.textContent = n;
+    teacherSel.appendChild(o);
+  });
+  // اسم مستورد من ملف قديم وغير موجود بالقائمة: نضيفه حتى لا يضيع
+  if(selected && !list.includes(selected)){
+    const o = document.createElement('option'); o.value = selected; o.textContent = selected;
+    teacherSel.appendChild(o);
+  }
+  teacherSel.value = selected || (list.length===1 ? list[0] : '');
+}
+subjectSel.addEventListener('change', ()=> rebuildTeacherOptions());
+rebuildTeacherOptions();
+
 const gradeSel = document.getElementById('grade');
 function rebuildGradeOptions(){
   const currentVal = gradeSel.value;
@@ -326,21 +400,76 @@ for(let i=1;i<=SECTIONS_PER_GRADE;i++){
 }
 sectionsBox.querySelector('.sec-cb').checked = true;
 
-// ---------- حساب تاريخ الأسبوع ----------
+// ---------- حساب تاريخ الأسبوع (حسب الفصل + تجاهل TERM BREAK) ----------
 function pad(n){return n<10?'0'+n:n;}
 function fmtDate(d){return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();}
-function getWeekRange(weekNum){
-  const start = new Date(SEMESTER1_WEEK1_MONDAY+"T00:00:00");
-  const monday = new Date(start.getTime() + (weekNum-1)*7*86400000);
-  const friday = new Date(monday.getTime() + 4*86400000);
-  return {monday, friday};
+const DAY_MS = 86400000;
+function parseD(str){ return new Date(str+"T00:00:00"); }
+// يرجع يوم الاثنين للأسبوع الذي يقع فيه التاريخ
+function mondayOf(d){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = (x.getDay()+6)%7; // الاثنين=0
+  return new Date(x.getTime() - dow*DAY_MS);
 }
+function isoKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function getTerm(id){ return TERMS.find(t=>t.id===id) || TERMS[0]; }
+function isBreakWeek(termId, monday){
+  const key = isoKey(monday);
+  return TERM_BREAKS.some(b=> b.term===termId && isoKey(mondayOf(parseD(b.weekStart)))===key);
+}
+// قائمة أسابيع الفصل (بدون الإجازات) — كل عنصر = يوم الاثنين لذلك الأسبوع
+function getTermWeeks(termId){
+  const term = getTerm(termId);
+  const end = parseD(term.end);
+  const weeks = [];
+  let m = mondayOf(parseD(term.start));
+  while(m.getTime() <= end.getTime()){
+    if(!isBreakWeek(termId, m)) weeks.push(new Date(m.getTime()));
+    m = new Date(m.getTime() + 7*DAY_MS);
+  }
+  return weeks;
+}
+function currentTermId(){ return parseInt(termSel.value) || DEFAULT_TERM; }
+function getWeekRange(weekNum, termId){
+  termId = termId || currentTermId();
+  const weeks = getTermWeeks(termId);
+  const idx = Math.min(Math.max(weekNum,1), weeks.length) - 1;
+  const monday = weeks[idx] || mondayOf(parseD(getTerm(termId).start));
+  const friday = new Date(monday.getTime() + 4*DAY_MS);
+  return {monday, friday, maxWeeks: weeks.length};
+}
+const termSel = document.getElementById('termSel');
+function rebuildTermOptions(){
+  const cur = termSel.value || String(DEFAULT_TERM);
+  termSel.innerHTML = '';
+  TERMS.forEach(tm=>{
+    const o = document.createElement('option');
+    o.value = tm.id;
+    o.textContent = currentLang==='en' ? tm.en : tm.ar;
+    termSel.appendChild(o);
+  });
+  termSel.value = cur;
+}
+rebuildTermOptions();
+termSel.value = String(DEFAULT_TERM);
+
 function updateDateRange(){
-  const w = parseInt(document.getElementById('weekNum').value) || 1;
-  const {monday, friday} = getWeekRange(w);
+  const termId = currentTermId();
+  const weekInput = document.getElementById('weekNum');
+  const w = parseInt(weekInput.value) || 1;
+  const {monday, friday, maxWeeks} = getWeekRange(w, termId);
+  weekInput.max = maxWeeks;
   document.getElementById('dateRange').textContent = fmtDate(monday)+' - '+fmtDate(friday);
+  const warn = document.getElementById('weekWarn');
+  if(w > maxWeeks || w < 1){
+    warn.textContent = t('weekOutOfRange') + maxWeeks + t('weeksSuffix');
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
 }
 document.getElementById('weekNum').addEventListener('input', updateDateRange);
+termSel.addEventListener('change', ()=>{ document.getElementById('weekNum').value = 1; updateDateRange(); });
 updateDateRange();
 
 // ---------- بناء الجدول الديناميكي ----------
@@ -620,8 +749,9 @@ function importData(data){
     cb.checked = (data.sections || []).includes(parseInt(cb.value));
   });
 
-  document.getElementById('teacherName').value = data.teacherName || '';
+  rebuildTeacherOptions(data.teacherName || '');
   document.getElementById('frequency').value = String(data.frequency);
+  termSel.value = String(data.term || DEFAULT_TERM);
   document.getElementById('weekNum').value = data.week || 1;
   updateDateRange();
 
@@ -664,11 +794,13 @@ function collectData(){
   const teacherName = document.getElementById('teacherName').value.trim();
   const freq = parseInt(document.getElementById('frequency').value);
   const weekNum = parseInt(document.getElementById('weekNum').value) || 1;
-  const {monday, friday} = getWeekRange(weekNum);
+  const termId = currentTermId();
+  const {monday, friday} = getWeekRange(weekNum, termId);
 
   const data = {
     subject, grade: gradeVal, gradeAr, sections, teacherName,
     frequency: freq, isDaily: freq===5,
+    term: termId, termName: getTerm(termId).ar,
     week: weekNum, dateFrom: fmtDate(monday), dateTo: fmtDate(friday),
     days: [], periods: [],
     exam: {
@@ -701,9 +833,10 @@ function collectData(){
 function exportJSON(){
   if(selectedSections().length === 0){ alert(t('needSection')); return; }
   if(!document.getElementById('teacherName').value.trim()){ alert(t('needTeacher')); return; }
+  {const _w=parseInt(document.getElementById('weekNum').value)||1; const _m=getWeekRange(_w).maxWeeks; if(_w>_m||_w<1){ alert(t('weekOutOfRange')+_m+t('weeksSuffix')); return; }}
   const data = collectData();
   const subjectCode = SUBJECT_CODES[data.subject] || sanitize(data.subject);
-  const filename = `week_${data.week}_${sanitize(subjectCode)}_G${data.grade}_${data.sections.join('-')}.json`;
+  const filename = `term${data.term}_week_${data.week}_${sanitize(subjectCode)}_G${data.grade}_${data.sections.join('-')}.json`;
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
