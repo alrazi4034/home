@@ -139,6 +139,7 @@ tbody td{padding:9px 13px;font-size:.9rem;vertical-align:middle;}
   <div class="card">
     <div class="card-title">استيراد بيانات الطلاب</div>
     <button class="qmsg-btn" id="btnPullShared" style="border-color:var(--green);color:var(--dark);margin-bottom:12px;">🔗 سحب بيانات الطلاب من بوابة الرازي</button>
+    <button class="qmsg-btn" id="btnQuickPull" style="border-color:#f59e0b;color:#b45309;margin-bottom:12px;margin-inline-start:8px;">⚡ السحب السريع</button>
     <div id="sharedDataStatus" style="font-size:.78rem;color:var(--muted);margin-bottom:10px;"></div>
     <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <div class="ico">📂</div>
@@ -556,6 +557,39 @@ function pullSharedStudents(){
     setSharedStatus('⚠️ تعذّر قراءة الملف المرتبط: ' + err.message);
   }
 }
+/* ===== السحب السريع من ملف students-data.js الموجود بجانب هذه الصفحة على المستضيف =====
+   الملف: window.RAZI_QUICK_STUDENTS = [["5/1","الاسم","9715xxxxxxxx"], ...]
+   لتعطيل الخيار: غيّر اسم الملف (أو احذفه) على المستضيف فتظهر رسالة "معطل حالياً". */
+function quickPull(){
+  var btn = document.getElementById('btnQuickPull');
+  btn.disabled = true;
+  setSharedStatus('⏳ جاري السحب السريع...');
+  window.RAZI_QUICK_STUDENTS = undefined;
+  var old = document.getElementById('quickDataScript');
+  if(old) old.remove();
+  var sc = document.createElement('script');
+  sc.id = 'quickDataScript';
+  var failed = function(){
+    btn.disabled = false;
+    setSharedStatus('⛔ هذا الخيار معطل حالياً.');
+  };
+  sc.onerror = failed;
+  sc.onload = function(){
+    btn.disabled = false;
+    var rows = window.RAZI_QUICK_STUDENTS;
+    if(!Array.isArray(rows) || !rows.length){ failed(); return; }
+    students = rows.map(function(r){
+      return { cls: String(r[0]||'').trim() || '—', name: String(r[1]||'').trim(), phone: normalizePhoneUAE(r[2]) };
+    }).filter(function(s){ return s.name && s.phone; });
+    if(!students.length){ failed(); return; }
+    afterLoad();
+    dz.innerHTML = '<div class="ico">✅</div><p><strong>'+students.length+' طالب</strong> تم سحبهم بالسحب السريع</p>';
+    setSharedStatus('✅ تم السحب السريع — ' + students.length + ' طالب (رسالة حسابات LMS وألف غير متاحة بهذا الخيار).');
+  };
+  sc.src = 'students-data.js?v=' + Date.now();
+  document.head.appendChild(sc);
+}
+document.getElementById('btnQuickPull').addEventListener('click', quickPull);
 document.getElementById('btnPullShared').addEventListener('click', pullSharedStudents);
 pullSharedStudents();
 </script>
