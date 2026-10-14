@@ -142,6 +142,8 @@
   table.plan thead{height:var(--tableTheadHeight);}
   table.plan thead th{color:#fff; border:var(--tableCellBorderWidth) solid var(--tableCellBorderColor); padding:3px; text-align:center; font-size:var(--tableHeadFontSize); font-weight:800; overflow:hidden;}
   table.plan thead th .en{display:block; font-size:var(--tableHeadEnFontSize); opacity:0.9;}
+  .day-date{display:block; font-size:0.72em; font-weight:600; opacity:0.9; direction:ltr; line-height:1.3;}
+  table.plan thead th .day-date{font-size:11px;}
   table.plan tbody tr:nth-child(1){height:var(--tableRow1Height);}
   table.plan tbody tr:nth-child(2){height:var(--tableRow2Height);}
   table.plan tbody tr:nth-child(3){height:var(--tableRow3Height);}
@@ -416,10 +418,18 @@ const GRADE_COLORS = {
   8: {accent:'#a8514a', dark:'#7a342e', light:'#F7ECEA'}
 };
 
-const SEMESTER_LABEL = "الفصل الدراسي الأول 2026-2025"; // عدّليها عند تغير الفصل
+const ACADEMIC_YEAR = "2026-2027"; // السنة الدراسية (تظهر في الغلاف)
 const SCHOOL_NAME_AR = "مدرسة الرازي – الحلقة الثانية بنين";
 const SCHOOL_NAME_EN = "Alrazi Boys School - Cycle 2";
-const SEMESTER1_WEEK1_MONDAY = "2026-08-31"; // نفس تاريخ ملف المعلم
+// الفصول وأسابيع العطلة — يجب أن تطابق تمامًا ما في ملف المعلم (TERMS و TERM_BREAKS)
+const TERMS = [
+  { id:1, ar:"الفصل الدراسي الأول",  start:"2026-08-31", end:"2026-12-13" },
+  { id:2, ar:"الفصل الدراسي الثاني", start:"2027-01-04", end:"2027-04-04" },
+  { id:3, ar:"الفصل الدراسي الثالث", start:"2027-04-12", end:"2027-07-02" }
+];
+const TERM_BREAKS = [
+  { term:1, weekStart:"2026-10-12" }
+];
 const PRINCIPAL_ROLE = "مديرة المدرسة";
 const PRINCIPAL_NAME = "بدرية سيف الظنحاني";
 
@@ -542,11 +552,41 @@ function renderFileList(){
 // ---------- أدوات مساعدة ----------
 function pad(n){return n<10?'0'+n:n;}
 function fmtDate(d){return pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();}
-function getWeekRange(weekNum){
-  const start = new Date(SEMESTER1_WEEK1_MONDAY+"T00:00:00");
-  const monday = new Date(start.getTime() + (weekNum-1)*7*86400000);
-  const friday = new Date(monday.getTime() + 4*86400000);
+const DAY_MS = 86400000;
+function parseD(str){ return new Date(str+"T00:00:00"); }
+function mondayOf(d){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return new Date(x.getTime() - ((x.getDay()+6)%7)*DAY_MS);
+}
+function isoKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function getTerm(id){ return TERMS.find(t=>t.id===id) || TERMS[0]; }
+function isBreakWeek(termId, monday){
+  const key = isoKey(monday);
+  return TERM_BREAKS.some(b=> b.term===termId && isoKey(mondayOf(parseD(b.weekStart)))===key);
+}
+// أسابيع الفصل بترتيب التقويم (بما فيها أسبوع العطلة)
+function getTermWeeks(termId){
+  const term = getTerm(termId), end = parseD(term.end), weeks = [];
+  let m = mondayOf(parseD(term.start));
+  while(m.getTime() <= end.getTime()){
+    weeks.push(new Date(m.getTime())); // أسبوع العطلة يحتفظ برقمه (نفس ملف المعلم)
+    m = new Date(m.getTime() + 7*DAY_MS);
+  }
+  return weeks;
+}
+function getWeekRange(weekNum, termId){
+  const weeks = getTermWeeks(termId || 1);
+  const idx = Math.min(Math.max(weekNum,1), weeks.length) - 1;
+  const monday = weeks[idx];
+  const friday = new Date(monday.getTime() + 4*DAY_MS);
   return {monday, friday};
+}
+
+// تاريخ يوم معيّن من أسبوع الفصل بصيغة 7/9 (dayIndex: 0=الاثنين ... 4=الجمعة)
+function dayDateShort(weekNum, termId, dayIndex){
+  const {monday} = getWeekRange(weekNum, termId);
+  const d = new Date(monday.getTime() + dayIndex*DAY_MS);
+  return d.getDate() + '/' + (d.getMonth()+1);
 }
 
 function brandBar(){
@@ -615,8 +655,8 @@ function applyShrinkToFit(page){
 }
 
 // ---------- بناء صفحة الغلاف ----------
-function buildCoverPage(gradeNum, weekNum, colors){
-  const {monday, friday} = getWeekRange(weekNum);
+function buildCoverPage(gradeNum, weekNum, colors, termId){
+  const {monday, friday} = getWeekRange(weekNum, termId);
   const page = document.createElement('div');
   page.className = 'page';
   applyPageBg(page, colors, 1);
@@ -631,8 +671,8 @@ function buildCoverPage(gradeNum, weekNum, colors){
       <div class="cover-grade" style="border-color:${colors.accent}; color:${colors.dark};">الصف ${GRADE_NAMES[gradeNum]}</div>
       <div class="cover-week" style="background:${colors.accent};">
         <div class="wk">الأسبوع ${weekNum}</div>
-        <div dir="rtl">${fmtDate(friday)} - ${fmtDate(monday)}</div>
-        <div style="font-size:13px; opacity:0.9;">${SEMESTER_LABEL}</div>
+        <div dir="rtl">من <span dir="ltr">${fmtDate(monday)}</span> ← إلى <span dir="ltr">${fmtDate(friday)}</span></div>
+        <div style="font-size:13px; opacity:0.9;">${getTerm(termId).ar} <span dir="rtl">${ACADEMIC_YEAR.split('-').map(y=>`<span dir="ltr">${y}</span>`).join('-')}</span></div>
       </div>
       <div class="cover-principal" style="color:${colors.dark};">
         <span class="role">${PRINCIPAL_ROLE}</span>${PRINCIPAL_NAME}
@@ -678,8 +718,11 @@ function buildTeacherPage(entry, colors){
   const dayPct = isDaily ? TABLE_LABEL_PCT.daily : (100 - labelPct) / n;
 
   let theadCells = `<th class="day-lbl" style="background:${colors.dark}; width:${labelPct}%;">اليوم<span class="en">Day</span></th>`;
-  cols.forEach(c=>{
-    theadCells += `<th style="background:${colors.accent}; width:${dayPct}%;">${c.label}${c.en?`<span class="en">${c.en}</span>`:''}</th>`;
+  const planTermId = parseInt(entry.term) || 1;
+  const planWeek = parseInt(entry.week) || 1;
+  cols.forEach((c,ci)=>{
+    const dateHtml = isDaily ? `<span class="day-date">${dayDateShort(planWeek, planTermId, ci)}</span>` : '';
+    theadCells += `<th style="background:${colors.accent}; width:${dayPct}%;">${c.label}${c.en?`<span class="en">${c.en}</span>`:''}${dateHtml}</th>`;
   });
 
   const ltrSubject = isLtrSubject(entry.subject);
@@ -749,7 +792,7 @@ function buildTeacherPage(entry, colors){
 }
 
 // ---------- بناء صفحة أيام الاختبارات ----------
-function buildExamSummaryPage(gradeNum, entries, colors){
+function buildExamSummaryPage(gradeNum, entries, colors, weekNum, termId){
   const page = document.createElement('div');
   page.className = 'page';
   applyPageBg(page, {light:'#fff'}, 2);
@@ -771,7 +814,9 @@ function buildExamSummaryPage(gradeNum, entries, colors){
   } else {
     activeDays.forEach(day=>{
       const subjectsHtml = byDay[day].join('<span class="subj-sep">|</span>');
-      rows += `<tr><td class="day-cell">${day}</td><td>${subjectsHtml}</td></tr>`;
+      const di = WEEKDAYS_ORDER.indexOf(day);
+      const dateHtml = di >= 0 ? `<span class="day-date">${dayDateShort(weekNum, termId, di)}</span>` : '';
+      rows += `<tr><td class="day-cell">${day}${dateHtml}</td><td>${subjectsHtml}</td></tr>`;
     });
   }
 
@@ -1115,8 +1160,9 @@ function generate(){
 
   const preview = document.getElementById('preview');
   preview.innerHTML = '';
-  preview.appendChild(buildCoverPage(gradeNum, weekNum, colors));
-  preview.appendChild(buildExamSummaryPage(gradeNum, gradeEntries, colors));
+  const coverTermId = parseInt((gradeEntries.find(d=> String(d.week)===String(weekNum)) || gradeEntries[0]).term) || 1;
+  preview.appendChild(buildCoverPage(gradeNum, weekNum, colors, coverTermId));
+  preview.appendChild(buildExamSummaryPage(gradeNum, gradeEntries, colors, weekNum, coverTermId));
 
   SUBJECTS.forEach(subj=>{
     let subjEntries = gradeEntries.filter(e=> e.subject === subj);

@@ -144,7 +144,7 @@
       <div class="field">
         <label data-i18n="weekNum">رقم الأسبوع</label>
         <input type="number" id="weekNum" min="1" value="1">
-        <div class="week-info"><span data-i18n="dateLabel">التاريخ:</span> <b id="dateRange" dir="ltr">—</b></div>
+        <div class="week-info"><span data-i18n="dateLabel">التاريخ:</span> <b id="dateRange" dir="ltr">—</b> <span id="breakTag" style="display:none; color:#C97B5A; font-weight:700;"></span></div>
         <div class="week-info" id="weekWarn" style="display:none; color:#C97B5A; font-weight:600;"></div>
       </div>
     </div>
@@ -195,7 +195,7 @@ const I18N = {
     importBtn:'اختيار ملف JSON', basicInfo:'بيانات أساسية', subject:'المادة', grade:'الصف',
     teacherName:'اسم المعلم', teacherNamePh:'اكتب اسمك', sections:'الشعب (يمكن اختيار أكثر من شعبة)',
     frequency:'عدد الحصص أسبوعيًا', freq5:'يومي (5 حصص: الاثنين - الجمعة)', freq4:'4 حصص أسبوعيًا',
-    freq3:'3 حصص أسبوعيًا', freq2:'حصتان أسبوعيًا', freq1:'حصة واحدة أسبوعيًا', weekNum:'رقم الأسبوع', termLabel:'الفصل الدراسي', chooseTeacher:'— اختر المعلم —',
+    freq3:'3 حصص أسبوعيًا', freq2:'حصتان أسبوعيًا', freq1:'حصة واحدة أسبوعيًا', weekNum:'رقم الأسبوع', termLabel:'الفصل الدراسي', chooseTeacher:'— اختر المعلم —', addTeacher:'➕ إضافة معلم جديد…', newTeacherPrompt:'اكتب اسم المعلم الجديد:', breakWord:'عطلة', fromWord:'من', toWord:'إلى',
     weekOutOfRange:'⚠️ رقم الأسبوع خارج حدود هذا الفصل (الحد الأقصى: ', weeksSuffix:' أسبوع).', breakNote:'ملاحظة: هذا التاريخ ضمن إجازة (TERM BREAK).',
     dateLabel:'التاريخ:', lessonPlan:'خطة الدروس', exams:'الاختبارات', examDayLabel:'يوم اختبار هذه المادة:',
     hasExamLabel:'يوجد اختبار هذا الأسبوع', examDetailPh:'تفاصيل الاختبار (المنهج، الصفحات...)',
@@ -211,7 +211,7 @@ const I18N = {
     importBtn:'Choose JSON File', basicInfo:'Basic Information', subject:'Subject', grade:'Grade',
     teacherName:'Teacher Name', teacherNamePh:'Enter your name', sections:'Sections (you can select more than one)',
     frequency:'Periods per Week', freq5:'Daily (5 periods: Mon - Fri)', freq4:'4 periods a week',
-    freq3:'3 periods a week', freq2:'2 periods a week', freq1:'1 period a week', weekNum:'Week Number', termLabel:'Term', chooseTeacher:'— Select teacher —',
+    freq3:'3 periods a week', freq2:'2 periods a week', freq1:'1 period a week', weekNum:'Week Number', termLabel:'Term', chooseTeacher:'— Select teacher —', addTeacher:'➕ Add a new teacher…', newTeacherPrompt:'Enter the new teacher name:', breakWord:'Break', fromWord:'From', toWord:'to',
     weekOutOfRange:'⚠️ Week number is outside this term (max: ', weeksSuffix:' weeks).', breakNote:'Note: this date falls in a TERM BREAK.',
     dateLabel:'Date:', lessonPlan:'Lesson Plan', exams:'Exams', examDayLabel:'Exam day for this subject:',
     hasExamLabel:'There is an exam this week', examDetailPh:'Exam details (syllabus, pages...)',
@@ -285,10 +285,11 @@ const TERMS = [
   { id:2, ar:"الفصل الدراسي الثاني", en:"Second Term", start:"2027-01-04", end:"2027-04-04" },
   { id:3, ar:"الفصل الدراسي الثالث", en:"Third Term",  start:"2027-04-12", end:"2027-07-02" }
 ];
+const ACADEMIC_YEAR = "2026-2027"; // السنة الدراسية (تظهر بجانب اسم الفصل)
 const DEFAULT_TERM = 1; // الفصل الافتراضي عند فتح الصفحة
 
 /* ┌──────────────────────────────────────────────────────────────────┐
-   │  🏖️  TERM BREAK — أسابيع الإجازة (تُتجاهل عند احتساب الأسابيع)   │
+   │  🏖️  TERM BREAK — أسابيع الإجازة (تحتفظ برقمها وتظهر بكلمة عطلة)    │
    │  لإضافة إجازة: أضف سطرًا جديدًا بنفس الصيغة                       │
    │      { term: رقم_الفصل, weekStart: "تاريخ يوم الاثنين لبداية الأسبوع" }│
    │  مثال: { term:2, weekStart:"2027-02-15" }                         │
@@ -357,9 +358,22 @@ SUBJECTS.forEach(s=>{
 
 // ---------- قائمة المعلمين المعتمدة على المادة ----------
 const teacherSel = document.getElementById('teacherName');
+const CUSTOM_TEACHERS_KEY = 'weeklyplan_custom_teachers';
+function loadCustomTeachers(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOM_TEACHERS_KEY) || '{}') || {}; }catch(e){ return {}; }
+}
+function saveCustomTeacher(subj, name){
+  try{
+    const all = loadCustomTeachers();
+    all[subj] = all[subj] || [];
+    if(!all[subj].includes(name)) all[subj].push(name);
+    localStorage.setItem(CUSTOM_TEACHERS_KEY, JSON.stringify(all));
+  }catch(e){ /* التخزين غير متاح: الاسم يبقى في الجلسة الحالية فقط */ }
+}
 function rebuildTeacherOptions(selected){
   const subj = subjectSel.value;
-  const list = TEACHERS[subj] || [];
+  const custom = (loadCustomTeachers()[subj] || []);
+  const list = (TEACHERS[subj] || []).concat(custom.filter(n=> !(TEACHERS[subj]||[]).includes(n)));
   teacherSel.innerHTML = '';
   const ph = document.createElement('option');
   ph.value = ''; ph.textContent = t('chooseTeacher');
@@ -369,12 +383,23 @@ function rebuildTeacherOptions(selected){
     teacherSel.appendChild(o);
   });
   // اسم مستورد من ملف قديم وغير موجود بالقائمة: نضيفه حتى لا يضيع
-  if(selected && !list.includes(selected)){
+  if(selected && selected !== '__new__' && !list.includes(selected)){
     const o = document.createElement('option'); o.value = selected; o.textContent = selected;
     teacherSel.appendChild(o);
   }
-  teacherSel.value = selected || (list.length===1 ? list[0] : '');
+  // خيار إضافة معلم جديد (دائمًا آخر القائمة)
+  const add = document.createElement('option');
+  add.value = '__new__'; add.textContent = t('addTeacher');
+  teacherSel.appendChild(add);
+  teacherSel.value = (selected && selected !== '__new__') ? selected : (list.length===1 && !selected ? list[0] : '');
 }
+teacherSel.addEventListener('change', ()=>{
+  if(teacherSel.value !== '__new__') return;
+  const name = (prompt(t('newTeacherPrompt')) || '').trim();
+  if(!name){ teacherSel.value = ''; return; }
+  saveCustomTeacher(subjectSel.value, name);
+  rebuildTeacherOptions(name);
+});
 subjectSel.addEventListener('change', ()=> rebuildTeacherOptions());
 rebuildTeacherOptions();
 
@@ -417,14 +442,14 @@ function isBreakWeek(termId, monday){
   const key = isoKey(monday);
   return TERM_BREAKS.some(b=> b.term===termId && isoKey(mondayOf(parseD(b.weekStart)))===key);
 }
-// قائمة أسابيع الفصل (بدون الإجازات) — كل عنصر = يوم الاثنين لذلك الأسبوع
+// قائمة أسابيع الفصل بترتيب التقويم (أسبوع العطلة يحتفظ برقمه) — كل عنصر = يوم الاثنين لذلك الأسبوع
 function getTermWeeks(termId){
   const term = getTerm(termId);
   const end = parseD(term.end);
   const weeks = [];
   let m = mondayOf(parseD(term.start));
   while(m.getTime() <= end.getTime()){
-    if(!isBreakWeek(termId, m)) weeks.push(new Date(m.getTime()));
+    weeks.push(new Date(m.getTime())); // كل الأسابيع تُعدّ بترتيبها الفعلي حسب التقويم، بما فيها أسبوع العطلة
     m = new Date(m.getTime() + 7*DAY_MS);
   }
   return weeks;
@@ -445,7 +470,7 @@ function rebuildTermOptions(){
   TERMS.forEach(tm=>{
     const o = document.createElement('option');
     o.value = tm.id;
-    o.textContent = currentLang==='en' ? tm.en : tm.ar;
+    o.textContent = (currentLang==='en' ? tm.en : tm.ar) + ' ' + (currentLang==='en' ? ACADEMIC_YEAR : '\u2067' + ACADEMIC_YEAR.split('-').map(y=>'\u2066'+y+'\u2069').join('-') + '\u2069');
     termSel.appendChild(o);
   });
   termSel.value = cur;
@@ -460,6 +485,14 @@ function updateDateRange(){
   const {monday, friday, maxWeeks} = getWeekRange(w, termId);
   weekInput.max = maxWeeks;
   document.getElementById('dateRange').textContent = fmtDate(monday)+' - '+fmtDate(friday);
+  // أسبوع العطلة: تظهر كلمة (عطلة) بجانب التاريخ في نفس السطر
+  const breakTag = document.getElementById('breakTag');
+  if(w >= 1 && w <= maxWeeks && isBreakWeek(termId, monday)){
+    breakTag.textContent = '(' + t('breakWord') + ')';
+    breakTag.style.display = 'inline';
+  } else {
+    breakTag.style.display = 'none';
+  }
   const warn = document.getElementById('weekWarn');
   if(w > maxWeeks || w < 1){
     warn.textContent = t('weekOutOfRange') + maxWeeks + t('weeksSuffix');
