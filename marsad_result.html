@@ -309,6 +309,12 @@ th.rot .rl1,th.rot .rl2{display:block}th.rot .rl2{font-weight:400;font-size:11px
 .psl{position:relative;height:9px;border-radius:5px;background:linear-gradient(to left,#2F8F5B,#A9C23F,#E0B030,#D9822B,#B03A2E);margin:0 7px}
 .psi{position:absolute;top:-4px;width:17px;height:17px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px #333;box-sizing:border-box}
 .pv{font-size:8.8pt}
+
+.sth{display:flex;justify-content:space-between;font-size:9pt;margin-bottom:3px}
+.rt td.sb2{width:46mm;font-size:7.8pt;color:#333;line-height:1.3}.rt td.sb2 small{color:#666}
+.wbox{border:1px solid #9fb4bb;padding:3px 8px 4px;margin-top:2px}
+.wmeta{display:flex;justify-content:space-between;font-size:9pt;padding:3px 0;color:#333}
+.wl{border-bottom:1px dotted #777;height:7.4mm}
 </style>
 </head>
 <body>
@@ -1030,17 +1036,10 @@ function teacherReport() {
 function vOverview() {
   if (!A.recs.length) return empty();
   const S = Array.from(A.students.values());
-  const follow = S.filter(s => s.level >= 2), prio = S.filter(s => s.level === 3);
   const C = A.comp;
   const grades = Array.from(new Set(S.map(s => s.grade))).sort((a, b) => a - b);
   const gRows = grades.map(g => { const gs = S.filter(s => s.grade === g); return { label: (LANG === "ar" ? "الصف " : "Grade ") + g, value: pct(gs.filter(s => s.level >= 2).length, gs.length), attr: `data-gradefilter="${esc(g)}"` }; });
   return `<h2 class="pt">${esc(t("ov_t"))}</h2>
-  <div class="grid g4" style="margin-bottom:18px">
-    <div class="stat"><b>${S.length}</b><span>${esc(t("k_students"))}</span></div>
-    <div class="stat"><b>${A.recs.length}</b><span>${esc(t("k_resp"))}</span></div>
-    <div class="stat"><b>${C.overall.p}%</b><span>${esc(t("k_comp"))}</span></div>
-    <div class="stat"><b>${follow.length}</b><span>${esc(t("k_follow"))}</span></div>
-    <div class="stat"><b>${prio.length}</b><span>${esc(t("k_prio"))}</span></div></div>
   ${C.hasRoster ? "" : `<div class="note warn">${esc(t("comp_noroster"))}</div>`}
   ${cmpFilters()}<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("sc_lbl"))}</span><button data-cscope="started" class="${CMPSCOPE === "started" ? "on" : ""}">${esc(t("sc_started"))}</button><button data-cscope="all" class="${CMPSCOPE === "all" ? "on" : ""}">${esc(t("sc_all"))}</button></div>
   <div class="card"><h3>${esc(t("comp_t"))}</h3><p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
@@ -1189,16 +1188,51 @@ function vStudent() {
     return `<tr><td>${esc(itemTxt(c))}</td>${cols.map(col => cellFor(c, col)).join("")}</tr>`;
   };
   const rel = s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "";
-  return `<h2 class="pt no-print">${esc(t("rp_t"))}</h2>${pick}${rel}<div id="srep">
-  <div class="card"><div class="stuhead"><h2>${esc(sName(s))}</h2><span class="scbig"><em>${esc(t("rt_beh"))}</em>${scPill(s.behScore)}</span><span class="scbig"><em>${esc(t("rt_aca"))}</em>${scPill(s.acaScore)}</span>${badge(s.level)}<span class="chip">${esc(clsName(s.grade, s.section))}</span>${s.id ? `<span class="chip">${esc(t("col_id"))}: ${esc(s.id)}</span>` : ""}</div>
-    ${s.why.length ? `<p style="margin:12px 0 0"><b>${esc(t("fu_why"))}:</b> ${s.why.map(w => `<span class="pill">${esc(t(w))}</span>`).join(" ")}</p>` : ""}</div>
-  <div class="card"><h3>${esc(t("rp_matrix"))}</h3>${seg}
-    ${s.resp.length < 2 ? `<div class="note warn">${esc(t("rp_one"))}</div>` : ""}
+  const R = repCfg();
+  return `<h2 class="pt no-print">${esc(t("rp_t"))}</h2>${pick}${rel}
+  <div class="rwrap" id="reports" dir="rtl">${studentReport(s, R)}</div>
+  <div class="card no-print" id="srep"><h3>${esc(t("rp_matrix"))}</h3>${seg}
     ${mxLegend}<div class="tw"><table class="t mx ${REPMODE === "sum" ? "mxs" : "mxc"}"><thead><tr><th>${esc(t("col_item"))}</th>${head}</tr></thead><tbody>
     <tr><td colspan="${ncols + 1}" style="background:#fdf6e8"><b>${esc(t("top_beh"))}</b></td></tr>${BEH.map(mrow).join("")}
-    <tr><td colspan="${ncols + 1}" style="background:#e8effb"><b>${esc(t("top_aca"))}</b></td></tr>${ACA.map(mrow).join("")}</tbody></table></div></div></div>`;
+    <tr><td colspan="${ncols + 1}" style="background:#e8effb"><b>${esc(t("top_aca"))}</b></td></tr>${ACA.map(mrow).join("")}</tbody></table></div></div>`;
 }
-
+/* تقرير الطالب الداخلي (للمدرسة والمرشد الأكاديمي) بنفس نمط تقرير ولي الأمر */
+function studentReport(s, R) {
+  const g = parentAgg(s), n = g.subs.length;
+  const stmt = c => (ITEMS[c] && ITEMS[c].ar) ? ITEMS[c].ar : c;
+  const tchOf = (c, subj) => Array.from(new Set(s.entries[c].filter(e => e.subject === subj).map(e => e.teacher)));
+  const rowHtml = (c, i) => {
+    const r = g.rows[c];
+    if (!r) return `<tr><td class="n">${i + 1}</td><td>${esc(stmt(c))}</td><td class="gc" style="text-align:center;color:#777">لم يُرصد</td><td class="sb">—</td></tr>`;
+    const sb = !r.flagged.length ? "—" : r.flagged.map(x => esc(x) + (tchOf(c, x).length ? " <small>(" + esc(tchOf(c, x).join("، ")) + ")</small>" : "")).join("<br>");
+    return `<tr><td class="n">${i + 1}</td><td>${esc(stmt(c))}</td><td class="gc">${gdot(r.avg)}</td><td class="sb2">${sb}</td></tr>`;
+  };
+  const thead = `<thead><tr><th>#</th><th>العبارة</th><th class="gc">${glLabels()}</th><th>ظهر في (المعلم)</th></tr></thead>`;
+  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">تقرير الطالب — للمدرسة والمرشد الأكاديمي<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div>
+    <div class="rh-sign"><span>مديرة المدرسة: <b>${esc(R.principal) || DOTS}</b></span><span>المرشد الأكاديمي: <b>${esc(R.counselor) || DOTS}</b></span></div></header>`;
+  const foot = pg => `<div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — لا تُسلَّم لولي الأمر</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
+  const lvTxt = ["لا توجد مؤشرات تستدعي المتابعة", "يُنصح بالمراقبة", "يُنصح بالمتابعة", "متابعة ذات أولوية"][s.level];
+  const consTxt = s.consensus.length ? s.consensus.slice(0, 5).map(c => esc(stmt(c))).join("؛ ") : "—";
+  const lines = k => Array.from({ length: k }, () => '<div class="wl"></div>').join("");
+  const page1 = `<section class="page">${hdr}
+    <div class="ri"><div><small>اسم الطالب</small><b>${esc(s.name)}</b></div><div><small>رقم الطالب</small><b>${esc(s.id || "—")}</b></div><div><small>الصف</small><b>${esc(s.grade)}</b></div><div><small>الشعبة</small><b>${esc(s.section)}</b></div></div>
+    <div class="pscw"><div class="sth"><span>مبني على ملاحظات <b>${s.teachers.size}</b> معلم في <b>${n}</b> مادة</span><span>مستوى المتابعة: <b>${lvTxt}</b></span></div>${scLine("الجانب السلوكي", s.behScore)}${scLine("الجانب الأكاديمي", s.acaScore)}<div class="pscl">التقييم من 10: كلما اقتربت الأيقونة من الأخضر قلّت الملاحظات، وكلما اقتربت من الأحمر زادت الحاجة للمتابعة والدعم.</div></div>
+    <div class="rs">أولاً: الجانب السلوكي</div>
+    <table class="rt">${thead}<tbody>${BEH.map(rowHtml).join("")}</tbody></table>
+    <div style="flex:1"></div>${foot(1)}</section>`;
+  const page2 = `<section class="page"><div class="rh2"><b>${esc(R.school)}</b><span>تقرير الطالب: <b>${esc(s.name)}</b> — ${esc(s.grade)}/${esc(s.section)}</span></div>
+    <div class="rs" style="margin-top:2px">ثانياً: الجانب الأكاديمي</div>
+    <table class="rt">${thead}<tbody>${ACA.map(rowHtml).join("")}</tbody></table>
+    <div class="rs">ثالثاً: أبرز الملاحظات المتفق عليها بين المعلمين</div>
+    <p class="rpara">${consTxt}</p>
+    <div class="rs">رابعاً: إجراءات المرشد الأكاديمي مع الطالب</div>
+    <div class="wbox"><div class="wmeta"><span>تاريخ المقابلة: ........../........../..........</span><span>الإجراء المتخذ / خطة الدعم:</span></div>${lines(7)}</div>
+    <div class="rs">خامساً: المتابعة اللاحقة</div>
+    <div class="wbox">${lines(3)}</div>
+    <div class="rsig"><div>المرشد الأكاديمي<br><b>${esc(R.counselor) || DOTS}</b></div><div>مديرة المدرسة<br><b>${esc(R.principal) || DOTS}</b></div><div>التاريخ<br>........../........../..........</div></div>
+    ${foot(2)}</section>`;
+  return page1 + page2;
+}
 function listCard(titleKey, arr) {
   return `<div class="card"><h3>${esc(t(titleKey))} (${arr.length})</h3>` + (arr.length ? tbl("fu_" + titleKey, [
     { h: t("col_name"), v: s => sName(s) }, { h: t("col_class"), v: s => clsName(s.grade, s.section) },
@@ -1327,8 +1361,7 @@ function vParent() {
   const targets = PR.mode === "one" ? [A.students.get(CUR)] : A.classes[PR.cls].stu.slice().sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
   return `<h2 class="pt no-print">${esc(t("pr_t"))}</h2><p class="ps no-print">${esc(t("pr_s"))}</p>
   <div class="card no-print"><div class="rcfg">${inp("school", "pr_school")}${inp("principal", "pr_principal")}${inp("counselor", "pr_counselor")}${inp("year", "pr_year")}${inp("term", "pr_term")}${inp("title", "pr_title")}</div>
-    <p class="hint">${esc(t("pr_hint"))}</p><label class="chk"><input type="checkbox" data-excl ${EXCL ? "checked" : ""}> ${esc(t("ex_lbl"))}</label>
-    <div class="seg"><button data-prmode="one" class="${PR.mode === "one" ? "on" : ""}">${esc(t("pr_one"))}</button><button data-prmode="class" class="${PR.mode === "class" ? "on" : ""}">${esc(t("pr_class"))}</button></div>
+    <p class="hint">${esc(t("pr_hint"))}</p>    <div class="seg"><button data-prmode="one" class="${PR.mode === "one" ? "on" : ""}">${esc(t("pr_one"))}</button><button data-prmode="class" class="${PR.mode === "class" ? "on" : ""}">${esc(t("pr_class"))}</button></div>
     <div class="tb">${PR.mode === "one" ? `<select id="pickPR">${S.map(x => `<option value="${SK.indexOf(x.key)}" ${x.key === CUR ? "selected" : ""}>${esc(sName(x))} (${esc(clsName(x.grade, x.section))})</option>`).join("")}</select>`
       : `<select id="pickPRC">${clsKeys.map(k => `<option ${k === PR.cls ? "selected" : ""}>${esc(k)}</option>`).join("")}</select>`}
       <button class="btn" id="btnPrintRep">${esc(t("pr_print"))} (${targets.length})</button></div></div>
@@ -1407,7 +1440,7 @@ function fitStudentPrint() {
   if (h > maxH) el.style.zoom = (maxH / h).toFixed(3);
 }
 function unfitStudentPrint() { const el = document.getElementById("srep"); if (el) { el.classList.remove("pfit"); el.style.zoom = ""; } }
-window.addEventListener("beforeprint", fitStudentPrint); window.addEventListener("afterprint", unfitStudentPrint);
+
 $("#langBtn").onclick = () => { LANG = LANG === "ar" ? "en" : "ar"; Object.keys(TBL).forEach(k => delete TBL[k]); render(); };
 
 function openItem(c) {
