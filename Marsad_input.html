@@ -240,10 +240,7 @@ const ACADEMIC = [
   ["يظهر تدنياً ملحوظاً في نتائج الاختبارات والتقييمات.", "Shows a noticeable decline in test and assessment results."],
   ["لا يظهر اهتماماً أو دافعية كافية للتعلم.", "Does not show sufficient interest or motivation to learn."]
 ].map((x, i) => ({ code: "A" + String(i + 1).padStart(2, "0"), ar: x[0], en: x[1] }));
-const FOLLOWUP = [
-  { code: "F02", field: "needsSocialWorker", ar: "هل ترى أن الطالب يحتاج إلى متابعة من الأخصائي الاجتماعي؟", en: "Do you think the student needs follow-up from the social worker?",
-    short: ["يحتاج أخصائي", "Needs social worker"], opts: [["yes", "نعم", "Yes", "fy"], ["no", "لا", "No", "fn"]] }
-];
+const FOLLOWUP = [];   // أُلغي سؤال متابعة الأخصائي: النتائج هي التي تحدد الحاجة للتدخل
 const ITEMS = BEHAVIOR.concat(ACADEMIC);
 const TOTAL = ITEMS.length + FOLLOWUP.length;
 
@@ -262,7 +259,7 @@ const TXT = {
   last: ["هذا آخر طالب ✔", "Last student ✔"],
   sec_beh: ["أولاً: الجانب السلوكي", "Part 1: Behavioral"], sec_aca: ["ثانياً: الجانب الأكاديمي", "Part 2: Academic"], sec_fu: ["ثالثاً: المتابعة", "Part 3: Follow-up"],
   
-  quick: ["⚡ تعبئة سريعة (لكل البنود الـ23):", "⚡ Quick fill (all 23 items):"], quickHint: ["ثم عدّل ما تشاء يدوياً. سؤال المتابعة يُجاب يدوياً.", "Then edit as needed. The follow-up question is answered manually."],
+  quick: ["⚡ تعبئة سريعة (لكل البنود الـ23):", "⚡ Quick fill (all 23 items):"], quickHint: ["ثم عدّل ما تشاء يدوياً.", "Then edit as needed."],
   markNA: ["🚫 لم ألاحظ هذا الطالب", "🚫 I did not observe this student"], unmarkNA: ["↩ إلغاء «لم ألاحظ»", "↩ Undo “not observed”"],
   naMsg: ["سُجّل الطالب كـ«لم يُلاحَظ»: لا يدخل في المتوسطات، ويُحتسب مُنجزاً.", "Marked as “not observed”: excluded from averages and counted as completed."],
   download: ["📥 تنزيل ملف الشعبة", "📥 Download class file"], openSP: ["📤 فتح مجلد التسليم", "📤 Open submission folder"],
@@ -483,7 +480,7 @@ function renderSingle() {
     '<span class="spacer"></span><button class="btn sm" data-act="na" type="button">' + esc(r.na ? t("unmarkNA") : t("markNA")) + "</button></div>" +
     (r.na ? '<div class="note info">' + esc(t("naMsg")) + "</div>" :
       '<div class="qf"><b>' + esc(t("quick")) + "</b>" + SCALE.map(sc => '<button class="qbtn l' + sc.level + '" data-qf="' + SCALE.indexOf(sc) + '" type="button">' + esc(S.lang === "ar" ? sc.s[0] : sc.s[1]) + "</button>").join("") + '<small style="color:var(--soft)">' + esc(t("quickHint")) + "</small></div>" +
-      '<div class="sec">' + esc(t("sec_beh")) + "</div>" + itemRows(BEHAVIOR) + '<div class="sec">' + esc(t("sec_aca")) + "</div>" + itemRows(ACADEMIC) + '<div class="sec">' + esc(t("sec_fu")) + "</div>" + fuRows +
+      '<div class="sec">' + esc(t("sec_beh")) + "</div>" + itemRows(BEHAVIOR) + '<div class="sec">' + esc(t("sec_aca")) + "</div>" + itemRows(ACADEMIC) +
       "") + "</div>" +
     '<div class="dock"><button class="btn" data-act="prev" type="button"' + (S.cur === 0 ? " disabled" : "") + ">" + esc(t("prev")) + '</button><span class="info">' + (S.cur + 1) + " / " + R.length + "  ·  " + (r.na ? esc(t("na")) : filled(r) + "/" + TOTAL) + "</span>" +
     (isLast ? '<button class="btn green" data-act="download" type="button">' + esc(t("last")) + " — " + esc(t("download")) + "</button>" : '<button class="btn primary" data-act="next" type="button">' + esc(t("next")) + "</button>") + "</div>";
@@ -502,7 +499,7 @@ function goStudent(i) { const R = roster(); S.cur = Math.max(0, Math.min(R.lengt
    الإدخال الجماعي | GRID
    ===================================================================== */
 const GROUPS = [
-  { id: "B", label: "tabBeh", items: BEHAVIOR }, { id: "A", label: "tabAca", items: ACADEMIC }, { id: "F", label: "tabFu", items: FOLLOWUP }
+  { id: "B", label: "tabBeh", items: BEHAVIOR }, { id: "A", label: "tabAca", items: ACADEMIC }
 ];
 function cellHTML(code, r, f) {
   if (f) { const v = r.f[f.field], o = f.opts.find(x => x[0] === v); return '<button class="cell f ' + (o ? o[3] : "") + '" data-cf="' + f.field + '" data-nav="1">' + (o ? esc(S.lang === "ar" ? o[1] : o[2]) : "·") + "</button>"; }

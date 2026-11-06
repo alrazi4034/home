@@ -227,7 +227,7 @@ main{margin-inline-start:0;max-width:none;padding:18px 22px 60px}
 .mx td.m0{background:#BFE0CB}.mx td.m2{background:#F3D98B}.mx td.m4{background:#DE7F6B}
 .mx td.cx{background:repeating-linear-gradient(45deg,#f3f5f8,#f3f5f8 4px,#e4e8ee 4px,#e4e8ee 8px)}
 .mx td.ex{outline:2px dashed #444;outline-offset:-3px}
-th.rot{height:190px;width:34px;min-width:34px;padding:4px 0;vertical-align:bottom;cursor:default;text-align:center;white-space:normal}
+th.rot{height:190px;width:54px;min-width:54px;padding:4px 0;vertical-align:bottom;cursor:default;text-align:center;white-space:normal}
 th.rot div{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;margin:0 auto;font-size:12.5px;font-weight:600;max-height:180px;overflow:hidden}
 .mxlg{align-items:center;margin:6px 0}
 .mxlg i{width:18px;height:14px;border-radius:0;vertical-align:-2px}
@@ -301,6 +301,14 @@ th.c{text-align:center!important}
   #srep .tw{overflow:visible!important}
 }
 #srep.pfit{width:210mm;box-sizing:border-box}
+
+th.rot .rl1,th.rot .rl2{display:block}th.rot .rl2{font-weight:400;font-size:11px;color:#555}
+.pscw{border:1px solid #9fb4bb;padding:5px 8px;margin:6px 0 4px;background:#fafcfd}
+.pscl{font-size:7.8pt;color:#666;margin-top:2px}
+.psc{display:grid;grid-template-columns:30mm 1fr 52mm;gap:8px;align-items:center;margin:3px 0;font-size:9.2pt}
+.psl{position:relative;height:9px;border-radius:5px;background:linear-gradient(to left,#2F8F5B,#A9C23F,#E0B030,#D9822B,#B03A2E);margin:0 7px}
+.psi{position:absolute;top:-4px;width:17px;height:17px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px #333;box-sizing:border-box}
+.pv{font-size:8.8pt}
 </style>
 </head>
 <body>
@@ -839,13 +847,13 @@ function computeStudent(s) {
   s.single = s.flagged.filter(c => !s.consensus.includes(c));
   s.behScore = scoreOf(s, "B"); s.acaScore = scoreOf(s, "A");
   s.behIdx = r1(mean(s.behAll)); s.acaIdx = r1(mean(s.acaAll));
-  s.socialBy = Array.from(new Set(s.resp.filter(r => r.social === "yes").map(r => r.teacher)));
+  s.socialBy = [];   // أُلغي طلب الأخصائي: النتائج هي من تحدد الحاجة للتدخل
   s.parentNoBy = Array.from(new Set(s.resp.filter(r => r.parent === "no").map(r => r.teacher)));
   s.aggr = s.entries.B11.some(e => e.level >= CFG.FLAG_LEVEL);
   s.aggrMax = Math.max(-1, ...s.entries.B11.map(e => e.level));
   s.why = [];
-  const urgent = s.aggrMax === 4 || (s.aggr && s.socialBy.length >= 1) || s.socialBy.length >= 2;
-  const high = s.consensus.length >= 3 || s.flagged.length >= 8 || (s.socialBy.length >= 1 && s.flagged.length >= 3);
+  const urgent = s.aggrMax === 4;
+  const high = s.consensus.length >= 3 || s.flagged.length >= 8;
   const watch = s.flagged.length >= 3 || s.consensus.length >= 1;
   s.level = urgent ? 3 : high ? 2 : watch ? 1 : 0;
   if (s.aggr) s.why.push("w_aggr"); if (s.socialBy.length) s.why.push("w_soc"); if (s.consensus.length) s.why.push("w_cons"); if (s.flagged.length >= 8) s.why.push("w_many");
@@ -1022,7 +1030,7 @@ function teacherReport() {
 function vOverview() {
   if (!A.recs.length) return empty();
   const S = Array.from(A.students.values());
-  const follow = S.filter(s => s.level >= 2), prio = S.filter(s => s.level === 3), soc = S.filter(s => s.socialBy.length);
+  const follow = S.filter(s => s.level >= 2), prio = S.filter(s => s.level === 3);
   const C = A.comp;
   const grades = Array.from(new Set(S.map(s => s.grade))).sort((a, b) => a - b);
   const gRows = grades.map(g => { const gs = S.filter(s => s.grade === g); return { label: (LANG === "ar" ? "الصف " : "Grade ") + g, value: pct(gs.filter(s => s.level >= 2).length, gs.length), attr: `data-gradefilter="${esc(g)}"` }; });
@@ -1032,8 +1040,7 @@ function vOverview() {
     <div class="stat"><b>${A.recs.length}</b><span>${esc(t("k_resp"))}</span></div>
     <div class="stat"><b>${C.overall.p}%</b><span>${esc(t("k_comp"))}</span></div>
     <div class="stat"><b>${follow.length}</b><span>${esc(t("k_follow"))}</span></div>
-    <div class="stat"><b>${prio.length}</b><span>${esc(t("k_prio"))}</span></div>
-    <div class="stat"><b>${soc.length}</b><span>${esc(t("k_social"))}</span></div></div>
+    <div class="stat"><b>${prio.length}</b><span>${esc(t("k_prio"))}</span></div></div>
   ${C.hasRoster ? "" : `<div class="note warn">${esc(t("comp_noroster"))}</div>`}
   ${cmpFilters()}<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("sc_lbl"))}</span><button data-cscope="started" class="${CMPSCOPE === "started" ? "on" : ""}">${esc(t("sc_started"))}</button><button data-cscope="all" class="${CMPSCOPE === "all" ? "on" : ""}">${esc(t("sc_all"))}</button></div>
   <div class="card"><h3>${esc(t("comp_t"))}</h3><p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
@@ -1113,7 +1120,7 @@ function vStudents() {
   tbl("students", [
     { h: t("col_name"), v: s => sName(s), f: s => esc(sName(s)) + (s.lowRel ? ' <span title="' + esc(t("low_rel")) + '">⚠</span>' : "") }, { h: t("col_id"), v: s => s.id || "—" },
     { h: t("col_class"), v: s => clsName(s.grade, s.section) }, { h: t("col_teachers"), v: s => s.teachers.size }, { h: t("sc_beh"), v: s => s.behScore == null ? -1 : s.behScore, f: s => scPill(s.behScore) },
-    { h: t("sc_aca"), v: s => s.acaScore == null ? -1 : s.acaScore, f: s => scPill(s.acaScore) }, { h: t("col_level"), v: s => s.level, f: s => badge(s.level) }, { h: t("col_social"), v: s => s.socialBy.length ? "✔" : "—" }],
+    { h: t("sc_aca"), v: s => s.acaScore == null ? -1 : s.acaScore, f: s => scPill(s.acaScore) }, { h: t("col_level"), v: s => s.level, f: s => badge(s.level) }],
     rows, { search: true, csv: true, sort: 6, dir: -1, rowAttr: stuAttr }) + `<details class="note" style="margin-top:10px"><summary><b>${esc(t("sc_how_t"))}</b></summary><div style="white-space:pre-line;margin-top:6px">${esc(t("sc_how"))}</div></details></div>`;
 }
 
@@ -1165,7 +1172,7 @@ function vStudent() {
     `</div>`;
   const ncols = REPMODE === "sum" ? 2 : cols.length;
   const head = REPMODE === "sum" ? `<th>${glLabels()}</th><th class="c">${esc(t("rm_subj_n"))}</th>` :
-    cols.map(c => `<th class="rot"><div>${esc(c.label)}${c.sub ? " · " + esc(c.sub) : ""}</div></th>`).join("");
+    cols.map(c => `<th class="rot"><div><span class="rl1">${esc(c.label)}</span>${c.sub ? `<span class="rl2">${esc(c.sub)}</span>` : ""}</div></th>`).join("");
   const mxLegend = REPMODE === "sum" ? "" : `<div class="legend mxlg"><b>${esc(t("mx_lg"))}</b><span><i class="k0"></i>${esc(LVL_AR[0] && lvlTxt(0))}</span><span><i class="k2"></i>${esc(lvlTxt(2))}</span><span><i class="k4"></i>${esc(lvlTxt(4))}</span><span><i class="kx"></i>${esc(t("mx_none"))}</span>${EXCL ? `<span><i class="ke"></i>${esc(t("mx_ex"))}</span>` : ""}</div>`;
   const cellFor = (c, col) => {
     const mine = respLevels(s, c).filter(o => col.rs.includes(o.r));
@@ -1254,6 +1261,12 @@ function parentAgg(s) {
   });
   return { subs: Array.from(new Set(s.resp.map(r => r.subject))), rows: rows };
 }
+const scVerdict = v => v == null ? "لم يُرصد" : v >= 8.5 ? "أداء متميز" : v >= 7 ? "جيد — يُنصح بمواصلة التعزيز" : v >= 5.5 ? "يحتاج متابعة" : v >= 4 ? "يحتاج دعماً" : "يُنصح بالمتابعة والدعم المكثف";
+function scLine(label, v) {
+  if (v == null) return `<div class="psc"><b>${label}</b><span class="pv">لم يُرصد</span></div>`;
+  const c = scCol(v);
+  return `<div class="psc"><b>${label}</b><div class="psl"><i class="psi" style="right:calc(${((1 - v / 10) * 100).toFixed(1)}% - ${((1 - v / 10) * 14).toFixed(1)}px);background:${c.b}"></i></div><span class="pv" style="color:${c.tx}"><b>${v.toFixed(1)}</b>/10 — ${scVerdict(v)}</span></div>`;
+}
 function parentReport(s, R) {
   const g = parentAgg(s), n = g.subs.length;
   const stmt = c => (ITEMS[c] && ITEMS[c].ar) ? ITEMS[c].ar : c;
@@ -1284,6 +1297,7 @@ function parentReport(s, R) {
     <p class="rpara" style="margin-top:7px"><b>الفاضل / الفاضلة ولي أمر الطالب ${esc(s.name)} المحترم،</b></p>
     <p class="rpara">تحية طيبة وبعد،</p>
     <p class="rpara">تحرص ${esc(R.school)} على التعاون الوثيق مع أولياء الأمور لدعم أبنائنا سلوكياً وأكاديمياً. ويسرّنا أن نضع بين أيديكم ملخصاً لملاحظات معلمي ابنكم في <b>${n}</b> ${n === 1 ? "مادة دراسية" : n <= 10 ? "مواد دراسية" : "مادة دراسية"} خلال الفترة الماضية، مبنياً على متابعتهم الصفية. ${lvNote}</p>
+    <div class="pscw">${scLine("الجانب السلوكي", s.behScore)}${scLine("الجانب الأكاديمي", s.acaScore)}<div class="pscl">التقييم من 10: كلما اقتربت الأيقونة من الأخضر قلّت الملاحظات، وكلما اقتربت من الأحمر زادت الحاجة للمتابعة والدعم.</div></div>
     <div class="rs">أولاً: الجانب السلوكي</div>
     <table class="rt">${thead}<tbody>${BEH.map(rowHtml).join("")}</tbody></table>
     <div class="rl">النقطة تمثل متوسط ما رصده المعلمون في جميع المواد: كلما اقتربت من اللون الأخضر كان الأمر أقل ظهوراً، وكلما اقتربت من الأحمر كان أكثر ظهوراً. عمود «ظهر في» يبيّن المواد التي ظهر فيها بدرجة مرتفعة.</div>
