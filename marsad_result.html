@@ -315,6 +315,21 @@ th.rot .rl1,th.rot .rl2{display:block}th.rot .rl2{font-weight:400;font-size:11px
 .wbox{border:1px solid #9fb4bb;padding:3px 8px 4px;margin-top:2px}
 .wmeta{display:flex;justify-content:space-between;font-size:9pt;padding:3px 0;color:#333}
 .wl{border-bottom:1px dotted #777;height:7.4mm}
+
+.ctab th,.ctab td{text-align:center!important}.ctab{table-layout:fixed;width:100%}
+.ctab .scb{justify-content:center;min-width:0}.ctab .scb .sctr{max-width:120px}
+.ctab .stack{max-width:260px;margin:7px auto}
+.ctab .dotp{margin:0}
+.ctab tbody.cl.closed tr:not(.sumr){display:none}.ctab tbody.cl:not(.closed) tr.sumr{display:none}
+.ctab tr.grow{cursor:pointer}.ctab tr.grow td{background:#EEF1F6}.ctab tr.grow.hdr td{text-align:start!important}
+.ctab tr.grow .arr::before{content:"▾";color:var(--brand);margin-inline-end:4px}.ctab tbody.cl.closed tr.sumr .arr::before{content:"◂"}
+[dir=ltr] .ctab tbody.cl.closed tr.sumr .arr::before{content:"▸"}
+.cl.sub{margin-top:12px;border-top:1px solid var(--line);padding-top:6px}
+.acts{display:grid;gap:6px;margin:6px 0 10px}.acts .chk{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}
+textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);padding:8px;font:inherit;font-size:13.5px;min-height:70px}
+.rt td.sb2 b{color:#7A2E2E}
+.wbox .pl{white-space:pre-wrap;font-size:8.4pt;line-height:1.45;max-height:44mm;overflow:hidden;margin:3px 0}
+.wbox ul.rul{margin:3px 0;padding-inline-start:16px;font-size:8.6pt}
 </style>
 </head>
 <body>
@@ -693,9 +708,11 @@ Object.assign(D, {
   sc_how_t: ["كيف يُحسب التقييم من 10؟", "How is the score out of 10 calculated?"],
   sc_how: ["١) لكل بند: نأخذ متوسط إجابات معلمي كل مادة، ثم متوسط المواد (فلا يطغى عدد معلمي مادة على غيرها).\n٢) نحوّل المستوى إلى نسبة: لا يظهر = 0 ، أحياناً = 0.5 ، دائماً = 1، ونأخذ متوسط البنود المرصودة (يُستثنى ما لم يلاحظه المعلم).\n٣) التقييم = 10 × (1 − هذا المتوسط).\n٤) يُخصم 0.3 عن كل بند أجمع عليه معلمان فأكثر بـ «دائماً» (بحد أقصى 1.5).\n10 = لا ملاحظات ، 0 = ملاحظات متكررة. يُحسب السلوك من بنود السلوك والأكاديمي من البنود الأكاديمية كلٌّ على حدة.", "1) Per item: average each subject's teachers, then average the subjects.\n2) Convert to burden: never=0, sometimes=0.5, always=1; average the observed items (not-observed excluded).\n3) Score = 10 × (1 − burden).\n4) Minus 0.3 per item that 2+ teachers marked 'always' (max 1.5).\n10 = no concerns, 0 = frequent concerns. Behavior and academic are computed separately."]
 });
+Object.assign(D, { tr_most: ["الأكثر إدخالاً (عدد إدخالات الطلاب)", "Most entries"], tr_least: ["الأقل إنجازاً", "Least completed"],
+  tr_showall: ["عرض جميع المعلمين", "Show all teachers"], tr_first8: ["عرض أول 8 فقط", "Show first 8"] });
 D.dataBad = ["تعذّر قراءة الملف. تحقق من بنيته.", "Could not read the file. Check its structure."];
 
-let COLL = {};   // حالة الطي: مفتاح -> true إذا كان مطوياً
+let COLL = { comp: true, tr: false };   // حالة الطي: مفتاح -> true إذا كان مطوياً
 let CMPSCOPE = "started";   // started = الشعب التي بدأ فيها الإدخال فقط | all = كل الشعب
 let CMPGRP = "all", CMPMERGE = false;   // فلتر المواد: all | A ، ودمج مجموعة ب
 let EXCL = false;                        // استبعاد الردود البعيدة عن الوسيط في تقارير الطلاب
@@ -858,10 +875,10 @@ function computeStudent(s) {
   s.aggr = s.entries.B11.some(e => e.level >= CFG.FLAG_LEVEL);
   s.aggrMax = Math.max(-1, ...s.entries.B11.map(e => e.level));
   s.why = [];
-  const urgent = s.aggrMax === 4;
-  const high = s.consensus.length >= 3 || s.flagged.length >= 8;
-  const watch = s.flagged.length >= 3 || s.consensus.length >= 1;
-  s.level = urgent ? 3 : high ? 2 : watch ? 1 : 0;
+  // مستوى المتابعة مبني على التقييم: متوسط (السلوكي، الأكاديمي) — الأقل تقييماً = الأعلى أولوية
+  const scs = [s.behScore, s.acaScore].filter(x => x != null);
+  s.comb = scs.length ? Math.round(mean(scs) * 10) / 10 : 10;
+  s.level = s.comb < LVCUT[0] ? 3 : s.comb < LVCUT[1] ? 2 : s.comb < LVCUT[2] ? 1 : 0;
   if (s.aggr) s.why.push("w_aggr"); if (s.socialBy.length) s.why.push("w_soc"); if (s.consensus.length) s.why.push("w_cons"); if (s.flagged.length >= 8) s.why.push("w_many");
   // الاتفاق: نسبة العناصر التي تباعد فيها المعلمون بدرجة ≤ 1
   if (s.resp.length >= 2) {
@@ -872,6 +889,7 @@ function computeStudent(s) {
   s.strengths = s.resp.filter(r => r.strengths).map(r => ({ teacher: r.teacher, subject: r.subject, text: r.strengths }));
   s.notes = s.resp.filter(r => r.notes).map(r => ({ teacher: r.teacher, subject: r.subject, text: r.notes }));
 }
+const LVCUT = [5.5, 7, 8.5];   // أقل من 5.5 أولوية | 7 متابعة | 8.5 مراقبة
 const LVKEY = ["none", "watch", "follow", "prio"];
 const badge = l => `<span class="badge b-${LVKEY[l]}">${esc(t("lv_" + LVKEY[l]))}</span>`;
 
@@ -1016,21 +1034,28 @@ function statusBadge(st) {
   const m = { done: ["b-none", "✔ " + t("st_done")], prog: ["b-watch", t("st_prog")], none: ["b-grey", t("st_none")], opt: ["b-opt", t("sel_note")], unav: ["b-grey", t("st_unav")] }[st];
   return `<span class="badge ${m[0]}">${esc(m[1])}</span>`;
 }
+let STUPREV = false;
+let TRMODE = "most", TRALL = false;
 function teacherReport() {
   const C = A.comp, T = C.teachers;
   if (!T.length) return "";
-  const top = T.filter(x => x.total).slice().sort((a, b) => b.total - a.total).slice(0, 8), mx = top.length ? top[0].total : 1;
-  const bars = top.length ? `<div class="tops">${top.map((x, i) => `<div class="tp"><span class="rk">${i + 1}</span><span class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small></span><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span><b>${x.total}</b></div>`).join("")}</div>` : "";
+  if (COLL.trall === undefined) COLL.trall = true;
+  const mx = Math.max(1, ...T.map(x => x.total));
+  const sorted = T.slice().sort(TRMODE === "most" ? (a, b) => b.total - a.total || String(a.name).localeCompare(String(b.name), "ar") : (a, b) => a.total - b.total || String(a.name).localeCompare(String(b.name), "ar"));
+  const shown = TRALL ? sorted : sorted.filter(x => TRMODE === "least" || x.total).slice(0, 8);
+  const bars = shown.length ? `<div class="tops">${shown.map((x, i) => `<div class="tp"><span class="rk">${i + 1}</span><span class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small></span><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%;${TRMODE === "least" ? "background:#B03A2E" : ""}"></i></span><b>${x.total}</b></div>`).join("")}</div>` : "";
   const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${x.opt ? "co" : c.N && c.n >= c.N ? "cd" : "cp"}" title="${c.n}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
   const done = x => x.opt ? 0 : x.cls.filter(c => c.N && c.n >= c.N).length;
-  const body = `<h5 class="sh">${esc(t("tr_top"))}</h5>${bars || `<p class="hint">${esc(t("tr_none"))}</p>`}<h5 class="sh">${esc(t("tr_all"))} (${T.length})</h5>` +
-    `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span><span><i style="background:#9DB4D6"></i>${esc(t("sel_note"))}</span></div>` +
+  const ctl = `<div class="seg no-print"><button data-trmode="most" class="${TRMODE === "most" ? "on" : ""}">${esc(t("tr_most"))}</button><button data-trmode="least" class="${TRMODE === "least" ? "on" : ""}">${esc(t("tr_least"))}</button><button data-trall="1" class="${TRALL ? "on" : ""}">${esc(TRALL ? t("tr_first8") : t("tr_showall") + " (" + T.length + ")")}</button></div>`;
+  const table = `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span><span><i style="background:#9DB4D6"></i>${esc(t("sel_note"))}</span></div>` +
     tbl("tchrep", [
       { h: t("col_teacher"), v: x => x.name, f: x => `<b>${esc(x.name)}</b>` },
       { h: t("col_subject"), v: x => x.subjects.join("، ") || "—" },
       { h: t("col_ent"), v: x => x.total, f: x => `<b>${x.total}</b>` },
       { h: t("tr_done"), v: x => done(x), f: x => x.opt ? "—" : `${done(x)}/${x.cls.length}` },
-      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, csv: true, sort: 2, dir: -1 });
+      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, sort: 2, dir: -1 });
+  const body = ctl + (bars || `<p class="hint">${esc(t("tr_none"))}</p>`) +
+    `<div class="cl sub ${COLL.trall ? "closed" : ""}"><div class="clh" data-coll="trall"><span class="arr"></span><h5 class="sh" style="margin:0">${esc(t("tr_all"))} (${T.length})</h5></div><div class="clbody">${table}</div></div>`;
   return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3></div><div class="clbody">${body}</div></div>`;
 }
 function vOverview() {
@@ -1041,9 +1066,10 @@ function vOverview() {
   const gRows = grades.map(g => { const gs = S.filter(s => s.grade === g); return { label: (LANG === "ar" ? "الصف " : "Grade ") + g, value: pct(gs.filter(s => s.level >= 2).length, gs.length), attr: `data-gradefilter="${esc(g)}"` }; });
   return `<h2 class="pt">${esc(t("ov_t"))}</h2>
   ${C.hasRoster ? "" : `<div class="note warn">${esc(t("comp_noroster"))}</div>`}
+  <div class="card cl ${COLL.comp === false ? "" : "closed"}"><div class="clh" data-coll="comp"><span class="arr"></span><h3>${esc(t("comp_t"))}</h3><div class="clbar">${lbar(C.overall.p, C.overall.n + "/" + C.overall.N)}</div></div><div class="clbody">
   ${cmpFilters()}<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("sc_lbl"))}</span><button data-cscope="started" class="${CMPSCOPE === "started" ? "on" : ""}">${esc(t("sc_started"))}</button><button data-cscope="all" class="${CMPSCOPE === "all" ? "on" : ""}">${esc(t("sc_all"))}</button></div>
-  <div class="card"><h3>${esc(t("comp_t"))}</h3><p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
-    <p class="hint" style="margin-top:8px">${esc(t("comp_note"))}${C.hasRoster ? " — " + esc(t("comp_noentry")) + ": " + C.noEntry : ""}</p></div>
+  <p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
+    <p class="hint" style="margin-top:8px">${esc(t("comp_note"))}${C.hasRoster ? " — " + esc(t("comp_noentry")) + ": " + C.noEntry : ""}</p></div></div>
   ${teacherReport()}
   <div class="grid g2"><div class="card"><h3>${esc(t("top_beh"))}</h3><p class="hint">${esc(t("top_hint"))}</p>${legend()}${distBars(topItems("B", 8))}</div>
   <div class="card"><h3>${esc(t("top_aca"))}</h3><p class="hint">${esc(t("top_hint"))}</p>${legend()}${distBars(topItems("A", 8))}</div></div>
@@ -1069,23 +1095,24 @@ function vClasses() {
     <span><span class="dotp" style="background:#2F6B4F">8%</span><span class="dotp" style="background:#C9A227">15%</span><span class="dotp" style="background:#D9822B">25%</span><span class="dotp" style="background:#B03A2E">40%</span> ${esc(t("cl_ring"))}</span>
     <span>${[0, 1, 2, 3].map(i => `<i class="sq" style="background:${SEGC[i]}"></i>${esc(t("lv_" + LVKEY[i]))}`).join(" ")}</span>
     <span>${esc(t("sc_lgd"))} <i class="sq" style="background:${scCol(2).b}"></i>0 <i class="sq" style="background:${scCol(5).b}"></i>5 <i class="sq" style="background:${scCol(8.5).b}"></i>10</span></div>`;
+  const stackOf = stu => { const cnt = [0, 1, 2, 3].map(l => stu.filter(s => s.level === l).length); return `<div class="stack">${cnt.map((v, i) => v ? `<i style="flex:${v};background:${SEGC[i]}" title="${esc(t("lv_" + LVKEY[i]))}: ${v}">${v}</i>` : "").join("")}</div>`; };
   const row = c => {
-    const n = c.stu.length, p = pct(c.follow, n), cnt = [0, 1, 2, 3].map(l => c.stu.filter(s => s.level === l).length);
-    const top = Object.keys(c.top).sort((a, b) => c.top[b] - c.top[a])[0] || "";
-    return `<tr class="clk" data-class="${esc(c.key)}"><td class="c"><b class="cn2">${esc(c.key)}</b></td><td class="c">${n}</td><td class="c">${c.resp}</td>
-      <td>${scBar(avg(c.bs))}</td><td>${scBar(avg(c.as))}</td><td class="c"><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td>
-      <td><div class="stack">${cnt.map((v, i) => v ? `<i style="flex:${v};background:${SEGC[i]}" title="${esc(t("lv_" + LVKEY[i]))}: ${v}">${v}</i>` : "").join("")}</div></td>
-      <td class="tp2">${top ? "▲ " + esc(itemTxt(top)) : "—"}</td></tr>`;
+    const n = c.stu.length, p = pct(c.follow, n);
+    return `<tr class="clk" data-class="${esc(c.key)}"><td><b class="cn2">${esc(c.key)}</b></td><td>${n}</td><td>${c.resp}</td>
+      <td>${scBar(avg(c.bs))}</td><td>${scBar(avg(c.as))}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(c.stu)}</td></tr>`;
   };
   const sections = grades.map(g => {
     const cl = list.filter(c => c.key.split("/")[0] === g).sort((a, b) => Number(a.key.split("/")[1]) - Number(b.key.split("/")[1]));
     const all = cl.reduce((m, c) => m.concat(c.stu), []);
     const p = pct(all.filter(s => s.level >= 2).length, all.length);
     const gb = avg(all.map(s => s.behScore).filter(x => x != null)), ga = avg(all.map(s => s.acaScore).filter(x => x != null));
-    return `<tr class="grow"><td class="c"><b>${esc(t("grade_lbl"))} ${esc(g)}</b></td><td class="c">${all.length}</td><td class="c">${cl.reduce((m, c) => m + c.resp, 0)}</td><td>${scBar(gb)}</td><td>${scBar(ga)}</td><td class="c"><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td></td><td></td></tr>` + cl.map(row).join("");
+    const key = "c" + g; if (COLL[key] === undefined) COLL[key] = true;
+    const resp = cl.reduce((m, c) => m + c.resp, 0);
+    return `<tbody class="cl gb ${COLL[key] ? "closed" : ""}"><tr class="grow sumr" data-coll="${key}"><td><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b></td><td>${all.length}</td><td>${resp}</td><td>${scBar(gb)}</td><td>${scBar(ga)}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(all)}</td></tr>
+      <tr class="grow hdr" data-coll="${key}"><td colspan="7"><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b> <small>— ${all.length} ${esc(t("col_students"))}</small></td></tr>${cl.map(row).join("")}</tbody>`;
   }).join("");
   return `<h2 class="pt">${esc(t("cl_t"))}</h2><p class="ps">${esc(t("cl_s2"))}</p>${lg}
-  <div class="card"><div class="tw"><table class="t ctab"><thead><tr><th>${esc(t("col_class"))}</th><th>${esc(t("col_students"))}</th><th>${esc(t("col_resp"))}</th><th>${esc(t("sc_beh"))}</th><th>${esc(t("sc_aca"))}</th><th>${esc(t("cl_ring"))}</th><th>${esc(t("cl_dist"))}</th><th>${esc(t("cl_top"))}</th></tr></thead><tbody>${sections}</tbody></table></div></div>`;
+  <div class="card"><div class="tw"><table class="t ctab"><colgroup><col style="width:15%"><col style="width:9%"><col style="width:10%"><col style="width:19%"><col style="width:19%"><col style="width:10%"><col style="width:18%"></colgroup><thead><tr><th>${esc(t("col_class"))}</th><th>${esc(t("col_students"))}</th><th>${esc(t("col_resp"))}</th><th>${esc(t("sc_beh"))}</th><th>${esc(t("sc_aca"))}</th><th>${esc(t("cl_ring"))}</th><th>${esc(t("cl_dist"))}</th></tr></thead>${sections}</table></div></div>`;
 }
 
 function vSubjects() {
@@ -1119,7 +1146,7 @@ function vStudents() {
   tbl("students", [
     { h: t("col_name"), v: s => sName(s), f: s => esc(sName(s)) + (s.lowRel ? ' <span title="' + esc(t("low_rel")) + '">⚠</span>' : "") }, { h: t("col_id"), v: s => s.id || "—" },
     { h: t("col_class"), v: s => clsName(s.grade, s.section) }, { h: t("col_teachers"), v: s => s.teachers.size }, { h: t("sc_beh"), v: s => s.behScore == null ? -1 : s.behScore, f: s => scPill(s.behScore) },
-    { h: t("sc_aca"), v: s => s.acaScore == null ? -1 : s.acaScore, f: s => scPill(s.acaScore) }, { h: t("col_level"), v: s => s.level, f: s => badge(s.level) }],
+    { h: t("sc_aca"), v: s => s.acaScore == null ? -1 : s.acaScore, f: s => scPill(s.acaScore) }, { h: t("col_level"), v: s => s.level * 100 + (10 - s.comb), f: s => badge(s.level) }],
     rows, { search: true, csv: true, sort: 6, dir: -1, rowAttr: stuAttr }) + `<details class="note" style="margin-top:10px"><summary><b>${esc(t("sc_how_t"))}</b></summary><div style="white-space:pre-line;margin-top:6px">${esc(t("sc_how"))}</div></details></div>`;
 }
 
@@ -1149,12 +1176,41 @@ function subjAvgs(s, c) {
   respLevels(s, c).forEach(o => { if (!o.out) (m[o.r.subject] = m[o.r.subject] || []).push(o.l); });
   return Object.keys(m).map(k => ({ subj: k, avg: mean(m[k]) }));
 }
+/* إجراءات المرشد الأكاديمي (إدخال إلكتروني محفوظ على هذا الجهاز) */
+const ACTS = {}; try { Object.assign(ACTS, JSON.parse(localStorage.getItem("marsad_acts") || "{}")); } catch (e) {}
+const actOf = k => ACTS[k] || (ACTS[k] = { sel: {}, plan: "", notes: "", date: "" });
+const actSave = () => { try { localStorage.setItem("marsad_acts", JSON.stringify(ACTS)); } catch (e) {} };
+function suggestActions(s) {
+  const L = [], beh = s.behScore, aca = s.acaScore;
+  L.push({ id: "a1", txt: "لقاء فردي مع الطالب للاستماع إليه وتحديد أسباب الملاحظات." });
+  if (s.level >= 1) L.push({ id: "a2", txt: "التواصل مع ولي الأمر وإطلاعه على الملاحظات والاتفاق على دوره في الدعم." });
+  if (s.level >= 2 || s.consensus.length >= 2) L.push({ id: "a3", txt: "عقد اجتماع مع معلمي الطالب لتوحيد أسلوب التعامل والمتابعة." });
+  if (beh != null && beh < 7) L.push({ id: "a4", txt: "اتفاق سلوكي مكتوب مع الطالب مع نظام تعزيز إيجابي." });
+  if (aca != null && aca < 7) L.push({ id: "a5", txt: "إدراج الطالب في برنامج دعم وتقوية أكاديمية في المواد التي ظهرت فيها الصعوبات." });
+  if (s.aggrMax === 4 || (beh != null && beh < 5.5)) L.push({ id: "a6", txt: "إحالة الحالة إلى الأخصائي الاجتماعي لتقييمها." });
+  if (s.level >= 2) L.push({ id: "a7", txt: "متابعة أسبوعية لمدة 4 أسابيع ثم إعادة الرصد ومقارنة النتائج." });
+  if (s.level === 0) L.push({ id: "a8", txt: "لا حاجة لإجراء خاص: تعزيز إيجابي ومتابعة دورية." });
+  return L;
+}
+function suggestPlan(s) {
+  const g = parentAgg(s), stmt = c => (ITEMS[c] && ITEMS[c].ar) ? ITEMS[c].ar : c;
+  const top = CODES.filter(c => g.rows[c] && g.rows[c].avg >= 1.5).sort((a, b) => g.rows[b].avg - g.rows[a].avg).slice(0, 3);
+  const tg = x => x == null ? null : Math.min(10, Math.round((x + 1.5) * 10) / 10);
+  const L = ["مدة الخطة: 4 أسابيع بمراجعة أسبوعية."];
+  if (top.length) { L.push("الأهداف:"); top.forEach((c, i) => L.push((i + 1) + ") معالجة: " + stmt(c))); }
+  else L.push("الأهداف: تعزيز الأداء الحالي والمحافظة على المستوى.");
+  L.push("الإجراءات: جلسة إرشادية فردية أسبوعية؛ اتفاق مع الطالب؛ تعاون مع ولي الأمر والمعلمين؛ تعزيز إيجابي عند التحسن." + top.filter(c => REC[c]).slice(0, 2).map(c => "\n• " + REC[c][0]).join(""));
+  const m = [s.behScore != null ? "السلوكي من " + s.behScore + " إلى " + tg(s.behScore) : "", s.acaScore != null ? "الأكاديمي من " + s.acaScore + " إلى " + tg(s.acaScore) : ""].filter(Boolean).join(" و");
+  if (m) L.push("مؤشر النجاح: رفع التقييم " + m + " عند إعادة الرصد.");
+  L.push("المراجعة: بعد 4 أسابيع بإعادة رصد المعلمين.");
+  return L.join("\n");
+}
 let REPMODE = "sum", REPMERGE = false;   // sum = ملخص المواد | all = جميع المواد | A = مواد المجموعة أ
 function vStudent() {
   if (!A.recs.length) return empty();
   const S = Array.from(A.students.values()).sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
   const pick = `<div class="tb no-print"><select id="pickStu"><option value="">${esc(t("rp_pick"))}</option>${S.map(s => `<option value="${SK.indexOf(s.key)}" ${s.key === CUR ? "selected" : ""}>${esc(sName(s))} (${esc(clsName(s.grade, s.section))})</option>`).join("")}</select>
-    ${CUR ? `<button class="btn sm" data-view="parent">${esc(t("rp_parent"))}</button><button class="btn ghost sm" id="btnPrint">${esc(t("rp_print"))}</button>` : ""}<button class="btn ghost sm" data-view="students">${esc(t("rp_back"))}</button></div>`;
+    ${CUR ? `<button class="btn sm" data-view="parent">${esc(t("rp_parent"))}</button><button class="btn sm" data-prev="1">🖨️ معاينة وطباعة</button>` : ""}<button class="btn ghost sm" data-view="students">${esc(t("rp_back"))}</button></div>`;
   const s = CUR && A.students.get(CUR);
   if (!s) return `<h2 class="pt">${esc(t("rp_t"))}</h2><div class="card">${pick}</div>`;
   const subs = orderSubs(Array.from(new Set(s.resp.map(r => r.subject))));
@@ -1189,8 +1245,17 @@ function vStudent() {
   };
   const rel = s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "";
   const R = repCfg();
+  if (STUPREV) return `<div class="tb no-print"><button class="btn ghost" data-prevback="1">→ رجوع للتعديل</button><button class="btn" id="btnPrint">🖨️ طباعة</button></div><div class="rwrap" id="reports" dir="rtl">${studentReport(s, R)}</div>`;
+  const ax = actOf(s.key), sug = suggestActions(s);
   return `<h2 class="pt no-print">${esc(t("rp_t"))}</h2>${pick}${rel}
-  <div class="rwrap" id="reports" dir="rtl">${studentReport(s, R)}</div>
+  <div class="card"><div class="stuhead"><h2>${esc(sName(s))}</h2><span class="scbig"><em>${esc(t("rt_beh"))}</em>${scPill(s.behScore)}</span><span class="scbig"><em>${esc(t("rt_aca"))}</em>${scPill(s.acaScore)}</span>${badge(s.level)}<span class="chip">${esc(clsName(s.grade, s.section))}</span>${s.id ? `<span class="chip">${esc(t("col_id"))}: ${esc(s.id)}</span>` : ""}</div>
+    ${s.why.length ? `<p style="margin:12px 0 0"><b>${esc(t("fu_why"))}:</b> ${s.why.map(w => `<span class="pill">${esc(t(w))}</span>`).join(" ")}</p>` : ""}</div>
+  <div class="card" id="cact"><h3>إجراءات المرشد الأكاديمي</h3><p class="hint">اقتراحات البرنامج مبنية على تقييم الطالب وملاحظات معلميه. اختر ما يناسب وعدّل الخطة، ثم اضغط «معاينة وطباعة». تُحفظ تلقائياً على هذا الجهاز.</p>
+    <div class="rcfg"><div><label>تاريخ المقابلة</label><input type="date" data-ax="date" value="${esc(ax.date)}"></div></div>
+    <h5 class="sh">الإجراءات المقترحة</h5><div class="acts">${sug.map(a => `<label class="chk"><input type="checkbox" data-actsel="${a.id}" ${ax.sel[a.id] ? "checked" : ""}> <span>${esc(a.txt)}</span></label>`).join("")}</div>
+    <h5 class="sh">الخطة العلاجية</h5><div class="tb"><button class="btn sm" data-planfill="1">✨ اقتراح خطة علاجية</button></div>
+    <textarea class="ax" rows="8" data-ax="plan" placeholder="اضغط «اقتراح خطة علاجية» ثم عدّل عليها">${esc(ax.plan)}</textarea>
+    <h5 class="sh">ملاحظات المرشد</h5><textarea class="ax" rows="3" data-ax="notes">${esc(ax.notes)}</textarea></div>
   <div class="card no-print" id="srep"><h3>${esc(t("rp_matrix"))}</h3>${seg}
     ${mxLegend}<div class="tw"><table class="t mx ${REPMODE === "sum" ? "mxs" : "mxc"}"><thead><tr><th>${esc(t("col_item"))}</th>${head}</tr></thead><tbody>
     <tr><td colspan="${ncols + 1}" style="background:#fdf6e8"><b>${esc(t("top_beh"))}</b></td></tr>${BEH.map(mrow).join("")}
@@ -1204,7 +1269,8 @@ function studentReport(s, R) {
   const rowHtml = (c, i) => {
     const r = g.rows[c];
     if (!r) return `<tr><td class="n">${i + 1}</td><td>${esc(stmt(c))}</td><td class="gc" style="text-align:center;color:#777">لم يُرصد</td><td class="sb">—</td></tr>`;
-    const sb = !r.flagged.length ? "—" : r.flagged.map(x => esc(x) + (tchOf(c, x).length ? " <small>(" + esc(tchOf(c, x).join("، ")) + ")</small>" : "")).join("<br>");
+    const tAll = new Set(); r.flagged.forEach(x => tchOf(c, x).forEach(q => tAll.add(q)));
+    const sb = !r.flagged.length ? "—" : tAll.size > 3 ? `<b>${tAll.size} معلمين</b> <small>(${r.flagged.length} ${r.flagged.length > 10 ? "مادة" : "مواد"})</small>` : r.flagged.map(x => esc(x) + (tchOf(c, x).length ? " <small>(" + esc(tchOf(c, x).join("، ")) + ")</small>" : "")).join("<br>");
     return `<tr><td class="n">${i + 1}</td><td>${esc(stmt(c))}</td><td class="gc">${gdot(r.avg)}</td><td class="sb2">${sb}</td></tr>`;
   };
   const thead = `<thead><tr><th>#</th><th>العبارة</th><th class="gc">${glLabels()}</th><th>ظهر في (المعلم)</th></tr></thead>`;
@@ -1213,6 +1279,7 @@ function studentReport(s, R) {
   const foot = pg => `<div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — لا تُسلَّم لولي الأمر</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
   const lvTxt = ["لا توجد مؤشرات تستدعي المتابعة", "يُنصح بالمراقبة", "يُنصح بالمتابعة", "متابعة ذات أولوية"][s.level];
   const consTxt = s.consensus.length ? s.consensus.slice(0, 5).map(c => esc(stmt(c))).join("؛ ") : "—";
+  const ax = actOf(s.key), selA = suggestActions(s).filter(a => ax.sel[a.id]), hasAct = selA.length || ax.plan.trim() || ax.notes.trim();
   const lines = k => Array.from({ length: k }, () => '<div class="wl"></div>').join("");
   const page1 = `<section class="page">${hdr}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(s.name)}</b></div><div><small>رقم الطالب</small><b>${esc(s.id || "—")}</b></div><div><small>الصف</small><b>${esc(s.grade)}</b></div><div><small>الشعبة</small><b>${esc(s.section)}</b></div></div>
@@ -1226,9 +1293,13 @@ function studentReport(s, R) {
     <div class="rs">ثالثاً: أبرز الملاحظات المتفق عليها بين المعلمين</div>
     <p class="rpara">${consTxt}</p>
     <div class="rs">رابعاً: إجراءات المرشد الأكاديمي مع الطالب</div>
-    <div class="wbox"><div class="wmeta"><span>تاريخ المقابلة: ........../........../..........</span><span>الإجراء المتخذ / خطة الدعم:</span></div>${lines(7)}</div>
+    <div class="wbox"><div class="wmeta"><span>تاريخ المقابلة: ${ax.date ? esc(ax.date.split("-").reverse().join("/")) : "........../........../.........."}</span></div>
+      ${selA.length ? `<ul class="rul">${selA.map(a => `<li>${esc(a.txt)}</li>`).join("")}</ul>` : ""}
+      ${ax.plan.trim() ? `<b style="font-size:8.6pt">الخطة العلاجية:</b><div class="pl">${esc(ax.plan)}</div>` : ""}
+      ${ax.notes.trim() ? `<b style="font-size:8.6pt">ملاحظات المرشد:</b><div class="pl">${esc(ax.notes)}</div>` : ""}
+      ${hasAct ? "" : lines(8)}</div>
     <div class="rs">خامساً: المتابعة اللاحقة</div>
-    <div class="wbox">${lines(3)}</div>
+    <div class="wbox">${lines(2)}</div>
     <div class="rsig"><div>المرشد الأكاديمي<br><b>${esc(R.counselor) || DOTS}</b></div><div>مديرة المدرسة<br><b>${esc(R.principal) || DOTS}</b></div><div>التاريخ<br>........../........../..........</div></div>
     ${foot(2)}</section>`;
   return page1 + page2;
@@ -1380,7 +1451,7 @@ function render() {
   $("#main").innerHTML = VIEWS[VIEW][1]();
   bindView();
 }
-function go(v) { VIEW = v; render(); window.scrollTo({ top: 0 }); }
+function go(v) { VIEW = v; STUPREV = false; render(); window.scrollTo({ top: 0 }); }
 
 function bindView() {
   if (VIEW === "import") {
@@ -1401,17 +1472,22 @@ function bindView() {
     $("#btnPrintRep").onclick = () => window.print();
   }
   if (VIEW === "student") {
-    const p = $("#pickStu"); if (p) p.onchange = () => { CUR = p.value === "" ? null : SK[Number(p.value)]; render(); };
+    const p = $("#pickStu"); if (p) p.onchange = () => { CUR = p.value === "" ? null : SK[Number(p.value)]; STUPREV = false; render(); };
     const pr = $("#btnPrint"); if (pr) pr.onclick = () => window.print();
   }
 }
 
 /* أحداث عامة بالتفويض */
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-coll],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
+  const el = e.target.closest("[data-coll],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
   if (!el) return;
   if (el.id === "md-close") { closeModal(); return; }
   if (el.dataset.coll) { const k = el.dataset.coll, box = el.closest(".cl"); COLL[k] = !COLL[k]; box.classList.toggle("closed", !!COLL[k]); return; }
+  if (el.dataset.prev) { STUPREV = true; render(); window.scrollTo({ top: 0 }); return; }
+  if (el.dataset.prevback) { STUPREV = false; render(); return; }
+  if (el.dataset.planfill) { const a = actOf(CUR), st = A.students.get(CUR); a.plan = suggestPlan(st); actSave(); render(); return; }
+  if (el.dataset.trmode) { TRMODE = el.dataset.trmode; render(); return; }
+  if (el.dataset.trall) { TRALL = !TRALL; render(); return; }
   if (el.dataset.cscope) { CMPSCOPE = el.dataset.cscope; computeCompletion(); render(); return; }
   if (el.dataset.cgrp) { CMPGRP = el.dataset.cgrp; computeCompletion(); render(); return; }
   if (el.dataset.rmode !== undefined) { REPMODE = el.dataset.rmode; render(); return; }
@@ -1427,8 +1503,10 @@ document.addEventListener("click", e => {
   if (el.dataset.item) openItem(el.dataset.item);
 });
 document.addEventListener("input", e => { const id = e.target.dataset && e.target.dataset.tsearch; if (id) { TBL[id].q = e.target.value; TBL[id].limit = CFG.PAGE; $("#tb-" + id).innerHTML = tblInner(id); } });
+document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.ax && CUR) { actOf(CUR)[d.ax] = e.target.value; actSave(); } });
 document.addEventListener("change", e => {
   const d0 = e.target.dataset || {};
+  if (d0.actsel !== undefined && CUR) { actOf(CUR).sel[d0.actsel] = e.target.checked; actSave(); return; }
   if (d0.cmerge !== undefined) { CMPMERGE = e.target.checked; computeCompletion(); render(); return; }
   if (d0.rmerge !== undefined) { REPMERGE = e.target.checked; render(); return; }
   if (d0.excl !== undefined) { EXCL = e.target.checked; render(); return; } const rk = e.target.dataset && e.target.dataset.rcfg; if (rk) { const R0 = repCfg(); R0[rk] = e.target.value; saveRepCfg(R0); render(); return; }
