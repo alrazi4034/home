@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مِرْصاد | MARSAD – Results</title>
+<!-- ملف الطلاب والمعلمين: ضعه بجانب هذه الصفحة (يُستخدم لحساب نسب إنجاز الإدخال) -->
+<script src="student_teachers_data.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* ألوان بوابة الرازي الذكية */
+  --ink:#1A1A1A;--muted:#6B6B6B;--line:#DDDDDA;--bg:#F2F2F0;--card:#fff;--clay:#C9A227;
+  --brand:#2563EB;--brand-d:#1D4FBF;--brand-l:#E8EEFC;
+  --l0:#E4E8EE;--l1:#C9D8F2;--l2:#93B2EA;--l3:#E6C35A;--l4:#C0702A;
+  --s-none:#2F6B4F;--s-watch:#2563EB;--s-follow:#B8860B;--s-prio:#7A2E2E;
+  --radius:0;--shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif;line-height:1.65;font-size:14.5px}
+button,select,input{font:inherit;color:inherit}
+.side{position:fixed;inset-block:0;inset-inline-start:0;width:248px;background:linear-gradient(180deg,var(--brand-d),var(--brand));color:#fff;display:flex;flex-direction:column;z-index:30;overflow:auto}
+.brand{padding:20px 18px 12px}
+.brand h1{margin:0;font-size:24px;line-height:1.2}
+.brand p{margin:4px 0 0;font-size:12.5px;opacity:.85}
+.brand small{opacity:.7;font-size:12px}
+.nav{padding:8px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
+.nav button{background:none;border:0;color:#fff;text-align:start;padding:10px 12px;border-radius:10px;cursor:pointer;display:flex;gap:10px;align-items:center;opacity:.88}
+.nav button:hover{background:rgba(255,255,255,.12);opacity:1}
+.nav button.on{background:rgba(255,255,255,.2);opacity:1;font-weight:600}
+.nav .ic{width:22px;text-align:center}
+.nav button:disabled{opacity:.35;cursor:not-allowed}
+.sfoot{padding:12px 14px;border-top:1px solid rgba(255,255,255,.18);display:flex;gap:8px;flex-wrap:wrap}
+.sfoot button{flex:1;background:rgba(255,255,255,.16);border:0;color:#fff;border-radius:8px;padding:8px;cursor:pointer}
+.sfoot button:hover{background:rgba(255,255,255,.28)}
+main{margin-inline-start:248px;padding:22px 24px 60px;max-width:1280px}
+h2.pt{margin:0 0 4px;font-size:24px}
+.ps{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px;margin-bottom:18px}
+.card h3{margin:0 0 4px;font-size:17px}
+.card .hint{color:var(--muted);font-size:13px;margin:0 0 12px}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.stat b{display:block;font-size:28px;line-height:1.2;color:var(--brand-d)}
+.stat span{color:var(--muted);font-size:13px}
+.btn{border:0;border-radius:10px;padding:10px 18px;cursor:pointer;font-weight:600;background:var(--brand);color:#fff}
+.btn:hover{background:var(--brand-d)}
+.btn.ghost{background:#fff;color:var(--brand);border:1px solid var(--line)}
+.btn.ghost:hover{background:var(--brand-l)}
+.btn.sm{padding:6px 12px;font-size:13px}
+.drop{border:2px dashed #9cc3cd;background:var(--brand-l);border-radius:var(--radius);padding:28px;text-align:center}
+.drop.over{background:#cfe9ef;border-color:var(--brand)}
+.drop .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.note{border-radius:10px;padding:10px 14px;font-size:14px;margin:10px 0;background:var(--brand-l);border:1px solid #bfdde4;color:var(--brand-d)}
+.note.warn{background:#fff6df;border-color:#f0d58a;color:#6d4c05}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:minmax(120px,42%) 1fr 54px;gap:10px;align-items:center;cursor:pointer;border-radius:8px;padding:2px 4px}
+.bar:hover{background:#f0f5f8}
+.bar .lb{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tr{height:16px;background:var(--l0);border-radius:99px;overflow:hidden;display:flex}
+.bar .tr i{display:block;height:100%}
+.bar .vl{font-size:13px;color:var(--muted);text-align:end}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:5px;vertical-align:-2px}
+.tb{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.tb input{border:1px solid #c9d3de;border-radius:10px;padding:8px 12px;min-width:220px;background:#fff}
+.tb select{border:1px solid #c9d3de;border-radius:10px;padding:8px 10px;background:#fff}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:10px}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th{background:#f6f9fb;text-align:start;padding:9px 10px;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;border-bottom:1px solid var(--line)}
+table.t th:hover{background:var(--brand-l)}
+table.t td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t tr[data-student]:hover,table.t tr[data-class]:hover{background:#f3f9fb;cursor:pointer}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
+.b-none{background:var(--s-none)}.b-watch{background:var(--s-watch)}.b-follow{background:var(--s-follow)}.b-prio{background:var(--s-prio)}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;background:var(--brand-l);color:var(--brand-d);font-size:12.5px;margin:1px}
+.ok{color:#2e7d5b}.bad{color:#b3332f}
+.mx td.c{text-align:center;font-size:12.5px;min-width:74px}
+.l0{background:var(--l0)}.l1{background:var(--l1)}.l2{background:var(--l2)}.l3{background:var(--l3)}.l4{background:var(--l4);color:#fff}
+.insights li{margin:6px 0}
+.modal{position:fixed;inset:0;background:rgba(20,35,50,.5);z-index:60;display:grid;place-items:center;padding:16px}
+.modal .box{background:#fff;border-radius:var(--radius);max-width:760px;width:100%;max-height:86vh;overflow:auto;padding:20px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--brand-l);border-radius:99px;padding:3px 12px;font-size:13px}
+.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.stuhead{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.stuhead h2{margin:0}
+.no-print{}
+@media(max-width:980px){
+  .side{position:static;width:auto;flex-direction:row;align-items:center;flex-wrap:wrap}
+  .nav{flex-direction:row;overflow:auto;flex:1 1 100%;order:3}
+  .nav button{white-space:nowrap}
+  main{margin-inline-start:0;padding:16px}
+  .g2{grid-template-columns:1fr}
+}
+@media print{
+  .side,.no-print,.tb{display:none!important}
+  main{margin:0;padding:0}
+  body{background:#fff}
+  .card{box-shadow:none;break-inside:avoid}
+}
+
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);cursor:pointer;border-inline-start:5px solid var(--brand);display:flex;flex-direction:column;gap:2px}
+.kpi:hover{background:#f6fafc}
+.kpi .kl{font-size:13px;color:var(--muted)}
+.kpi b{font-size:30px;line-height:1.2;color:var(--brand-d)}
+.kpi small{color:var(--muted);font-size:12.5px;line-height:1.45}
+.kpi.t2{border-inline-start-color:#c47a12}.kpi.t3{border-inline-start-color:#2f5fb3}.kpi.t4{border-inline-start-color:#2e8a5b}.kpi.t5{border-inline-start-color:#7a4fa3}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.seg button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 14px;cursor:pointer;font-size:13.5px}
+.seg button:hover{background:var(--brand-l)}
+.seg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+td.cdone{background:rgba(46,138,91,.22)}td.cprog{background:rgba(242,200,121,.45)}td.cnone{background:#eef2f6;color:#8a97a5}
+.cmp td.c{text-align:center;min-width:82px;font-size:13px;line-height:1.3}.cmp th{white-space:normal;min-width:82px;font-size:12.5px}
+.cmp small{color:var(--muted)}
+.cmp td.sl{text-align:start;min-width:150px;font-size:13px}
+td.cunav{background:repeating-linear-gradient(45deg,#f3f5f8,#f3f5f8 6px,#e9edf2 6px,#e9edf2 12px);color:#8a97a5}
+tr.unav td.sl{color:#8a97a5}
+h4.gt{margin:16px 0 6px;color:var(--brand-d);font-size:15px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;margin-inline-start:10px;cursor:pointer}
+td.ex{opacity:.55;font-style:italic}
+.pbar{height:10px;background:var(--l0);border-radius:99px;overflow:hidden;min-width:90px}.pbar i{display:block;height:100%;background:var(--s-none)}
+.b-grey{background:#8a97a5}.b-opt{background:#7a4fa3}
+.rcfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:10px}
+.rcfg label{font-size:13px;color:var(--muted);display:block}
+.rcfg input{width:100%;border:1px solid #c9d3de;border-radius:8px;padding:7px 10px;background:#fff}
+.rwrap{overflow:auto;padding:12px;background:#e6ebf0;border-radius:12px}
+.page{width:210mm;height:296mm;padding:10mm 13mm 8mm;background:#fff;margin:0 auto 14px;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;position:relative;font-size:10.4pt;line-height:1.5;color:#111;display:flex;flex-direction:column;direction:rtl;font-family:"Segoe UI","Noto Sans Arabic",Tahoma,Arial,sans-serif}
+.page *{box-sizing:border-box}
+.rh{border:1.6px solid #1D3F8F;border-radius:6px;overflow:hidden;margin-bottom:5px}
+.rh-top{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1D3F8F;color:#fff}
+.rh-school{font-weight:700;font-size:12pt;flex:1}
+.rh-title{flex:2;text-align:center;font-weight:700;font-size:13.5pt;line-height:1.3}
+.rh-title small{display:block;font-weight:400;font-size:9pt;opacity:.92}
+.rh-date{flex:1;text-align:end;font-size:9pt}
+.rh-sign{display:flex;justify-content:space-between;padding:5px 12px;background:#E8EEFC;font-size:9.6pt}
+.rh2{display:flex;justify-content:space-between;align-items:center;border-bottom:1.6px solid #1D3F8F;padding-bottom:4px;margin-bottom:4px;font-size:9.5pt}
+.rs{font-weight:700;font-size:11.5pt;color:#1D3F8F;border-bottom:1.5px solid #1D3F8F;margin:7px 0 4px;padding-bottom:1px}
+.ri{display:grid;grid-template-columns:2.2fr 1.2fr .8fr 1fr;border:1px solid #9fb4bb;border-radius:5px;overflow:hidden}
+.ri div{padding:4px 8px;border-inline-end:1px solid #cfdadd}.ri div:last-child{border:0}.ri small{display:block;color:#555;font-size:8pt}
+.rt{width:100%;border-collapse:collapse;font-size:9.6pt}
+.rt th,.rt td{border:1px solid #9fb4bb;padding:3.6px 5px}
+.rt th{background:#E8EEFC;font-weight:700;text-align:center;font-size:9pt}
+.rt td.n{width:6mm;text-align:center;color:#555}
+.rt td.lv{width:11mm;text-align:center;font-size:10pt;padding:0}
+.rt td.on{background:#cfd9dd}
+.rt td.sb{width:26mm;font-size:8.2pt;color:#333}
+.rt tr:nth-child(even) td{background:#f9fbfb}.rt tr:nth-child(even) td.on{background:#cfd9dd}
+.rl{font-size:8.6pt;color:#444;margin-top:3px}
+.rpara{margin:3px 0;text-align:justify}
+.rul{margin:2px 0;padding-inline-start:16px}.rul li{margin:1.5px 0}
+.rsig{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:auto;text-align:center;font-size:9pt}
+.rsig div{border-top:1px solid #333;padding-top:3px;margin-top:20px}
+.rfoot{border-top:1px solid #9fb4bb;margin-top:6px;padding-top:3px;font-size:7.8pt;color:#555;display:flex;justify-content:space-between}
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .rwrap{padding:0;background:none;overflow:visible;border-radius:0}
+  .page{margin:0;box-shadow:none;break-after:page;page-break-after:always}
+  .page:last-child{break-after:auto;page-break-after:auto}
+}
+/* ===== نمط بوابة الرازي الذكية / برنامج الحضور ===== */
+h1,h2,h3,h4,.brand h1{font-family:"El Messiri","IBM Plex Sans Arabic",sans-serif}
+.side{background:#fff;color:var(--ink);border-inline-end:1px solid var(--line);box-shadow:none}
+.brand{border-bottom:1px solid var(--line);text-align:center;padding:18px 14px 12px}
+.brand-logo{height:64px;width:auto;display:block;margin:0 auto 8px}
+.brand h1{font-size:22px;color:var(--ink)}
+.brand p{color:var(--brand);font-weight:700;opacity:1}
+.brand small{color:var(--muted);opacity:1}
+.nav{padding:10px 0;gap:0}
+.nav button{color:var(--ink);border-radius:0;opacity:1;border-inline-start:3px solid transparent;padding:10px 16px}
+.nav button:hover{background:var(--brand-l)}
+.nav button.on{background:var(--brand-l);color:var(--brand-d);border-inline-start-color:var(--clay);font-weight:700}
+.sfoot{border-top:1px solid var(--line)}
+.sfoot button{background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:0;font-weight:600}
+.sfoot button:hover{background:var(--brand-l);border-color:var(--brand)}
+h2.pt{font-size:23px;border-inline-start:4px solid var(--clay);padding-inline-start:10px}
+.card,.stat,.kpi{box-shadow:none}
+.kpi{border-inline-start-width:4px}
+.kpi.t2{border-inline-start-color:var(--clay)}.kpi.t3{border-inline-start-color:var(--brand)}.kpi.t4{border-inline-start-color:var(--s-none)}.kpi.t5{border-inline-start-color:var(--s-prio)}
+.kpi:hover,table.t tr[data-student]:hover,table.t tr[data-class]:hover{background:var(--brand-l)}
+.btn{border-radius:0;border-bottom:2px solid var(--clay)}
+.btn.ghost{border-bottom:1px solid var(--line)}
+.btn.sm{border-bottom-width:1px}
+.seg button{border-radius:0}
+.badge,.pill,.chip{border-radius:0}
+.bar .tr,.pbar{border-radius:0}.bar{border-radius:0}.bar:hover{background:var(--brand-l)}
+.tw{border-radius:0}
+table.t th{background:#FAFAF8}
+table.t th:hover{background:var(--brand-l)}
+.tb input,.tb select,.rcfg input{border-radius:0;border-color:var(--line)}
+.note{border-radius:0}
+.note.warn{background:#FBF3D9;border-color:#E7D7A3;color:#8A6A1E}
+.drop{border-radius:0;border-color:var(--brand);background:var(--brand-l)}
+.drop.over{background:#D5E1FA}
+.modal .box{border-radius:0}
+.rwrap{border-radius:0;background:#E6E6E2}
+td.cdone{background:rgba(47,107,79,.2)}td.cprog{background:rgba(201,162,39,.28)}
+.b-opt{background:var(--s-prio)}
+/* ===== الترويسة والتبويبات في الأعلى ===== */
+.side{position:sticky;top:0;inset-block:auto;inset-inline:auto;width:auto;flex-direction:row;align-items:center;gap:6px;padding:0 16px;overflow:visible;border-inline-end:0;border-bottom:1px solid var(--line);z-index:40}
+.brand{display:flex;align-items:center;gap:10px;border:0;padding:6px 0;text-align:start;flex:none}
+.brand .brand-logo{height:46px;margin:0}
+.brand h1{font-size:20px;margin:0}
+.brand p{display:none}
+.brand small{display:block;font-size:11.5px}
+.nav{flex-direction:row;flex:1;overflow-x:auto;padding:0 8px;gap:0;order:0}
+.nav button{border-inline-start:0;border-bottom:3px solid transparent;padding:16px 12px;white-space:nowrap}
+.nav button.on{border-inline-start-color:transparent;border-bottom-color:var(--clay)}
+.sfoot{border:0;padding:0;flex:none}.sfoot button{flex:none;padding:6px 14px}
+main{margin-inline-start:0;max-width:none;padding:18px 22px 60px}
+.nav button{padding:16px 9px;font-size:13.5px;gap:5px}.brand small{display:none}
+.mxc{width:auto!important}
+/* ===== خط متدرج ===== */
+.gl{position:relative;direction:rtl;height:9px;border-radius:5px;background:linear-gradient(270deg,#2F6B4F,#E6C35A 50%,#C0392B);margin:8px 9px;min-width:110px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.gd{position:absolute;top:50%;width:15px;height:15px;margin:-7.5px -7.5px 0 0;border-radius:50%;background:#fff;border:3px solid #1A1A1A;box-sizing:border-box}
+.gll{display:flex;justify-content:space-between;font-size:9pt;font-weight:600;direction:rtl;padding:0 2px;white-space:nowrap}
+.mx td.gcell{min-width:170px}.mxs th{min-width:170px}
+.rt th.gc,.rt td.gc{width:62mm;padding:2px 6px}
+.rt td.gc .gl{margin:6px 8px}
+/* ===== جدول الطالب بالألوان ===== */
+.mx td:first-child,.mx th:first-child{white-space:nowrap}
+.mxc td.c{min-width:0;width:34px;height:30px;padding:0;border-inline-start:1px solid #fff}
+.mx td.m0{background:#BFE0CB}.mx td.m2{background:#F3D98B}.mx td.m4{background:#DE7F6B}
+.mx td.cx{background:repeating-linear-gradient(45deg,#f3f5f8,#f3f5f8 4px,#e4e8ee 4px,#e4e8ee 8px)}
+.mx td.ex{outline:2px dashed #444;outline-offset:-3px}
+th.rot{height:190px;width:34px;min-width:34px;padding:4px 0;vertical-align:bottom;cursor:default;text-align:center;white-space:normal}
+th.rot div{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;margin:0 auto;font-size:12.5px;font-weight:600;max-height:180px;overflow:hidden}
+.mxlg{align-items:center;margin:6px 0}
+.mxlg i{width:18px;height:14px;border-radius:0;vertical-align:-2px}
+.mxlg .k0{background:#BFE0CB}.mxlg .k2{background:#F3D98B}.mxlg .k4{background:#DE7F6B}
+.mxlg .kx{background:repeating-linear-gradient(45deg,#f3f5f8,#f3f5f8 3px,#d9dee6 3px,#d9dee6 6px)}
+.mxlg .ke{background:#fff;border:2px dashed #444}
+/* ===== الصفوف والشعب (بطاقات مرئية) ===== */
+.gh2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.gh2 h3{margin:0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ctile{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-inline-start:5px solid var(--c);background:#fff;padding:14px;cursor:pointer;transition:.12s}
+.ctile:hover{background:var(--brand-l);transform:translateY(-2px)}
+.ring{width:78px;height:78px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p) * 1%),#E4E8EE 0);display:grid;place-items:center;flex:none}
+.ring b{width:58px;height:58px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:16px;color:var(--c)}
+.ring.sm{display:inline-grid;width:20px;height:20px;vertical-align:-5px}.ring.sm b{width:10px;height:10px}
+.cinfo{flex:1;min-width:0}.cinfo h4{margin:0;font-size:20px;font-family:"El Messiri",sans-serif}.cinfo small{color:var(--muted)}
+.stack{display:flex;height:18px;margin:7px 0;background:#E4E8EE}.stack i{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-style:normal;min-width:16px}
+.mini{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.top{font-size:12.5px;margin-top:5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clegend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px}
+.clegend i{display:inline-block;width:14px;height:14px;margin-inline-end:5px;vertical-align:-2px}
+.clegend .clv i{margin-inline-start:8px}
+@media print{
+  .side{display:none!important}
+  main{margin:0!important;padding:0!important;max-width:none!important}
+  .rwrap{background:none!important;padding:0!important;overflow:visible!important}
+  .page{margin:0!important;box-shadow:none!important}
+}
+
+.cl .clh{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;padding:6px 2px;flex-wrap:wrap}
+.cl .clh h3,.cl .clh h4{margin:0}
+.cl .arr::before{content:"▾";display:inline-block;width:18px;color:var(--brand);font-size:16px}
+.cl.closed .arr::before{content:"◂"}
+[dir=ltr] .cl.closed .arr::before{content:"▸"}
+.cl.closed .clbody{display:none}
+.cl .clbar{display:none;flex:1;min-width:200px;max-width:420px}
+.cl.closed .clbar{display:block}
+.lb{display:flex;align-items:center;gap:10px}
+.lbt{flex:1;height:14px;background:#e6e9ee;border:1px solid var(--line);overflow:hidden;position:relative}
+.lbt i{display:block;height:100%;background:repeating-linear-gradient(135deg,#2F6B4F 0 10px,#3d8062 10px 20px);background-size:28px 28px;animation:lbmove 1s linear infinite}
+@keyframes lbmove{to{background-position:28px 0}}
+.lb span{white-space:nowrap;font-size:13px}
+.cmp th{text-align:center!important}.cmp th:first-child{text-align:start!important}
+h5.sh{margin:14px 0 8px;font-size:14px;color:var(--brand-d)}
+.tops{display:grid;gap:6px}
+.tp{display:grid;grid-template-columns:24px minmax(160px,1.2fr) 3fr 44px;gap:10px;align-items:center;font-size:13px}
+.tp .rk{background:var(--brand);color:#fff;text-align:center;font-size:12px}
+.tp .tn small{display:block;color:var(--muted);font-size:11.5px}
+.tp .tr{height:12px;background:#e6e9ee}.tp .tr i{display:block;height:100%;background:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.cchip{display:inline-flex;gap:5px;align-items:center;padding:2px 8px;font-size:12px;border:1px solid transparent}
+.cchip small{font-size:10.5px;opacity:.85}
+.cchip.cd{background:#2F6B4F;color:#fff}.cchip.cp{background:#FBEFCF;color:#6b4e00;border-color:#E0A82E}.cchip.co{background:#E4ECF7;color:#26466d;border-color:#9DB4D6}.cchip.cn{background:#eee;color:#777}
+.scp{display:inline-flex;align-items:baseline;gap:2px;padding:2px 10px;border:1px solid;font-size:14px;white-space:nowrap}
+.scp small{font-size:11px;opacity:.8}.scp.none{border-color:#ddd;color:#999}
+.scb{display:flex;align-items:center;gap:8px;min-width:120px}.scb b{width:30px;text-align:center}
+.sctr{flex:1;height:12px;background:#e6e9ee}.sctr i{display:block;height:100%}
+.dotp{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;color:#fff;font-weight:700;font-size:13px;margin-inline-end:4px}
+.clegend2{display:flex;gap:22px;align-items:center;flex-wrap:wrap;font-size:13px}
+.clegend2 .dotp{width:30px;height:30px;font-size:10px}
+.sq{display:inline-block;width:13px;height:13px;margin-inline:8px 4px;vertical-align:-2px}
+.ctab td{vertical-align:middle}.ctab tr.clk{cursor:pointer}.ctab tr.clk:hover{background:var(--brand-l)}
+.ctab tr.grow td{background:#EEF1F6;border-top:2px solid var(--brand)}
+.ctab .cn2{font-size:16px}.ctab td.tp2{font-size:12.5px;color:#7A2E2E;min-width:180px}
+.ctab .stack{min-width:150px}
+.scbig{display:inline-flex;align-items:center;gap:6px}.scbig em{font-style:normal;color:var(--muted);font-size:13px}.scbig .scp{font-size:20px;padding:4px 14px}
+th.c{text-align:center!important}
+@media print{
+  .noprint2{display:none!important}
+  #srep{width:210mm;box-sizing:border-box;padding:7mm 8mm;margin:0 auto}
+  #srep .card{border:1px solid #bbb;box-shadow:none;padding:8px 10px;margin:0 0 6px}
+  #srep .tw{overflow:visible!important}
+}
+#srep.pfit{width:210mm;box-sizing:border-box}
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="brand"><img class="brand-logo" onclick="location.href='index.html'" title="الرجوع إلى البوابة" style="cursor:pointer" src="data:image/png;base64,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" alt=""><h1 id="bTitle"></h1><p id="bDesc"></p><small id="bSchool"></small></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="sfoot"><button id="langBtn" type="button"></button></div>
+</aside>
+<main id="main"></main>
+
+<script>
+/* =====================================================================
+   إعدادات ونصوص | SETTINGS & TEXTS
+   ===================================================================== */
+const CFG = {
+  FLAG_LEVEL: 3,            // «دائماً» (4) يُعدّ ملاحظة بارزة
+  PAGE: 100,
+  SCHOOL: ["مدرسة الرازي", "Al Razi School"],
+  /* مواد انتقائية لا تشمل كل الطلاب: لا تدخل في نسبة الإنجاز */
+  OPTIONAL_SUBJECTS: [],
+  /* مجموعات المواد (بالترتيب). يمكن تعديلها أيضاً من ملف البيانات عبر window.PQ_SUBJECT_GROUPS */
+  GROUP_A: ["التربية الاسلامية", "اللغة العربية", "اللغة الانجليزية", "الرياضيات", "العلوم", "الدراسات الاجتماعية"],
+  GROUP_B: ["الذكاء الاصطناعي والتكنولوجيا", "التربية الرياضية", "الفنون السمعية", "الفنون البصرية", "الدراما", "اللغة الفرنسية"],
+  UNAVAIL: ["الفنون البصرية"],          // غير متاحة الآن
+  SELECTIVE: ["اللغة الفرنسية"],        // تُدرَّس لصفوف مختارة (لا تدخل في النسبة)
+  OUTLIER_GAP: 2                        // استبعاد الرد البعيد عن الوسيط بمقدار ≥ هذا الحد
+};
+if (window.PQ_SUBJECT_GROUPS) ["A", "B"].forEach(k => { if (window.PQ_SUBJECT_GROUPS[k]) CFG["GROUP_" + k] = window.PQ_SUBJECT_GROUPS[k]; });
+if (window.PQ_SUBJECT_GROUPS && window.PQ_SUBJECT_GROUPS.unavailable) CFG.UNAVAIL = window.PQ_SUBJECT_GROUPS.unavailable;
+if (window.PQ_SUBJECT_GROUPS && window.PQ_SUBJECT_GROUPS.selective) CFG.SELECTIVE = window.PQ_SUBJECT_GROUPS.selective;
+const LV = { never: 0, rarely: 1, sometimes: 2, often: 3, always: 4 };
+const LVL_AR = ["لا يظهر", "أحياناً", "دائماً"];
+const LVL_EN = ["None", "Sometimes", "Always"];
+const bkt = v => v < 1 ? 0 : v < 3 ? 1 : 2;      // متوسط → فئة من ثلاث
+const lc = v => [0, 2, 4][bkt(v)];
+const BEH = Array.from({ length: 15 }, (_, i) => "B" + String(i + 1).padStart(2, "0"));
+const ACA = Array.from({ length: 8 }, (_, i) => "A" + String(i + 1).padStart(2, "0"));
+const CODES = BEH.concat(ACA);
+const ITEMS = {};  // code -> {ar,en} (تُقرأ من ملفات JSON)
+
+const D = {
+ title:["مِرْصاد","MARSAD"], desc:["منظومة الرصد والتحليل السلوكي والأكاديمي","Behavioral & Academic Observation and Analysis System"],
+ lang:["English","العربية"],
+ v_import:["استيراد البيانات","Import data"], v_overview:["نظرة عامة","Overview"], v_classes:["الصفوف والشعب","Grades & sections"],
+ v_subjects:["المواد الدراسية","Subjects"], v_students:["الطلاب","Students"], v_student:["تقرير الطالب","Student report"],
+ v_followup:["المتابعة والتوصيات","Follow-up & recommendations"], v_strengths:["نقاط القوة","Strengths"],
+ imp_t:["استيراد مجلد الاستجابات | Import Responses Folder","Import Responses Folder | استيراد مجلد الاستجابات"],
+ imp_s:["اختر المجلد الذي يحتوي على ملفات JSON الناتجة من صفحة إدخال المعلمين. تتم القراءة والتحليل محلياً داخل المتصفح ولا يُرفع أي ملف إلى أي خادم.","Choose the folder holding the JSON files created by the teacher input page. Everything is read and analysed locally in your browser; nothing is uploaded."],
+ imp_btn:["استيراد مجلد الاستجابات","Import Responses Folder"], imp_files:["اختيار ملفات منفصلة","Select individual files"],
+ imp_drop:["أو اسحب المجلد/الملفات وأفلتها هنا","or drag and drop the folder/files here"],
+ imp_nofolder:["متصفحك لا يدعم اختيار المجلدات؛ استخدم «اختيار ملفات منفصلة» أو السحب والإفلات.","Your browser does not support folder picking; use \"Select individual files\" or drag & drop."],
+ imp_add:["الاستيراد إضافي: لا تُحذف البيانات السابقة. إعادة استيراد ملف محدَّث تستبدل الاستجابة الأقدم لنفس المعلم/المادة/الطالب.","Importing is additive: earlier data is kept. Re-importing an updated file replaces the older response for the same teacher/subject/student."],
+ imp_sum:["ملخص آخر عملية استيراد","Last import summary"], imp_cum:["إجمالي البيانات الحالية","Current data totals"],
+ s_found:["ملفات JSON المكتشفة","JSON files found"], s_ok:["ملفات سليمة (جديدة/محدَّثة)","Valid files (new/updated)"],
+ s_dup:["ملفات مكررة","Duplicates"], s_bad:["ملفات غير صالحة","Invalid files"], s_skipped:["ملفات غير JSON تم تجاهلها","Non-JSON files ignored"],
+ s_students:["الطلاب الفريدون","Unique students"], s_teachers:["المعلمون المشاركون","Participating teachers"], s_subjects:["المواد المغطاة","Subjects covered"],
+ s_resp:["الاستجابات","Responses"], s_files:["ملفات","files"],
+ log_t:["سجل الملفات","File log"], f_file:["الملف","File"], f_status:["الحالة","Status"], f_reason:["السبب","Reason"],
+ st_new:["جديد","New"], st_upd:["محدَّث","Updated"], st_dupf:["ملف مكرر","Duplicate file"], st_dups:["استجابة مكررة للطالب","Duplicate student response"], st_bad:["غير صالح","Invalid"],
+ r_json:["ملف JSON غير قابل للقراءة","Unreadable JSON"], r_obj:["بنية الملف غير صحيحة","Invalid file structure"],
+ r_app:["الملف ليس من برنامج Marsad","File is not from Marsad"], r_student:["بيانات الطالب ناقصة","Student data missing"],
+ r_teacher:["اسم المعلم ناقص","Teacher name missing"], r_subject:["المادة ناقصة","Subject missing"],
+ r_beh:["إجابات الملاحظات السلوكية ناقصة","Behavioral answers missing"], r_aca:["إجابات الملاحظات الأكاديمية ناقصة","Academic answers missing"],
+ r_ans:["إجابة غير معروفة في العنصر","Unknown answer in item"], r_same:["نفس معرف الاستجابة مستورد سابقاً","Same response ID already imported"],
+ r_newer:["توجد استجابة أحدث لنفس المعلم والمادة والطالب","A newer response exists for the same teacher, subject and student"],
+ r_replaced:["استبدلت استجابة أقدم","Replaced an older response"], r_read:["تعذّرت قراءة الملف","Could not read the file"],
+ clear:["مسح البيانات المستوردة","Clear imported data"], clear_q:["سيتم حذف جميع البيانات المستوردة. متابعة؟","All imported data will be deleted. Continue?"],
+ nodata:["لا توجد بيانات بعد. ابدأ باستيراد مجلد الاستجابات.","No data yet. Start by importing the responses folder."], goimp:["الذهاب إلى الاستيراد","Go to import"],
+ low_rel:["مطابقة أقل موثوقية: لا يوجد رقم طالب، تمت المطابقة بالاسم والصف والشعبة.","Lower-reliability match: no student ID; matched by name, grade and section."],
+ low_rel_n:["طلاب بلا رقم طالب (مطابقة أقل موثوقية)","Students without ID (lower-reliability match)"],
+ method:["طريقة القراءة: «ملاحظة بارزة» = أجاب معلم بـ «دائماً». مؤشر التكرار (0–4) متوسط ما رصده المعلمون وليس درجة ولا تشخيصاً، والرصد مبني على ملاحظة المعلمين فقط.","How to read: a \"notable observation\" = a teacher answered \"Often\" or \"Always\". The frequency index (0–4) is the mean of teacher observations, not a grade or a diagnosis; entries reflect teacher observation only."],
+ ov_t:["نظرة عامة","Overview"], ov_s:["أبرز ما تكشفه البيانات المستوردة.","Key findings from the imported data."],
+ k_students:["طلاب تم تحليلهم","Students analysed"], k_resp:["استجابات المعلمين","Teacher responses"], k_follow:["طلاب يُنصح بمتابعتهم","Students advised follow-up"],
+ k_prio:["حالات ذات أولوية","Priority cases"], k_agree:["اتفاق المعلمين","Teacher agreement"], k_social:["إحالات مقترحة للأخصائي","Suggested social-worker referrals"],
+ ins_t:["خلاصة تلقائية","Automatic summary"], top_beh:["أكثر الملاحظات السلوكية تكراراً","Most frequent behavioral observations"],
+ top_aca:["أكثر الصعوبات الأكاديمية تكراراً","Most frequent academic difficulties"], top_hint:["الشريط يوضح توزيع إجابات المعلمين؛ اضغط على أي عنصر لرؤية الطلاب المعنيين.","The bar shows how teachers answered; click an item to see the students concerned."],
+ by_grade:["نسبة الطلاب الذين يُنصح بمتابعتهم حسب الصف","Share of students advised follow-up, by grade"],
+ cl_t:["الصفوف والشعب","Grades & sections"], cl_s:["أين تتركز الملاحظات؟ اضغط على أي شعبة لعرض طلابها.","Where do observations concentrate? Click a section to see its students."],
+ col_class:["الشعبة","Section"], col_students:["الطلاب","Students"], col_resp:["الاستجابات","Responses"], col_beh:["مؤشر سلوكي","Behavior idx"], col_aca:["مؤشر أكاديمي","Academic idx"],
+ col_pct:["% متابعة","% follow-up"], col_top:["أبرز ملاحظة","Top observation"], col_name:["الطالب","Student"], col_id:["رقم الطالب","Student No."], col_teachers:["المعلمون","Teachers"],
+ col_flag:["ملاحظات بارزة","Notable"], col_cons:["متفق عليها","Agreed by 2+"], col_level:["مستوى المتابعة","Follow-up level"], col_social:["الأخصائي","Social worker"],
+ col_subject:["المادة","Subject"], col_flagrate:["% ملاحظات بارزة","% notable"], col_students_n:["عدد الطلاب","Students"],
+ sj_t:["المواد الدراسية","Subjects"], sj_s:["هل ترتبط الملاحظات بمادة معينة أم تظهر في مختلف المواد؟","Are observations tied to a subject or do they appear across subjects?"],
+ sj_spec:["انتشار أبرز الملاحظات عبر المواد","Spread of top observations across subjects"], col_item:["الملاحظة","Observation"], col_spread:["النمط","Pattern"],
+ p_wide:["منتشرة عبر المواد","Across subjects"], p_spec:["مرتبطة بمواد محددة","Subject-specific"], p_few:["بيانات قليلة","Little data"],
+ stu_t:["الطلاب","Students"], stu_s:["ابحث وصفِّ وافرز. اضغط على طالب لفتح تقريره.","Search, filter and sort. Click a student to open the report."],
+ f_all:["الكل","All"], f_grade:["الصف","Grade"], f_section:["الشعبة","Section"], f_level:["المستوى","Level"], f_subject:["المادة","Subject"], f_search:["بحث بالاسم أو الرقم…","Search name or ID…"],
+ csv:["تصدير CSV","Export CSV"], more:["عرض المزيد","Show more"], rows:["صف","rows"],
+ lv_none:["لا ملاحظات بارزة","No notable observations"], lv_watch:["يُنصح بالمراقبة","Keep observing"], lv_follow:["يُنصح بالمتابعة","Follow-up advised"], lv_prio:["متابعة ذات أولوية","Priority follow-up"],
+ rp_t:["تقرير الطالب","Student report"], rp_pick:["اختر طالباً…","Pick a student…"], rp_print:["طباعة / PDF","Print / PDF"], rp_back:["رجوع للطلاب","Back to students"],
+ rp_matrix:["ما رصده كل معلم","What each teacher observed"], rp_agree:["اتفاق المعلمين على هذا الطالب","Teacher agreement on this student"],
+ rp_one:["تقييم معلم واحد فقط؛ يُستحسن مقارنته بملاحظات بقية المعلمين.","Only one teacher assessed this student; compare with other teachers' observations."],
+ rp_str:["نقاط القوة","Strengths"], rp_notes:["ملاحظات إضافية","Additional notes"], rp_rec:["التدخلات التربوية المقترحة","Suggested educational interventions"],
+ rp_none:["لا توجد ملاحظات بارزة تستدعي تدخلاً خاصاً. يُنصح بمواصلة التعزيز الإيجابي.","No notable observations calling for special intervention. Continue positive reinforcement."],
+ rp_disc:["هذه مقترحات تربوية مبنية على ملاحظات المعلمين، وليست تشخيصاً نفسياً أو طبياً.","These are educational suggestions based on teacher observations, not a psychological or medical diagnosis."],
+ rp_social:["طلب معلم أو أكثر متابعة الأخصائي الاجتماعي: ","Teacher(s) requested social-worker follow-up: "],
+ rp_parent:["لم يتواصل المعلمون التالون مع ولي الأمر: ","These teachers have not contacted the parent: "],
+ rp_team:["عقد اجتماع قصير لفريق معلمي الطالب لتوحيد أسلوب التعامل مع الملاحظات المتفق عليها.","Hold a short meeting of the student's teachers to align on the observations they agree on."],
+ rp_single:["ملاحظات ظهرت لدى معلم واحد فقط؛ تحقق منها مع بقية المعلمين قبل التدخل.","Some observations come from a single teacher; verify with others before intervening."],
+ rp_gen_parent:["التواصل مع ولي الأمر ومشاركته الملاحظات وخطة الدعم.","Contact the parent to share observations and the support plan."],
+ rp_gen_social:["إحالة الحالة إلى الأخصائي الاجتماعي للمتابعة.","Refer to the social worker for follow-up."],
+ rp_date:["تاريخ الاستجابة","Response date"],
+ fu_t:["المتابعة والتوصيات","Follow-up & recommendations"], fu_s:["قوائم عملية للمرشد الأكاديمي وفريق الدعم.","Practical lists for the academic counselor and the support team."],
+ fu_prio:["متابعة ذات أولوية","Priority follow-up"], fu_follow:["يُنصح بالمتابعة","Follow-up advised"], fu_soc:["طُلب فيها الأخصائي الاجتماعي","Social worker requested"],
+ fu_par:["ملاحظات بارزة دون تواصل مع ولي الأمر","Notable observations, parent not contacted"], fu_none:["لا حالات في هذه القائمة.","No cases in this list."],
+ fu_why:["السبب","Why"], fu_prio_why:["سلوك عدواني مرصود بدرجة عالية، أو طلب أخصائي من أكثر من معلم.","Aggression observed at a high level, or social worker requested by several teachers."],
+ w_aggr:["سلوك عدواني","Aggression"], w_soc:["طلب أخصائي","Social worker requested"], w_cons:["ملاحظات متفق عليها","Agreed observations"], w_many:["ملاحظات بارزة كثيرة","Many notable observations"],
+ sg_t:["نقاط القوة","Strengths"], sg_s:["ما يذكره المعلمون من نقاط قوة لدى الطلاب.","Strengths teachers mention about students."],
+ sg_words:["أكثر الكلمات تكراراً","Most frequent words"], sg_count:["طلاب لديهم نقاط قوة مسجلة","Students with recorded strengths"],
+ sg_none:["لم تُسجَّل نقاط قوة في البيانات الحالية.","No strengths recorded in the current data."],
+ md_t:["الطلاب الذين ظهرت لديهم الملاحظة","Students with this observation"], close:["إغلاق","Close"], teachers_n:["معلم","teachers"],
+ lvl_hdr:["التوزيع","Distribution"], ins_item:["أكثر ملاحظة سلوكية تكراراً: «{x}» (بارزة في {p}% من الإجابات) – {s}.","Most frequent behavioral observation: \"{x}\" (notable in {p}% of answers) – {s}."],
+ ins_item_a:["أكثر صعوبة أكاديمية تكراراً: «{x}» (بارزة في {p}% من الإجابات) – {s}.","Most frequent academic difficulty: \"{x}\" (notable in {p}% of answers) – {s}."],
+ ins_class:["الشعبة الأعلى نسبة في المتابعة: {x} ({p}% من طلابها).","Section with the highest follow-up share: {x} ({p}% of its students)."],
+ ins_follow:["{n} طالباً يُنصح بمتابعتهم منهم {m} ذوو أولوية.","{n} students advised follow-up, {m} of them priority."],
+ ins_agree:["متوسط اتفاق المعلمين على الطلاب الذين قيّمهم أكثر من معلم: {p}%.","Average teacher agreement for students assessed by 2+ teachers: {p}%."],
+ ins_agree_none:["لا يوجد طلاب قيّمهم أكثر من معلم بعد، لذا لا يمكن قياس اتفاق المعلمين.","No student has been assessed by 2+ teachers yet, so agreement cannot be measured."],
+ ins_str:["{n} طالباً لديهم نقاط قوة مسجلة.","{n} students have recorded strengths."],
+ ins_soc:["{n} طالباً طلب معلم أو أكثر لهم متابعة الأخصائي الاجتماعي.","{n} students were flagged by one or more teachers for social-worker follow-up."],
+ ins_subj:["أكثر مادة تسجيلاً للملاحظات البارزة: {x} ({p}%).","Subject with the most notable observations: {x} ({p}%)."],
+ sp_wide:["تظهر في {n} مواد","appears in {n} subjects"], sp_spec:["تتركز في: {x}","concentrated in: {x}"]
+};
+
+Object.assign(D,{
+ v_parent:["تقرير ولي الأمر","Parent report"],
+ k_comp:["نسبة إنجاز الإدخال","Entry completion"],
+ kp_beh:["أكثر ملاحظة سلوكية","Top behavioral observation"], kp_aca:["أكثر صعوبة أكاديمية","Top academic difficulty"],
+ kp_class:["الشعبة الأعلى في المتابعة","Section with most follow-up"], kp_subj:["أكثر مادة ملاحظات بارزة","Subject with most notable observations"],
+ kp_agree:["اتفاق المعلمين","Teacher agreement"], kp_str:["طلاب لديهم نقاط قوة","Students with strengths"],
+ kp_agree_d:["طالب قيّمه أكثر من معلم","students assessed by 2+ teachers"], kp_class_d:["من طلاب الشعبة يُنصح بمتابعتهم","of the section's students advised follow-up"],
+ kp_str_d:["من إجمالي الطلاب","of all students"], ind_t:["المؤشرات الرئيسية","Key indicators"], ind_s:["اضغط على أي بطاقة للتفاصيل.","Click a card for details."],
+ comp_t:["إنجاز إدخال الملاحظات","Entry completion"], comp_s:["عدد الطلاب الذين أُدخل تقييمهم في كل مادة لكل شعبة، من إجمالي طلاب الشعبة.","Number of students assessed in each subject per section, out of the section's roster."],
+ comp_subj:["حالة المواد","Subject status"], st_done:["مكتملة","Complete"], st_prog:["جارية","In progress"], st_none:["لم تبدأ","Not started"], st_opt:["اختيارية","Optional"],
+ col_entered:["تم إدخال / المطلوب","Entered / required"], col_pct2:["نسبة الإنجاز","Completion"], col_tchs:["المعلمون الذين أدخلوا","Teachers who entered"], col_sdone:["شعب مكتملة","Sections complete"],
+ comp_total:["الإجمالي","Total"], sc_started:["الشعب التي بدأ فيها الإدخال","Sections where entry has started"], sc_all:["كل الشعب","All sections"], sc_lbl:["نطاق نسب الإنجاز (البطاقة وجدول حالة المواد):","Scope of completion percentages (card and subject-status table):"], comp_note:["المواد الاختيارية (مثل التربية الخاصة) لا تُحتسب في النسبة. اضغط على أي شعبة لعرض طلابها.","Optional subjects (e.g. Special Education) are not counted in the percentage. Click a section to see its students."],
+ comp_noroster:["لم يُحمَّل ملف الطلاب والمعلمين؛ النسب محسوبة على الطلاب المستوردين فقط. حمّله من شاشة الاستيراد.","The roster file is not loaded; percentages use imported students only. Load it from the Import screen."],
+ comp_noentry:["طلاب لم يُدخل لهم أي تقييم في أي مادة","Students with no assessment in any subject"],
+ ro_t:["ملف الطلاب والمعلمين","Students & teachers file"], ro_ok:["تم تحميل الملف","File loaded"],
+ ro_missing:["لم يُحمَّل ملف student_teachers_data.js. ضعه بجانب هذه الصفحة أو اخترْه يدوياً؛ يلزم لحساب نسب إنجاز الإدخال.","student_teachers_data.js is not loaded. Place it next to this page or pick it manually; it is needed for completion percentages."],
+ ro_pick:["اختيار ملف الطلاب والمعلمين","Select students & teachers file"],
+ rm_avg:["ملخص (متوسط المواد)","Summary (subject average)"], rm_subj_n:["مواد بارزة","Subjects notable"], rm_val:["المتوسط","Average"], rm_hint:["بدّل بين ملخص كل المواد وكل مادة على حدة.","Switch between the all-subjects summary and each subject separately."],
+ rp_parent:["تقرير ولي الأمر (للطباعة)","Parent report (print)"],
+ pr_t:["تقرير ولي الأمر","Parent report"], pr_s:["تقرير رسمي من صفحتين A4 موجّه لولي الأمر، دون أسماء المعلمين.","Formal 2-page A4 report addressed to the parent, without teacher names."],
+ pr_one:["طالب واحد","One student"], pr_class:["شعبة كاملة","Whole section"], pr_print:["طباعة / حفظ PDF","Print / Save PDF"],
+ pr_school:["اسم المدرسة","School name"], pr_principal:["مديرة المدرسة","Principal"], pr_counselor:["المرشد الأكاديمي","Academic counselor"], pr_year:["العام الدراسي","Academic year"], pr_term:["الفصل","Term"], pr_title:["عنوان التقرير","Report title"],
+ pr_hint:["الأسماء تُحفظ في المتصفح وتظهر في ترويسة التقرير.","Names are saved in the browser and appear in the report header."]
+});
+const REC = {
+ B01:["جلسة حوار فردية قصيرة لتوضيح قواعد النقاش الصفي وإتاحة فرص منظمة للتعبير.","Short one-to-one talk clarifying classroom discussion rules and giving structured chances to express views."],
+ B02:["التذكير بالقواعد الصفية وتنسيق أوقات الاستراحة والتغذية مع الأسرة.","Remind of class rules and coordinate break/meal times with the family."],
+ B03:["التواصل مع ولي الأمر حول النوم والروتين اليومي، ومراجعة الأخصائي الاجتماعي عند الحاجة.","Talk to the parent about sleep and daily routine; involve the social worker if needed."],
+ B04:["الاتفاق على آلية استئذان واضحة ومعرفة أسباب الخروج من الصف.","Agree on a clear permission routine and explore reasons for leaving class."],
+ B05:["التواصل مع ولي الأمر لمعرفة أسباب الغياب ووضع خطة حضور.","Contact the parent to understand absences and set an attendance plan."],
+ B06:["معرفة أسباب التأخر مع الأسرة ووضع خطة للحضور المبكر.","Explore reasons for lateness with the family and set an early-arrival plan."],
+ B07:["تعديل مكان جلوس الطالب وإسناد أدوار مشاركة منظمة أثناء الشرح.","Adjust seating and assign structured participation roles during explanation."],
+ B08:["تدريب الطالب على آلية رفع اليد وتعزيز الالتزام بها.","Practise a hand-raising routine and reinforce it."],
+ B09:["إعطاء تعليمات قصيرة وواضحة مع تعزيز إيجابي عند الالتزام.","Give short, clear instructions with positive reinforcement."],
+ B10:["توضيح السلوك المتوقع للتواصل المحترم ومتابعة الأمر مع المرشد.","Clarify expectations for respectful communication and follow up with the counselor."],
+ B11:["رفع الحالة إلى المرشد الأكاديمي وفريق الدعم لمتابعة مباشرة وفهم السياق.","Refer to the academic counselor and support team for direct follow-up and understanding the context."],
+ B12:["فهم أسباب الرفض (صعوبة المهمة أو الدافعية) وتقسيم المهام إلى خطوات صغيرة.","Understand the reasons for refusal (task difficulty or motivation) and split tasks into small steps."],
+ B13:["معالجة الأمر بمسؤولية تربوية تصالحية وتوضيح قيمة الممتلكات.","Handle with restorative responsibility and clarify the value of property."],
+ B14:["التذكير بسياسة الأجهزة والاتفاق على الاستخدام التعليمي فقط.","Recall the device policy and agree on educational use only."],
+ B15:["التواصل مع ولي الأمر بشأن متطلبات الزي والمظهر المدرسي.","Contact the parent about uniform and appearance requirements."],
+ A01:["قائمة تحقق بالأدوات المدرسية وتنسيق مع ولي الأمر.","Checklist for school supplies, coordinated with the parent."],
+ A02:["جدول متابعة للواجبات ومعرفة أسباب عدم الإنجاز.","Homework tracker and exploring reasons for non-completion."],
+ A03:["فحص تربوي للمهارات الأساسية وخطة علاجية داخل الصف.","Instructional check of basic skills and an in-class remedial plan."],
+ A04:["أنشطة تدريجية تشجع المشاركة وتعزيز أول مشاركة للطالب.","Gradual activities that encourage participation; reinforce first contributions."],
+ A05:["تقسيم الشرح لفترات قصيرة، وتنويع الأنشطة، وتقريب مقعد الطالب.","Chunk the explanation, vary activities and seat the student closer."],
+ A06:["تحديد مهام قصيرة قابلة للإنجاز ومتابعة إنجازها.","Set short achievable tasks and track completion."],
+ A07:["مراجعة نقاط الضعف وإدراج الطالب في برنامج دعم أو تقوية.","Review weak areas and include the student in a support/tutoring program."],
+ A08:["ربط التعلم باهتمامات الطالب وتعزيز نجاحاته الصغيرة.","Link learning to the student's interests and celebrate small wins."]
+};
+
+/* =====================================================================
+   الحالة | STATE
+   ===================================================================== */
+let LANG = "ar", VIEW = "import", CUR = null;           // CUR = مفتاح الطالب الحالي
+let STORE = {};                                         // responseId -> record
+let LASTIMP = null, A = null;
+let F = { grade: "", section: "", level: "", subject: "", item: "", q: "" };
+const SK = [];                                          // فهرس مفاتيح الطلاب
+const t = k => (D[k] ? D[k][LANG === "ar" ? 0 : 1] : k);
+const AITRE = /الذكاء الاصطناعي والتكنولوجيا/g;
+const esc = s => String(s == null ? "" : s).replace(AITRE, "AIT").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = s => document.querySelector(s);
+const fmt = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k]);
+const itemTxt = c => (ITEMS[c] ? ITEMS[c][LANG] || ITEMS[c].ar || ITEMS[c].en : c) || c;
+const lvlTxt = l => (LANG === "ar" ? LVL_AR : LVL_EN)[bkt(l)];
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+const r1 = x => Math.round(x * 10) / 10;
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const clsName = (g, s) => g + "/" + s;
+
+/* ---------- تخزين محلي IndexedDB (اختياري) ---------- */
+function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open("marsad_result", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
+async function idbSet(k, v) { try { const d = await idb(); await new Promise((res, rej) => { const tx = d.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {} }
+async function idbGet(k) { try { const d = await idb(); return await new Promise((res, rej) => { const rq = d.transaction("kv").objectStore("kv").get(k); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); }); } catch (e) { return null; } }
+const persist = () => idbSet("store", { records: STORE, items: ITEMS });
+
+/* =====================================================================
+   الاستيراد | IMPORT
+   ===================================================================== */
+const readText = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(r.error); r.readAsText(f, "utf-8"); });
+
+function levelOf(a) { if (a == null) return undefined; if (typeof a === "number") return (a >= 0 && a <= 4) ? a : undefined; return Object.prototype.hasOwnProperty.call(LV, a) ? LV[a] : undefined; }
+
+function validate(j) {
+  const E = [];
+  if (!j || typeof j !== "object" || Array.isArray(j)) return { errors: [["r_obj"]] };
+  if (j.app && String(j.app).toLowerCase() !== "marsad") E.push(["r_app"]);
+  if (!j.app && !j.behavioral) E.push(["r_app"]);
+  const st = j.student || {};
+  if (!st.name && !st.id) E.push(["r_student"]);
+  if (!j.teacher || !j.teacher.name) E.push(["r_teacher"]);
+  if (!j.subject || !j.subject.name) E.push(["r_subject"]);
+  const lv = {};
+  const readList = (arr, prefix, key) => {
+    if (!Array.isArray(arr) || !arr.length) { E.push([key]); return; }
+    arr.forEach(it => {
+      const code = it && it.code;
+      if (!code || !CODES.includes(code)) return;
+      const l = levelOf(it.answer != null ? it.answer : it.frequencyLevel);
+      if (l === undefined) E.push(["r_ans", code]);
+      else { lv[code] = l; if (!ITEMS[code]) ITEMS[code] = {}; if (it.statementAr) ITEMS[code].ar = it.statementAr; if (it.statementEn) ITEMS[code].en = it.statementEn; }
+    });
+    if (!arr.some(it => it && String(it.code || "").startsWith(prefix))) E.push([key]);
+  };
+  readList(j.behavioral, "B", "r_beh");
+  readList(j.academic, "A", "r_aca");
+  if (E.length) return { errors: E };
+  const fu = j.followUp || {};
+  const rec = {
+    responseId: String(j.responseId || ""), submittedAt: Date.parse(j.submittedAt) || 0, lang: j.formLanguage || "",
+    teacher: String(j.teacher.name).trim(), subject: String(j.subject.name).trim(),
+    student: { id: st.id ? String(st.id).trim() : "", name: String(st.name || "").replace(/\s+/g, " ").trim(), grade: String(st.grade || ""), section: String(st.section || "") },
+    lv: lv, parent: fu.parentContacted && fu.parentContacted.answer || "", social: fu.needsSocialWorker && fu.needsSocialWorker.answer || "",
+    strengths: String(j.strengths || "").trim(), notes: String(j.additionalNotes || "").trim()
+  };
+  if (!rec.responseId) rec.responseId = "gen-" + rec.teacher + "|" + rec.subject + "|" + (rec.student.id || rec.student.name) + "|" + rec.submittedAt;
+  return { errors: [], rec };
+}
+
+const skeyOf = s => s.id ? "id:" + s.id : "nm:" + s.name + "|" + s.grade + "|" + s.section;
+const respKey = r => [r.teacher, r.subject, skeyOf(r.student)].join("||");
+
+/* ملف الشعبة (classBatch): يُحوَّل كل طالب فيه إلى سجل مستقل */
+function expandBatch(j, fileName) {
+  const out = [];
+  const tn = String(j.teacher && j.teacher.name || "").trim(), sn = String(j.subject && j.subject.name || "").trim();
+  const cl = j.class || {}, gr = String(cl.grade || ""), sc = String(cl.section || "");
+  const at = Date.parse(j.exportedAt) || 0;
+  Object.keys(j.statements || {}).forEach(c => { if (CODES.includes(c)) { ITEMS[c] = ITEMS[c] || {}; if (j.statements[c].ar) ITEMS[c].ar = j.statements[c].ar; if (j.statements[c].en) ITEMS[c].en = j.statements[c].en; } });
+  (j.students || []).forEach(s => {
+    const st = { id: s.id ? String(s.id).trim() : "", name: String(s.name || "").replace(/\s+/g, " ").trim(), grade: gr, section: sc };
+    const label = fileName + " › " + (st.name || st.id);
+    if (!tn || !sn || !gr || !sc || (!st.id && !st.name)) { out.push({ label: label, errors: [["r_student"]] }); return; }
+    if (s.status === "partial") { out.push({ label: label, errors: [["r_partial"]] }); return; }
+    const lv = {};
+    if (s.status !== "na") {
+      Object.keys(s.answers || {}).forEach(c => { if (CODES.includes(c)) { const l = levelOf(s.answers[c]); if (l !== undefined) lv[c] = l; } });
+      if (!BEH.some(c => lv[c] !== undefined) || !ACA.some(c => lv[c] !== undefined)) { out.push({ label: label, errors: [["r_partial"]] }); return; }
+    }
+    const fu = s.followUp || {};
+    const sub = Date.parse(s.updatedAt) || at;
+    const fv = x => x && (typeof x === "object" ? x.answer : x) || "";
+    out.push({ label: label, rec: { responseId: "b|" + tn + "|" + sn + "|" + gr + "-" + sc + "|" + (st.id || st.name) + "|" + sub, submittedAt: sub, lang: j.formLanguage || "",
+      teacher: tn, subject: sn, student: st, lv: lv, na: s.status === "na", parent: fv(fu.parentContacted), social: fv(fu.needsSocialWorker),
+      strengths: String(s.strengths || "").trim(), notes: String(s.additionalNotes || "").trim(), fileName: fileName } });
+  });
+  return out;
+}
+async function handleFiles(list) {
+  const files = Array.from(list || []);
+  const log = []; let nonJson = 0;
+  const byKey = {}; Object.values(STORE).forEach(r => byKey[respKey(r)] = r);
+  for (const f of files) {
+    const path = f.webkitRelativePath || f._path || f.name;
+    if (!/\.json$/i.test(f.name)) { nonJson++; continue; }
+    let cands = [];
+    try {
+      let j;
+      const txt = await readText(f).catch(() => { throw ["r_read"]; });
+      try { j = JSON.parse(txt.replace(/^﻿/, "")); } catch (x) { throw ["r_json"]; }
+      if (j && j.type === "classBatch" && Array.isArray(j.students)) cands = expandBatch(j, f.name);
+      else { const v = validate(j); cands = [v.errors.length ? { label: path, errors: v.errors } : { label: path, rec: Object.assign(v.rec, { fileName: f.name }) }]; }
+    } catch (x) { cands = [{ label: path, errors: [Array.isArray(x) ? x : ["r_read"]] }]; }
+    cands.forEach(cd => {
+      const e = { path: cd.label, status: "invalid", reason: [] };
+      if (cd.errors) { e.reason = cd.errors; if (cd.errors[0][0] === "r_partial") e.status = "dups"; }
+      else {
+        const rec = cd.rec, k = respKey(rec);
+        if (STORE[rec.responseId]) { e.status = "dupf"; e.reason = [["r_same"]]; }
+        else if (byKey[k]) {
+          const old = byKey[k];
+          if (rec.submittedAt > old.submittedAt) { delete STORE[old.responseId]; STORE[rec.responseId] = rec; byKey[k] = rec; e.status = "upd"; e.reason = [["r_replaced"]]; }
+          else { e.status = "dups"; e.reason = [["r_newer"]]; }
+        } else { STORE[rec.responseId] = rec; byKey[k] = rec; e.status = "new"; }
+      }
+      log.push(e);
+    });
+  }
+  LASTIMP = { log: log, nonJson: nonJson, found: log.length };
+  analyze(); persist();
+  VIEW = "import"; render();
+}
+
+/* سحب وإفلات المجلدات */
+async function filesFromDrop(dt) {
+  const out = [];
+  const walk = (entry, path) => new Promise(res => {
+    if (entry.isFile) entry.file(f => { f._path = path + f.name; out.push(f); res(); }, () => res());
+    else if (entry.isDirectory) {
+      const rd = entry.createReader(); const all = [];
+      const rdAll = () => rd.readEntries(async es => { if (!es.length) { for (const x of all) await walk(x, path + entry.name + "/"); res(); } else { all.push(...es); rdAll(); } }, () => res());
+      rdAll();
+    } else res();
+  });
+  const items = dt.items ? Array.from(dt.items) : [];
+  if (items.length && items[0].webkitGetAsEntry) { for (const it of items) { const en = it.webkitGetAsEntry(); if (en) await walk(en, ""); } return out; }
+  return Array.from(dt.files || []);
+}
+
+
+function parseStudent(raw) {
+  const m = String(raw).match(/^(.*?)\s*\(([^()]*)\)\s*$/);
+  return { raw: String(raw), name: (m ? m[1] : String(raw)).replace(/\s+/g, " ").trim(), id: m ? m[2].trim() : "" };
+}
+/* ---------- ملف الطلاب والمعلمين (المرجع) ---------- */
+let ROSTER = null;
+function setRoster(classes, subjects) {
+  ROSTER = { classes: {}, subjects: Object.keys(subjects || {}), tmap: subjects || {} };
+  Object.keys(classes || {}).forEach(k => { ROSTER.classes[k] = (classes[k] || []).map(parseStudent); });
+}
+function loadRosterFile(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      let src = String(rd.result).replace(/(={5,})[ \t]*\/[ \t]*(\r?\n)/g, "$1 */$2");
+      const w = {}; new Function("window", src)(w);
+      if (!w.PQ_CLASSES || !w.PQ_SUBJECTS) throw new Error("x");
+      setRoster(w.PQ_CLASSES, w.PQ_SUBJECTS);
+      idbSet("roster", { classes: w.PQ_CLASSES, subjects: w.PQ_SUBJECTS });
+      analyze(); render();
+    } catch (e) { alert(t("dataBad")); }
+  };
+  rd.readAsText(file, "utf-8");
+}
+Object.assign(D, {
+  g_all: ["كل المواد", "All subjects"], g_A: ["مواد المجموعة أ", "Group A subjects"], g_lbl: ["المواد:", "Subjects:"],
+  g_merge: ["دمج ملاحظات المجموعة ب (يكفي إدخال معلم واحد من المجموعة)", "Merge Group B (one teacher's entry is enough)"],
+  g_mergedB: ["مواد المجموعة ب (مدمجة)", "Group B (merged)"], grpB_short: ["مجموعة ب", "Group B"],
+  st_unav: ["غير متاحة الآن", "Not available now"], sel_note: ["تُدرَّس لصفوف مختارة", "Selected classes only"],
+  grade_lbl: ["الصف", "Grade"], col_group: ["المجموعة", "Group"], col_entries: ["الإدخالات المنجزة (المدرسة)", "Entries done (school)"],
+  rm_sum: ["ملخص المواد", "Subject summary"], rm_all: ["جميع المواد", "All subjects"], rm_A: ["مواد المجموعة أ فقط", "Group A only"],
+  rm_merge: ["دمج مواد المجموعة ب", "Merge Group B"], ex_lbl: ["استبعاد الردود البعيدة عن الوسيط", "Exclude responses far from the median"],
+  ex_note: ["استُبعد {n} رد بعيد عن الوسيط من المتوسطات (لا يؤثر على قوائم المتابعة).", "{n} response(s) far from the median were excluded from averages (follow-up lists are unaffected)."],
+  ex_mark: ["* كل الردود في هذه المادة بعيدة عن الوسيط (مستبعدة من المتوسط).", "* All responses here are far from the median (excluded from averages)."],
+  fu_s: ["الطلاب الأولى بالمتابعة فقط.", "Only the students who need follow-up first."], col_cons2: ["ملاحظات بإجماع المعلمين", "Consensus observations"],
+  col_g: ["مجموعة", "Group"], rt_beh: ["السلوك", "Behavior"], rt_aca: ["الأكاديمي", "Academic"]
+});
+D.r_partial = ["طالب غير مكتمل في ملف الشعبة (يُستكمل ثم يُعاد الاستيراد)", "Incomplete student in class file (finish it, then re-import)"];
+Object.assign(D, {
+  cl_s: ["كل بطاقة شعبة: الحلقة تُظهر نسبة الطلاب المقترح متابعتهم، والشريط يوزّع طلابها حسب مستوى المتابعة. اضغط على أي شعبة لعرض طلابها.", "Each card is a section: the ring shows the share of students advised follow-up and the bar splits its students by follow-up level. Click a section to see its students."],
+  cl_ring: ["نسبة الطلاب المقترح متابعتهم", "Students advised follow-up"],
+  ex_mark: ["المربعات ذات الإطار المتقطع: كل الردود فيها بعيدة عن الوسيط (مستبعدة من المتوسط).", "Dashed squares: all responses are far from the median (excluded from the average)."],
+  mx_lg: ["معنى الألوان:", "Colour key:"], mx_none: ["لم يُرصد", "Not recorded"], mx_ex: ["مستبعد (بعيد عن الوسيط)", "Excluded (far from median)"]
+});
+Object.assign(D, {
+  tr_t: ["تقرير إنجاز المعلمين", "Teacher completion report"], tr_top: ["الأكثر إدخالاً (عدد إدخالات الطلاب)", "Most entries (student entries)"],
+  tr_all: ["جميع المعلمين وما أنجزوه من الصفوف", "All teachers and the classes they completed"], tr_none: ["لم يبدأ", "Not started"],
+  tr_lg_d: ["شعبة مكتملة", "Class complete"], tr_lg_p: ["جارية (المُدخل/الطلاب)", "In progress (entered/students)"],
+  col_teacher: ["المعلم", "Teacher"], col_ent: ["الإدخالات", "Entries"], tr_done: ["شعب مكتملة", "Classes complete"], tr_cls: ["الشعب", "Classes"],
+  sc_beh: ["التقييم السلوكي /10", "Behavior score /10"], sc_aca: ["التقييم الأكاديمي /10", "Academic score /10"],
+  cl_lg: ["دليل الأشكال والألوان:", "Key:"], sc_lgd: ["التقييم:", "Score:"], cl_dist: ["توزيع الطلاب حسب مستوى المتابعة", "Students by follow-up level"], cl_top: ["أكثر ملاحظة", "Top observation"],
+  cl_s2: ["قارن الشعب بنظرة واحدة. اضغط على أي شعبة لعرض طلابها.", "Compare sections at a glance. Click a section to see its students."],
+  sc_how_t: ["كيف يُحسب التقييم من 10؟", "How is the score out of 10 calculated?"],
+  sc_how: ["١) لكل بند: نأخذ متوسط إجابات معلمي كل مادة، ثم متوسط المواد (فلا يطغى عدد معلمي مادة على غيرها).\n٢) نحوّل المستوى إلى نسبة: لا يظهر = 0 ، أحياناً = 0.5 ، دائماً = 1، ونأخذ متوسط البنود المرصودة (يُستثنى ما لم يلاحظه المعلم).\n٣) التقييم = 10 × (1 − هذا المتوسط).\n٤) يُخصم 0.3 عن كل بند أجمع عليه معلمان فأكثر بـ «دائماً» (بحد أقصى 1.5).\n10 = لا ملاحظات ، 0 = ملاحظات متكررة. يُحسب السلوك من بنود السلوك والأكاديمي من البنود الأكاديمية كلٌّ على حدة.", "1) Per item: average each subject's teachers, then average the subjects.\n2) Convert to burden: never=0, sometimes=0.5, always=1; average the observed items (not-observed excluded).\n3) Score = 10 × (1 − burden).\n4) Minus 0.3 per item that 2+ teachers marked 'always' (max 1.5).\n10 = no concerns, 0 = frequent concerns. Behavior and academic are computed separately."]
+});
+D.dataBad = ["تعذّر قراءة الملف. تحقق من بنيته.", "Could not read the file. Check its structure."];
+
+let COLL = {};   // حالة الطي: مفتاح -> true إذا كان مطوياً
+let CMPSCOPE = "started";   // started = الشعب التي بدأ فيها الإدخال فقط | all = كل الشعب
+let CMPGRP = "all", CMPMERGE = false;   // فلتر المواد: all | A ، ودمج مجموعة ب
+let EXCL = false;                        // استبعاد الردود البعيدة عن الوسيط في تقارير الطلاب
+const nz = x => String(x == null ? "" : x).replace(/[إأآ]/g, "ا").replace(/\s+/g, " ").trim();
+const inList = (x, L) => L.some(y => nz(y) === nz(x) || (nz(y) === "التربية الرياضية" && nz(x) === "الرياضة"));
+const grpOf = x => inList(x, CFG.GROUP_A) ? "A" : inList(x, CFG.GROUP_B) ? "B" : "O";
+const subjRank = x => { let i = CFG.GROUP_A.findIndex(y => nz(y) === nz(x)); if (i >= 0) return i;
+  i = CFG.GROUP_B.findIndex(y => nz(y) === nz(x) || (nz(y) === "التربية الرياضية" && nz(x) === "الرياضة")); return i >= 0 ? 100 + i : 200; };
+const orderSubs = L => L.slice().sort((a, b) => subjRank(a) - subjRank(b) || String(a).localeCompare(String(b), "ar"));
+function computeCompletion() {
+  const subs0 = [];
+  const add = x => { if (!subs0.some(y => nz(y) === nz(x))) subs0.push(x); };
+  const hasT = x => (ROSTER.tmap[x] || []).length > 0;
+  if (ROSTER) ROSTER.subjects.filter(hasT).forEach(add); else CFG.GROUP_A.concat(CFG.GROUP_B).forEach(add);
+  Array.from(A.subjects).forEach(add);
+  const subs = orderSubs(subs0);
+  const isUn = x => inList(x, CFG.UNAVAIL), isSel = x => inList(x, CFG.SELECTIVE) || inList(x, CFG.OPTIONAL_SUBJECTS);
+  const N = {}, rk = {};
+  if (ROSTER) Object.keys(ROSTER.classes).forEach(ck => {
+    const parts = ck.split("-");
+    N[ck] = ROSTER.classes[ck].length;
+    rk[ck] = new Set(ROSTER.classes[ck].map(x => skeyOf({ id: x.id, name: x.name, grade: parts[0], section: parts[1] })));
+  });
+  const obs = {};
+  A.students.forEach(st => { const ck = st.grade + "-" + st.section; obs[ck] = (obs[ck] || 0) + 1; if (N[ck] === undefined) N[ck] = obs[ck]; });
+  Object.keys(N).forEach(ck => { if (!ROSTER || !ROSTER.classes[ck]) N[ck] = obs[ck] || 0; });
+  const ent = {};
+  A.recs.forEach(r => {
+    const ck = r.student.grade + "-" + r.student.section, sk = nz(r.subject);
+    if (!ent[ck]) ent[ck] = {};
+    if (!ent[ck][sk]) ent[ck][sk] = new Set();
+    ent[ck][sk].add(skeyOf(r.student));
+  });
+  const setOf = (ck, x) => (ent[ck] && ent[ck][nz(x)]) || new Set();
+  const classes = Object.keys(N).sort((a, b) => { const x = a.split("-").map(Number), y = b.split("-").map(Number); return x[0] - y[0] || x[1] - y[1]; });
+  const started = new Set(Object.keys(ent));
+  const inScope = new Set(classes.filter(ck => CMPSCOPE === "all" || started.has(ck)));
+  // --- حالة كل مادة على مستوى المدرسة (غير متأثرة بالفلاتر)
+  const sj = {};
+  subs.forEach(x => sj[x] = { name: x, g: grpOf(x), un: isUn(x), opt: isSel(x), n: 0, N: 0, done: 0, total: 0, teachers: new Set() });
+  classes.forEach(ck => subs.forEach(x => {
+    const o = sj[x]; if (o.un) return;
+    const n = setOf(ck, x).size;
+    if (!inScope.has(ck)) return;
+    if (o.opt) o.n += n; else { const Nn = N[ck]; o.n += Math.min(n, Nn); o.N += Nn; o.total++; if (Nn && n >= Nn) o.done++; }
+  }));
+  A.recs.forEach(r => { const k = subs.find(y => nz(y) === nz(r.subject)); if (k) sj[k].teachers.add(r.teacher); });
+  subs.forEach(x => {
+    const o = sj[x]; o.teachers = Array.from(o.teachers);
+    o.p = o.opt ? (o.n ? 100 : 0) : (o.N ? Math.round(o.n / o.N * 100) : 0);
+    o.status = o.un ? "unav" : o.opt ? (o.n ? "opt" : "none") : o.p >= 100 ? "done" : o.p > 0 ? "prog" : "none";
+  });
+  // --- صفوف جداول الإنجاز حسب الفلتر
+  const rows = []; let mergedAdded = false;
+  subs.forEach(x => {
+    const g = sj[x].g;
+    if (g === "B") {
+      if (CMPGRP !== "all") return;
+      if (CMPMERGE) { if (!mergedAdded) { mergedAdded = true; rows.push({ id: "__B", label: t("g_mergedB"), members: subs.filter(y => sj[y].g === "B" && !sj[y].un), merged: true, g: "B" }); } return; }
+    } else if (g === "O" && CMPGRP !== "all") return;
+    rows.push({ id: x, label: x, members: [x], un: sj[x].un, opt: sj[x].opt, g: g });
+  });
+  const cell = {}, cls = {}; let on = 0, oN = 0;
+  classes.forEach(ck => {
+    cell[ck] = {}; let cn = 0, cN = 0;
+    rows.forEach(rw => {
+      if (rw.un) { cell[ck][rw.id] = { n: 0, N: 0, p: 0, un: true }; return; }
+      const u = new Set(); rw.members.forEach(m => setOf(ck, m).forEach(v => u.add(v)));
+      const n = u.size, Nn = rw.opt ? n : N[ck];
+      const c = cell[ck][rw.id] = { n: n, N: Nn, p: Nn ? Math.min(100, Math.round(n / Nn * 100)) : 0, opt: !!rw.opt };
+      if (!c.opt) { cn += Math.min(n, Nn); cN += Nn; }
+    });
+    cls[ck] = { n: cn, N: cN, p: cN ? Math.round(cn / cN * 100) : 0 };
+    if (inScope.has(ck)) { on += cn; oN += cN; }
+  });
+  // --- تقرير إنجاز المعلمين
+  const tm = {}; const TK = n => tm[nz(n)] = tm[nz(n)] || { name: n, subjects: new Set(), pairs: new Set(), byCls: {} };
+  if (ROSTER) Object.keys(ROSTER.tmap).forEach(sub => { if (subs.some(y => nz(y) === nz(sub))) (ROSTER.tmap[sub] || []).forEach(n => TK(n).subjects.add(sub)); });
+  A.recs.forEach(r => { const o = TK(r.teacher), ck = r.student.grade + "-" + r.student.section, sk = skeyOf(r.student); o.subjects.add(r.subject); o.pairs.add(ck + "|" + nz(r.subject) + "|" + sk); (o.byCls[ck] = o.byCls[ck] || new Set()).add(sk); });
+  const teachers = Object.values(tm).map(o => {
+    const sl = orderSubs(Array.from(o.subjects));
+    return { name: o.name, subjects: sl, total: o.pairs.size, opt: sl.length > 0 && sl.every(isSel),
+      cls: Object.keys(o.byCls).sort((a, b) => { const x = a.split("-").map(Number), y = b.split("-").map(Number); return x[0] - y[0] || x[1] - y[1]; }).map(ck => ({ ck: ck, n: o.byCls[ck].size, N: N[ck] || 0 })) };
+  }).sort((a, b) => subjRank(a.subjects[0] || "") - subjRank(b.subjects[0] || "") || String(a.name).localeCompare(String(b.name), "ar"));
+  let noEntry = 0;
+  if (ROSTER) Object.keys(rk).forEach(ck => rk[ck].forEach(k => { if (!A.students.has(k)) noEntry++; }));
+  A.comp = { classes: classes, subjects: subs, rows: rows, cell: cell, cls: cls, sj: sj, inScope: inScope, overall: { n: on, N: oN, p: oN ? Math.round(on / oN * 100) : 0 }, noEntry: noEntry, hasRoster: !!ROSTER, teachers: teachers, N: N };
+}
+
+/* =====================================================================
+   التحليل | ANALYSIS
+   ===================================================================== */
+function analyze() {
+  const recs = Object.values(STORE).filter(r => !r.na);   // الطالب غير الملحوظ لا يُحتسب
+  A = { recs: recs, students: new Map(), teachers: new Set(), subjects: new Set(), items: {}, classes: {}, subj: {} };
+  CODES.forEach(c => A.items[c] = { code: c, counts: [0, 0, 0, 0, 0], n: 0, stu: new Set(), bySubj: {} });
+  recs.forEach(r => {
+    A.teachers.add(r.teacher); A.subjects.add(r.subject);
+    const k = skeyOf(r.student);
+    if (!A.students.has(k)) A.students.set(k, { key: k, id: r.student.id, name: r.student.name, grade: r.student.grade, section: r.student.section, resp: [], lowRel: !r.student.id });
+    A.students.get(k).resp.push(r);
+    CODES.forEach(c => {
+      const l = r.lv[c]; if (l === undefined) return;
+      const it = A.items[c]; it.counts[l]++; it.n++;
+      if (l >= CFG.FLAG_LEVEL) it.stu.add(k);
+      const bs = it.bySubj[r.subject] = it.bySubj[r.subject] || { n: 0, f: 0 }; bs.n++; if (l >= CFG.FLAG_LEVEL) bs.f++;
+    });
+    const sj = A.subj[r.subject] = A.subj[r.subject] || { name: r.subject, resp: 0, stu: new Set(), beh: [], aca: [], n: 0, f: 0 };
+    sj.resp++; sj.stu.add(k);
+    CODES.forEach(c => { const l = r.lv[c]; if (l === undefined) return; (c[0] === "B" ? sj.beh : sj.aca).push(l); sj.n++; if (l >= CFG.FLAG_LEVEL) sj.f++; });
+  });
+  A.students.forEach(computeStudent);
+  // الشعب
+  A.students.forEach(s => {
+    const ck = clsName(s.grade, s.section);
+    const c = A.classes[ck] = A.classes[ck] || { key: ck, grade: s.grade, section: s.section, stu: [], resp: 0, beh: [], aca: [], bs: [], as: [], follow: 0, top: {} };
+    c.stu.push(s); c.resp += s.resp.length; c.beh.push(...s.behAll); c.aca.push(...s.acaAll);
+    if (s.level >= 2) c.follow++;
+    if (s.behScore != null) c.bs.push(s.behScore); if (s.acaScore != null) c.as.push(s.acaScore);
+    s.flagged.forEach(x => c.top[x] = (c.top[x] || 0) + 1);
+  });
+  // اتفاق المعلمين
+  const ag = []; A.students.forEach(s => { if (s.agree != null) ag.push(s.agree); });
+  A.agree = ag.length ? Math.round(mean(ag) * 100) : null;
+  SK.length = 0; A.students.forEach(s => SK.push(s.key));
+  computeCompletion();
+}
+
+/* التقييم من 10: لكل بند نأخذ متوسط كل مادة (متوسط معلميها) ثم متوسط المواد؛ الأعباء = متوسط (المستوى/4) للبنود المرصودة؛
+   التقييم = 10 × (1 − العبء) − 0.3 لكل بند بإجماع معلمَين فأكثر (بحد أقصى 1.5) */
+function scoreOf(s, pre) {
+  const ps = []; let pen = 0;
+  CODES.filter(c => c[0] === pre).forEach(c => {
+    const m = {}; s.resp.forEach(r => { if (r.lv[c] !== undefined) (m[r.subject] = m[r.subject] || []).push(r.lv[c]); });
+    const k = Object.keys(m); if (!k.length) return;
+    ps.push(mean(k.map(x => mean(m[x]))) / 4);
+    if (new Set(s.resp.filter(r => r.lv[c] >= CFG.FLAG_LEVEL).map(r => r.teacher)).size >= 2) pen++;
+  });
+  if (!ps.length) return null;
+  return Math.max(0, Math.round((10 * (1 - mean(ps)) - Math.min(1.5, pen * 0.3)) * 10) / 10);
+}
+const scCol = v => { const h = Math.round(Math.max(0, Math.min(10, v)) * 12); return { b: `hsl(${h},62%,44%)`, bg: `hsl(${h},70%,90%)`, tx: `hsl(${h},70%,22%)` }; };
+const scPill = v => { if (v == null) return `<span class="scp none">—</span>`; const c = scCol(v); return `<span class="scp" style="background:${c.bg};color:${c.tx};border-color:${c.b}"><b>${v.toFixed(1)}</b><small>/10</small></span>`; };
+const scBar = v => { if (v == null) return `<span class="scp none">—</span>`; const c = scCol(v); return `<div class="scb"><b style="color:${c.tx}">${v.toFixed(1)}</b><div class="sctr"><i style="width:${v * 10}%;background:${c.b}"></i></div></div>`; };
+function computeStudent(s) {
+  s.entries = {}; s.behAll = []; s.acaAll = []; s.teachers = new Set(s.resp.map(r => r.teacher));
+  CODES.forEach(c => s.entries[c] = []);
+  s.resp.forEach(r => CODES.forEach(c => {
+    const l = r.lv[c]; if (l === undefined) return;
+    s.entries[c].push({ teacher: r.teacher, subject: r.subject, level: l });
+    (c[0] === "B" ? s.behAll : s.acaAll).push(l);
+  }));
+  s.flagged = CODES.filter(c => s.entries[c].some(e => e.level >= CFG.FLAG_LEVEL));
+  s.consensus = CODES.filter(c => new Set(s.entries[c].filter(e => e.level >= CFG.FLAG_LEVEL).map(e => e.teacher)).size >= 2);
+  s.single = s.flagged.filter(c => !s.consensus.includes(c));
+  s.behScore = scoreOf(s, "B"); s.acaScore = scoreOf(s, "A");
+  s.behIdx = r1(mean(s.behAll)); s.acaIdx = r1(mean(s.acaAll));
+  s.socialBy = Array.from(new Set(s.resp.filter(r => r.social === "yes").map(r => r.teacher)));
+  s.parentNoBy = Array.from(new Set(s.resp.filter(r => r.parent === "no").map(r => r.teacher)));
+  s.aggr = s.entries.B11.some(e => e.level >= CFG.FLAG_LEVEL);
+  s.aggrMax = Math.max(-1, ...s.entries.B11.map(e => e.level));
+  s.why = [];
+  const urgent = s.aggrMax === 4 || (s.aggr && s.socialBy.length >= 1) || s.socialBy.length >= 2;
+  const high = s.consensus.length >= 3 || s.flagged.length >= 8 || (s.socialBy.length >= 1 && s.flagged.length >= 3);
+  const watch = s.flagged.length >= 3 || s.consensus.length >= 1;
+  s.level = urgent ? 3 : high ? 2 : watch ? 1 : 0;
+  if (s.aggr) s.why.push("w_aggr"); if (s.socialBy.length) s.why.push("w_soc"); if (s.consensus.length) s.why.push("w_cons"); if (s.flagged.length >= 8) s.why.push("w_many");
+  // الاتفاق: نسبة العناصر التي تباعد فيها المعلمون بدرجة ≤ 1
+  if (s.resp.length >= 2) {
+    let ok = 0, tot = 0;
+    CODES.forEach(c => { const ls = s.entries[c].map(e => e.level); if (ls.length >= 2) { tot++; if (Math.max(...ls) - Math.min(...ls) <= 1) ok++; } });
+    s.agree = tot ? ok / tot : null;
+  } else s.agree = null;
+  s.strengths = s.resp.filter(r => r.strengths).map(r => ({ teacher: r.teacher, subject: r.subject, text: r.strengths }));
+  s.notes = s.resp.filter(r => r.notes).map(r => ({ teacher: r.teacher, subject: r.subject, text: r.notes }));
+}
+const LVKEY = ["none", "watch", "follow", "prio"];
+const badge = l => `<span class="badge b-${LVKEY[l]}">${esc(t("lv_" + LVKEY[l]))}</span>`;
+
+/* =====================================================================
+   مكونات الواجهة | UI COMPONENTS
+   ===================================================================== */
+const SEG = ["var(--l0)", "var(--l1)", "var(--l2)", "var(--l3)", "var(--l4)"];
+function legend() { return `<div class="legend">${[0, 2, 4].map(i => `<span><i style="background:${SEG[i]}"></i>${esc(lvlTxt(i))}</span>`).join("")}</div>`; }
+function distBars(codes) {
+  return `<div class="bars">` + codes.map(c => {
+    const it = A.items[c]; const n = it.n || 1; const f = it.counts[3] + it.counts[4];
+    const segs = it.counts.map((v, i) => `<i style="width:${v / n * 100}%;background:${SEG[i]}" title="${esc(lvlTxt(i))}: ${v}"></i>`).join("");
+    return `<div class="bar" data-item="${c}" title="${esc(itemTxt(c))}"><span class="lb">${esc(itemTxt(c))}</span><span class="tr">${segs}</span><span class="vl">${pct(f, it.n)}%</span></div>`;
+  }).join("") + `</div>`;
+}
+function simpleBars(rows) { // rows: {label,value,max,extra}
+  return `<div class="bars">` + rows.map(r => `<div class="bar" ${r.attr || ""} title="${esc(r.label)}"><span class="lb">${esc(r.label)}</span><span class="tr"><i style="width:${r.value}%;background:var(--brand)"></i></span><span class="vl">${r.value}%</span></div>`).join("") + `</div>`;
+}
+const TBL = {};
+function tbl(id, cols, rows, o) {
+  o = o || {};
+  const st = TBL[id] = TBL[id] || { sort: o.sort != null ? o.sort : null, dir: o.dir || -1, q: "", limit: CFG.PAGE };
+  st.cols = cols; st.rows = rows; st.o = o;
+  return `<div class="tb">${o.search ? `<input type="search" data-tsearch="${id}" placeholder="${esc(t("f_search"))}" value="${esc(st.q)}">` : ""}${o.csv ? `<button class="btn ghost sm" data-csv="${id}">${esc(t("csv"))}</button>` : ""}</div><div id="tb-${id}">${tblInner(id)}</div>`;
+}
+function tblRows(id) {
+  const st = TBL[id]; let rows = st.rows;
+  if (st.q) { const q = st.q.toLowerCase(); rows = rows.filter(r => st.cols.some(c => String(c.v ? c.v(r) : "").toLowerCase().includes(q))); }
+  if (st.sort != null) { const c = st.cols[st.sort]; rows = rows.slice().sort((a, b) => { const x = c.v(a), y = c.v(b); return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "ar")) * st.dir; }); }
+  return rows;
+}
+function tblInner(id) {
+  const st = TBL[id], rows = tblRows(id), shown = rows.slice(0, st.limit);
+  const arrow = i => st.sort === i ? (st.dir > 0 ? " ▲" : " ▼") : "";
+  return `<div class="tw"><table class="t"><thead><tr>${st.cols.map((c, i) => `<th data-sort="${id}:${i}">${esc(c.h)}${arrow(i)}</th>`).join("")}</tr></thead><tbody>` +
+    shown.map(r => `<tr ${st.o.rowAttr ? st.o.rowAttr(r) : ""}>${st.cols.map(c => `<td>${c.f ? c.f(r) : esc(c.v(r))}</td>`).join("")}</tr>`).join("") +
+    `</tbody></table></div><div class="hint" style="margin:8px 2px;color:var(--muted);font-size:13px">${rows.length} ${esc(t("rows"))} ${rows.length > shown.length ? `<button class="btn ghost sm" data-more="${id}">${esc(t("more"))}</button>` : ""}</div>`;
+}
+function toCSV(id) {
+  const st = TBL[id], rows = tblRows(id);
+  const q = v => '"' + String(v).replace(AITRE, "AIT").replace(/"/g, '""') + '"';
+  const lines = [st.cols.map(c => q(c.h)).join(",")].concat(rows.map(r => st.cols.map(c => q(c.v(r))).join(",")));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "marsad_" + id + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+}
+const reasonTxt = rs => rs.map(r => t(r[0]) + (r[1] ? " (" + r[1] + ")" : "")).join("؛ ");
+const sName = s => s.name || s.id;
+
+/* =====================================================================
+   الشاشات | VIEWS
+   ===================================================================== */
+function empty() { return `<div class="card empty"><p>${esc(t("nodata"))}</p><button class="btn" data-view="import">${esc(t("goimp"))}</button></div>`; }
+const supportsDir = (() => { const i = document.createElement("input"); return "webkitdirectory" in i; })();
+
+function vImport() {
+  let h = `<h2 class="pt">${esc(t("imp_t"))}</h2><p class="ps">${esc(t("imp_s"))}</p>
+  <div class="drop" id="drop"><div style="font-size:34px">📂</div>
+    <input type="file" id="inDir" webkitdirectory directory multiple hidden>
+    <input type="file" id="inFiles" accept=".json,application/json" multiple hidden>
+    <div class="row"><button class="btn" id="btnDir" ${supportsDir ? "" : "disabled"}>${esc(t("imp_btn"))}</button><button class="btn ghost" id="btnFiles">${esc(t("imp_files"))}</button></div>
+    <p style="margin:12px 0 0;color:var(--muted)">${esc(t("imp_drop"))}</p>
+    ${supportsDir ? "" : `<div class="note warn">${esc(t("imp_nofolder"))}</div>`}
+  </div><div class="note">${esc(t("imp_add"))}</div>`;
+  h += `<div class="card"><h3>${esc(t("ro_t"))}</h3>` + (ROSTER ? `<p class="ok">✔ ${esc(t("ro_ok"))}: ${Object.values(ROSTER.classes).reduce((a, b) => a + b.length, 0)} ${esc(t("s_students"))} — ${ROSTER.subjects.length} ${esc(t("s_subjects"))}</p>` : `<div class="note warn">${esc(t("ro_missing"))}</div>`) +
+    `<input type="file" id="inRoster" accept=".js,text/javascript" hidden><button class="btn ghost sm" id="btnRoster">${esc(t("ro_pick"))}</button></div>`;
+  if (LASTIMP) {
+    const L = LASTIMP.log, c = k => L.filter(x => x.status === k).length;
+    h += `<div class="card"><h3>${esc(t("imp_sum"))}</h3><div class="grid g4" style="margin-top:12px">
+      <div class="stat"><b>${LASTIMP.found}</b><span>${esc(t("s_found"))}</span></div>
+      <div class="stat"><b>${c("new") + c("upd")}</b><span>${esc(t("s_ok"))}</span></div>
+      <div class="stat"><b>${c("dupf") + c("dups")}</b><span>${esc(t("s_dup"))}</span></div>
+      <div class="stat"><b>${c("invalid")}</b><span>${esc(t("s_bad"))}</span></div>
+      ${LASTIMP.nonJson ? `<div class="stat"><b>${LASTIMP.nonJson}</b><span>${esc(t("s_skipped"))}</span></div>` : ""}</div></div>`;
+  }
+  if (A && A.recs.length) {
+    h += `<div class="card"><h3>${esc(t("imp_cum"))}</h3><div class="grid g4" style="margin-top:12px">
+      <div class="stat"><b>${A.students.size}</b><span>${esc(t("s_students"))}</span></div>
+      <div class="stat"><b>${A.recs.length}</b><span>${esc(t("s_resp"))}</span></div>
+      <div class="stat"><b>${A.teachers.size}</b><span>${esc(t("s_teachers"))}</span></div>
+      <div class="stat"><b>${A.subjects.size}</b><span>${esc(t("s_subjects"))}</span></div></div>
+      ${lowRelCount() ? `<div class="note warn">${esc(t("low_rel_n"))}: ${lowRelCount()} — ${esc(t("low_rel"))}</div>` : ""}
+      <p><button class="btn ghost sm" id="btnClear">${esc(t("clear"))}</button></p></div>`;
+  }
+  if (LASTIMP && LASTIMP.log.length) {
+    const stName = { new: "st_new", upd: "st_upd", dupf: "st_dupf", dups: "st_dups", invalid: "st_bad" };
+    h += `<div class="card"><h3>${esc(t("log_t"))}</h3>` + tbl("log", [
+      { h: t("f_file"), v: r => r.path }, { h: t("f_status"), v: r => t(stName[r.status]), f: r => `<span class="pill" style="${r.status === "invalid" ? "background:#fdecea;color:#7c1f1b" : r.status.startsWith("dup") ? "background:#fff6df;color:#6d4c05" : ""}">${esc(t(stName[r.status]))}</span>` },
+      { h: t("f_reason"), v: r => reasonTxt(r.reason) }], LASTIMP.log, { search: true, sort: 1, dir: -1 }) + `</div>`;
+  }
+  return h + `<div class="note">${esc(t("method"))}</div>`;
+}
+const lowRelCount = () => Array.from(A.students.values()).filter(s => s.lowRel).length;
+
+function topItems(prefix, n) { return CODES.filter(c => c[0] === prefix).filter(c => A.items[c].n).sort((a, b) => flagRate(b) - flagRate(a)).slice(0, n); }
+const flagRate = c => { const it = A.items[c]; return it.n ? (it.counts[3] + it.counts[4]) / it.n : 0; };
+function spreadInfo(c) {
+  const bs = A.items[c].bySubj, subs = Object.keys(bs).filter(s => bs[s].n >= 2);
+  if (subs.length < 2) return { k: "p_few", txt: t("p_few") };
+  const hot = subs.filter(s => bs[s].f / bs[s].n >= 0.25);
+  if (hot.length >= 3 || (hot.length >= 2 && hot.length / subs.length >= .5)) return { k: "p_wide", txt: t("p_wide") + " – " + fmt(t("sp_wide"), { n: hot.length }) };
+  if (!hot.length) return { k: "p_few", txt: t("p_few") };
+  return { k: "p_spec", txt: t("p_spec") + " – " + fmt(t("sp_spec"), { x: hot.join("، ") }) };
+}
+
+function kpi(label, value, detail, attr, tone) {
+  return `<div class="kpi ${tone || ""}" ${attr || ""}><span class="kl">${esc(label)}</span><b>${esc(value)}</b><small>${esc(detail || "")}</small></div>`;
+}
+const dispCls = ck => ck.replace("-", "/");
+function cmpFilters() {
+  return `<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("g_lbl"))}</span><button data-cgrp="all" class="${CMPGRP === "all" ? "on" : ""}">${esc(t("g_all"))}</button><button data-cgrp="A" class="${CMPGRP === "A" ? "on" : ""}">${esc(t("g_A"))}</button>` +
+    (CMPGRP === "all" ? `<label class="chk"><input type="checkbox" data-cmerge ${CMPMERGE ? "checked" : ""}> ${esc(t("g_merge"))}</label>` : "") + `</div>`;
+}
+function rowLabel(rw) {
+  const x = rw.un ? t("st_unav") : rw.opt ? t("sel_note") : rw.merged ? rw.members.join("، ") : "";
+  return `<b>${esc(rw.label)}</b>${x ? `<br><small>${esc(x)}</small>` : ""}`;
+}
+const lbar = (p, txt) => `<div class="lb"><div class="lbt"><i style="width:${p}%"></i></div><span><b>${p}%</b> <small>${esc(txt || "")}</small></span></div>`;
+function compMatrix() {
+  const C = A.comp, grades = Array.from(new Set(C.classes.map(ck => ck.split("-")[0]))).sort((a, b) => a - b);
+  return grades.map(g => {
+    const cl = C.classes.filter(ck => ck.split("-")[0] === g);
+    const body = C.rows.map(rw => {
+      let n = 0, N = 0;
+      const tds = cl.map(ck => {
+        const c = C.cell[ck][rw.id];
+        if (c.un) return `<td class="c cunav">—</td>`;
+        if (c.opt) return `<td class="c ${c.n ? "cprog" : "cnone"}">${c.n || "—"}</td>`;
+        if (C.inScope.has(ck)) { n += Math.min(c.n, c.N); N += c.N; }
+        return `<td class="c ${c.p >= 100 ? "cdone" : c.n > 0 ? "cprog" : "cnone"}"><b>${c.n}</b><small>/${c.N}</small><br><small>${c.p}%</small></td>`;
+      }).join("");
+      const p = N ? Math.round(n / N * 100) : 0;
+      const tot = (rw.un || rw.opt) ? `<td class="c cunav">—</td>` : `<td class="c"><b>${p}%</b><br><small>${n}/${N}</small></td>`;
+      return `<tr class="${rw.un ? "unav" : ""}"><td class="sl">${rowLabel(rw)}</td>${tds}${tot}</tr>`;
+    }).join("");
+    let gn = 0, gN = 0; cl.forEach(ck => { if (C.inScope.has(ck)) { gn += C.cls[ck].n; gN += C.cls[ck].N; } });
+    const foot = cl.map(ck => `<td class="c"><b>${C.cls[ck].p}%</b><br><small>${C.cls[ck].n}/${C.cls[ck].N}</small></td>`).join("");
+    const gp = gN ? Math.round(gn / gN * 100) : 0, key = "g" + g;
+    return `<div class="cl ${COLL[key] ? "closed" : ""}"><div class="clh" data-coll="${key}"><span class="arr"></span><h4 class="gt">${esc(t("grade_lbl"))} ${esc(g)}</h4><div class="clbar">${lbar(gp, gn + "/" + gN)}</div></div><div class="clbody"><div class="tw"><table class="t cmp"><thead><tr><th>${esc(t("col_subject"))}</th>${cl.map(ck => `<th>${esc(dispCls(ck))}</th>`).join("")}<th>${esc(t("comp_total"))}</th></tr></thead><tbody>${body}</tbody><tfoot><tr><td><b>${esc(t("comp_total"))}</b></td>${foot}<td class="c"><b>${gN ? Math.round(gn / gN * 100) : 0}%</b><br><small>${gn}/${gN}</small></td></tr></tfoot></table></div></div></div>`;
+  }).join("");
+}
+function statusBadge(st) {
+  const m = { done: ["b-none", "✔ " + t("st_done")], prog: ["b-watch", t("st_prog")], none: ["b-grey", t("st_none")], opt: ["b-opt", t("sel_note")], unav: ["b-grey", t("st_unav")] }[st];
+  return `<span class="badge ${m[0]}">${esc(m[1])}</span>`;
+}
+function teacherReport() {
+  const C = A.comp, T = C.teachers;
+  if (!T.length) return "";
+  const top = T.filter(x => x.total).slice().sort((a, b) => b.total - a.total).slice(0, 8), mx = top.length ? top[0].total : 1;
+  const bars = top.length ? `<div class="tops">${top.map((x, i) => `<div class="tp"><span class="rk">${i + 1}</span><span class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small></span><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span><b>${x.total}</b></div>`).join("")}</div>` : "";
+  const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${x.opt ? "co" : c.N && c.n >= c.N ? "cd" : "cp"}" title="${c.n}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
+  const done = x => x.opt ? 0 : x.cls.filter(c => c.N && c.n >= c.N).length;
+  const body = `<h5 class="sh">${esc(t("tr_top"))}</h5>${bars || `<p class="hint">${esc(t("tr_none"))}</p>`}<h5 class="sh">${esc(t("tr_all"))} (${T.length})</h5>` +
+    `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span><span><i style="background:#9DB4D6"></i>${esc(t("sel_note"))}</span></div>` +
+    tbl("tchrep", [
+      { h: t("col_teacher"), v: x => x.name, f: x => `<b>${esc(x.name)}</b>` },
+      { h: t("col_subject"), v: x => x.subjects.join("، ") || "—" },
+      { h: t("col_ent"), v: x => x.total, f: x => `<b>${x.total}</b>` },
+      { h: t("tr_done"), v: x => done(x), f: x => x.opt ? "—" : `${done(x)}/${x.cls.length}` },
+      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, csv: true, sort: 2, dir: -1 });
+  return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3></div><div class="clbody">${body}</div></div>`;
+}
+function vOverview() {
+  if (!A.recs.length) return empty();
+  const S = Array.from(A.students.values());
+  const follow = S.filter(s => s.level >= 2), prio = S.filter(s => s.level === 3), soc = S.filter(s => s.socialBy.length);
+  const C = A.comp;
+  const grades = Array.from(new Set(S.map(s => s.grade))).sort((a, b) => a - b);
+  const gRows = grades.map(g => { const gs = S.filter(s => s.grade === g); return { label: (LANG === "ar" ? "الصف " : "Grade ") + g, value: pct(gs.filter(s => s.level >= 2).length, gs.length), attr: `data-gradefilter="${esc(g)}"` }; });
+  return `<h2 class="pt">${esc(t("ov_t"))}</h2>
+  <div class="grid g4" style="margin-bottom:18px">
+    <div class="stat"><b>${S.length}</b><span>${esc(t("k_students"))}</span></div>
+    <div class="stat"><b>${A.recs.length}</b><span>${esc(t("k_resp"))}</span></div>
+    <div class="stat"><b>${C.overall.p}%</b><span>${esc(t("k_comp"))}</span></div>
+    <div class="stat"><b>${follow.length}</b><span>${esc(t("k_follow"))}</span></div>
+    <div class="stat"><b>${prio.length}</b><span>${esc(t("k_prio"))}</span></div>
+    <div class="stat"><b>${soc.length}</b><span>${esc(t("k_social"))}</span></div></div>
+  ${C.hasRoster ? "" : `<div class="note warn">${esc(t("comp_noroster"))}</div>`}
+  ${cmpFilters()}<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("sc_lbl"))}</span><button data-cscope="started" class="${CMPSCOPE === "started" ? "on" : ""}">${esc(t("sc_started"))}</button><button data-cscope="all" class="${CMPSCOPE === "all" ? "on" : ""}">${esc(t("sc_all"))}</button></div>
+  <div class="card"><h3>${esc(t("comp_t"))}</h3><p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
+    <p class="hint" style="margin-top:8px">${esc(t("comp_note"))}${C.hasRoster ? " — " + esc(t("comp_noentry")) + ": " + C.noEntry : ""}</p></div>
+  ${teacherReport()}
+  <div class="grid g2"><div class="card"><h3>${esc(t("top_beh"))}</h3><p class="hint">${esc(t("top_hint"))}</p>${legend()}${distBars(topItems("B", 8))}</div>
+  <div class="card"><h3>${esc(t("top_aca"))}</h3><p class="hint">${esc(t("top_hint"))}</p>${legend()}${distBars(topItems("A", 8))}</div></div>
+  <div class="card"><h3>${esc(t("by_grade"))}</h3>${simpleBars(gRows)}</div><div class="note">${esc(t("method"))}</div>`;
+}
+
+/* خط متدرج أخضر ← أحمر مع نقطة تمثل المتوسط (0 = لا يظهر ... 4 = دائماً) */
+const gdot = v => `<div class="gl"><i class="gd" style="right:${Math.max(0, Math.min(100, v / 4 * 100)).toFixed(0)}%"></i></div>`;
+const glLabels = () => `<div class="gll"><span>${esc(LVL_AR[0])}</span><span>${esc(LVL_AR[1])}</span><span>${esc(LVL_AR[2])}</span></div>`;
+const RATE_AR = ["جيد جداً", "جيد", "متوسط", "ضعيف", "ضعيف جداً"], RATE_EN = ["Very good", "Good", "Fair", "Weak", "Very weak"];
+const rateK = v => v < 0.75 ? 0 : v < 1.5 ? 1 : v < 2.5 ? 2 : v < 3.25 ? 3 : 4;
+const rateTxt = v => (LANG === "ar" ? RATE_AR : RATE_EN)[rateK(v)];
+const ratePill = v => `<span class="pill" ${heat(v)}>${esc(rateTxt(v))}</span>`;
+function heat(v) { const a = Math.min(1, v / 3); return `style="background:rgba(37,99,235,${(0.08 + a * 0.55).toFixed(2)});${a > .6 ? "color:#fff" : ""}"`; }
+function vClasses() {
+  if (!A.recs.length) return empty();
+  const SEGC = ["#2F6B4F", "#2563EB", "#C9A227", "#B03A2E"];
+  const ringCol = p => p >= 35 ? "#B03A2E" : p >= 20 ? "#D9822B" : p >= 10 ? "#C9A227" : "#2F6B4F";
+  const list = Object.values(A.classes);
+  const grades = Array.from(new Set(list.map(c => c.key.split("/")[0]))).sort((a, b) => a - b);
+  const avg = a => a.length ? Math.round(mean(a) * 10) / 10 : null;
+  const lg = `<div class="card clegend2"><b>${esc(t("cl_lg"))}</b>
+    <span><span class="dotp" style="background:#2F6B4F">8%</span><span class="dotp" style="background:#C9A227">15%</span><span class="dotp" style="background:#D9822B">25%</span><span class="dotp" style="background:#B03A2E">40%</span> ${esc(t("cl_ring"))}</span>
+    <span>${[0, 1, 2, 3].map(i => `<i class="sq" style="background:${SEGC[i]}"></i>${esc(t("lv_" + LVKEY[i]))}`).join(" ")}</span>
+    <span>${esc(t("sc_lgd"))} <i class="sq" style="background:${scCol(2).b}"></i>0 <i class="sq" style="background:${scCol(5).b}"></i>5 <i class="sq" style="background:${scCol(8.5).b}"></i>10</span></div>`;
+  const row = c => {
+    const n = c.stu.length, p = pct(c.follow, n), cnt = [0, 1, 2, 3].map(l => c.stu.filter(s => s.level === l).length);
+    const top = Object.keys(c.top).sort((a, b) => c.top[b] - c.top[a])[0] || "";
+    return `<tr class="clk" data-class="${esc(c.key)}"><td class="c"><b class="cn2">${esc(c.key)}</b></td><td class="c">${n}</td><td class="c">${c.resp}</td>
+      <td>${scBar(avg(c.bs))}</td><td>${scBar(avg(c.as))}</td><td class="c"><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td>
+      <td><div class="stack">${cnt.map((v, i) => v ? `<i style="flex:${v};background:${SEGC[i]}" title="${esc(t("lv_" + LVKEY[i]))}: ${v}">${v}</i>` : "").join("")}</div></td>
+      <td class="tp2">${top ? "▲ " + esc(itemTxt(top)) : "—"}</td></tr>`;
+  };
+  const sections = grades.map(g => {
+    const cl = list.filter(c => c.key.split("/")[0] === g).sort((a, b) => Number(a.key.split("/")[1]) - Number(b.key.split("/")[1]));
+    const all = cl.reduce((m, c) => m.concat(c.stu), []);
+    const p = pct(all.filter(s => s.level >= 2).length, all.length);
+    const gb = avg(all.map(s => s.behScore).filter(x => x != null)), ga = avg(all.map(s => s.acaScore).filter(x => x != null));
+    return `<tr class="grow"><td class="c"><b>${esc(t("grade_lbl"))} ${esc(g)}</b></td><td class="c">${all.length}</td><td class="c">${cl.reduce((m, c) => m + c.resp, 0)}</td><td>${scBar(gb)}</td><td>${scBar(ga)}</td><td class="c"><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td></td><td></td></tr>` + cl.map(row).join("");
+  }).join("");
+  return `<h2 class="pt">${esc(t("cl_t"))}</h2><p class="ps">${esc(t("cl_s2"))}</p>${lg}
+  <div class="card"><div class="tw"><table class="t ctab"><thead><tr><th>${esc(t("col_class"))}</th><th>${esc(t("col_students"))}</th><th>${esc(t("col_resp"))}</th><th>${esc(t("sc_beh"))}</th><th>${esc(t("sc_aca"))}</th><th>${esc(t("cl_ring"))}</th><th>${esc(t("cl_dist"))}</th><th>${esc(t("cl_top"))}</th></tr></thead><tbody>${sections}</tbody></table></div></div>`;
+}
+
+function vSubjects() {
+  if (!A.recs.length) return empty();
+  const rows = orderSubs(Object.keys(A.subj)).map(k => { const s = A.subj[k]; return { name: s.name, resp: s.resp, stu: s.stu.size, beh: r1(mean(s.beh)), aca: r1(mean(s.aca)), fr: pct(s.f, s.n) }; });
+  return `<h2 class="pt">${esc(t("sj_t"))}</h2><p class="ps">${esc(t("sj_s"))}</p><div class="card">` + tbl("subjects", [
+    { h: t("col_subject"), v: r => r.name }, { h: t("col_resp"), v: r => r.resp }, { h: t("col_students_n"), v: r => r.stu },
+    { h: t("col_beh"), v: r => r.beh, f: r => ratePill(r.beh) }, { h: t("col_aca"), v: r => r.aca, f: r => ratePill(r.aca) }, { h: t("col_flagrate"), v: r => r.fr, f: r => r.fr + "%" }], rows, {}) + `</div>
+  </div><div class="note">${esc(t("method"))}</div>`;
+}
+
+function filteredStudents() {
+  return Array.from(A.students.values()).filter(s =>
+    (!F.grade || s.grade === F.grade) && (!F.section || s.section === F.section) && (F.level === "" || s.level === Number(F.level)) &&
+    (!F.subject || s.resp.some(r => r.subject === F.subject)) && (!F.item || s.flagged.includes(F.item)));
+}
+const stuAttr = s => `data-student="${SK.indexOf(s.key)}"`;
+function vStudents() {
+  if (!A.recs.length) return empty();
+  const S = Array.from(A.students.values());
+  const opt = (arr, cur, lab) => `<option value="">${esc(t("f_all"))}</option>` + arr.map(x => `<option value="${esc(x)}" ${String(cur) === String(x) ? "selected" : ""}>${esc(lab ? lab(x) : x)}</option>`).join("");
+  const grades = Array.from(new Set(S.map(s => s.grade))).sort((a, b) => a - b), secs = Array.from(new Set(S.map(s => s.section))).sort((a, b) => a - b);
+  const subs = Array.from(A.subjects).sort((a, b) => a.localeCompare(b, "ar"));
+  const rows = filteredStudents();
+  return `<h2 class="pt">${esc(t("stu_t"))}</h2><p class="ps">${esc(t("stu_s"))}</p><div class="card">
+  <div class="tb"><label>${esc(t("f_grade"))} <select data-f="grade">${opt(grades, F.grade)}</select></label>
+  <label>${esc(t("f_section"))} <select data-f="section">${opt(secs, F.section)}</select></label>
+  <label>${esc(t("f_level"))} <select data-f="level">${opt([0, 1, 2, 3], F.level, x => t("lv_" + LVKEY[x]))}</select></label>
+  <label>${esc(t("f_subject"))} <select data-f="subject">${opt(subs, F.subject)}</select></label>
+  ${F.item ? `<span class="chip">${esc(itemTxt(F.item))} <a href="#" data-clearitem style="text-decoration:none">✕</a></span>` : ""}</div>` +
+  tbl("students", [
+    { h: t("col_name"), v: s => sName(s), f: s => esc(sName(s)) + (s.lowRel ? ' <span title="' + esc(t("low_rel")) + '">⚠</span>' : "") }, { h: t("col_id"), v: s => s.id || "—" },
+    { h: t("col_class"), v: s => clsName(s.grade, s.section) }, { h: t("col_teachers"), v: s => s.teachers.size }, { h: t("sc_beh"), v: s => s.behScore == null ? -1 : s.behScore, f: s => scPill(s.behScore) },
+    { h: t("sc_aca"), v: s => s.acaScore == null ? -1 : s.acaScore, f: s => scPill(s.acaScore) }, { h: t("col_level"), v: s => s.level, f: s => badge(s.level) }, { h: t("col_social"), v: s => s.socialBy.length ? "✔" : "—" }],
+    rows, { search: true, csv: true, sort: 6, dir: -1, rowAttr: stuAttr }) + `<details class="note" style="margin-top:10px"><summary><b>${esc(t("sc_how_t"))}</b></summary><div style="white-space:pre-line;margin-top:6px">${esc(t("sc_how"))}</div></details></div>`;
+}
+
+function recFor(s) {
+  const L = LANG === "ar" ? 0 : 1, out = [];
+  const gen = [];
+  s.flagged.slice().sort((a, b) => Math.max(...s.entries[b].map(e => e.level)) - Math.max(...s.entries[a].map(e => e.level))).forEach(c => out.push({ c: c, txt: REC[c][L] }));
+  if (s.socialBy.length) gen.push(t("rp_social") + s.socialBy.join("، "));
+  if (s.flagged.length && s.parentNoBy.length) gen.push(t("rp_parent") + s.parentNoBy.join("، ") + " — " + t("rp_gen_parent"));
+  if (s.consensus.length) gen.push(t("rp_team"));
+  if (s.single.length) gen.push(t("rp_single"));
+  if (s.level === 3 && !s.socialBy.length) gen.push(t("rp_gen_social"));
+  return { items: out, gen: gen };
+}
+
+const med = a => { const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+/* ردود الطالب على عنصر معيّن، مع تعليم الردود البعيدة عن الوسيط (تتطلب 3 ردود فأكثر) */
+function respLevels(s, c) {
+  const arr = s.resp.filter(r => r.lv[c] !== undefined);
+  if (!EXCL || arr.length < 3) return arr.map(r => ({ r: r, l: r.lv[c], out: false }));
+  const m = med(arr.map(r => r.lv[c]));
+  return arr.map(r => ({ r: r, l: r.lv[c], out: Math.abs(r.lv[c] - m) >= CFG.OUTLIER_GAP }));
+}
+const exCount = s => CODES.reduce((n, c) => n + respLevels(s, c).filter(o => o.out).length, 0);
+function subjAvgs(s, c) {
+  const m = {};
+  respLevels(s, c).forEach(o => { if (!o.out) (m[o.r.subject] = m[o.r.subject] || []).push(o.l); });
+  return Object.keys(m).map(k => ({ subj: k, avg: mean(m[k]) }));
+}
+let REPMODE = "sum", REPMERGE = false;   // sum = ملخص المواد | all = جميع المواد | A = مواد المجموعة أ
+function vStudent() {
+  if (!A.recs.length) return empty();
+  const S = Array.from(A.students.values()).sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
+  const pick = `<div class="tb no-print"><select id="pickStu"><option value="">${esc(t("rp_pick"))}</option>${S.map(s => `<option value="${SK.indexOf(s.key)}" ${s.key === CUR ? "selected" : ""}>${esc(sName(s))} (${esc(clsName(s.grade, s.section))})</option>`).join("")}</select>
+    ${CUR ? `<button class="btn sm" data-view="parent">${esc(t("rp_parent"))}</button><button class="btn ghost sm" id="btnPrint">${esc(t("rp_print"))}</button>` : ""}<button class="btn ghost sm" data-view="students">${esc(t("rp_back"))}</button></div>`;
+  const s = CUR && A.students.get(CUR);
+  if (!s) return `<h2 class="pt">${esc(t("rp_t"))}</h2><div class="card">${pick}</div>`;
+  const subs = orderSubs(Array.from(new Set(s.resp.map(r => r.subject))));
+  const useSubs = REPMODE === "A" ? subs.filter(x => grpOf(x) === "A") : subs;
+  const cols = []; let bAdd = false;
+  if (REPMODE !== "sum") useSubs.forEach(x => {
+    if (REPMODE === "all" && REPMERGE && grpOf(x) === "B") { if (bAdd) return; bAdd = true; const bs = useSubs.filter(y => grpOf(y) === "B"); cols.push({ label: t("grpB_short"), sub: bs.join("، "), rs: s.resp.filter(r => bs.includes(r.subject)) }); return; }
+    const rs0 = s.resp.filter(r => r.subject === x);
+    cols.push({ label: x, sub: Array.from(new Set(rs0.map(r => r.teacher))).join("، "), rs: rs0 });
+  });
+  const exN = EXCL ? exCount(s) : 0;
+  const seg = `<div class="seg no-print"><button data-rmode="sum" class="${REPMODE === "sum" ? "on" : ""}">${esc(t("rm_sum"))}</button><button data-rmode="all" class="${REPMODE === "all" ? "on" : ""}">${esc(t("rm_all"))}</button><button data-rmode="A" class="${REPMODE === "A" ? "on" : ""}">${esc(t("rm_A"))}</button>` +
+    (REPMODE === "all" ? `<label class="chk"><input type="checkbox" data-rmerge ${REPMERGE ? "checked" : ""}> ${esc(t("rm_merge"))}</label>` : "") +
+    `</div>`;
+  const ncols = REPMODE === "sum" ? 2 : cols.length;
+  const head = REPMODE === "sum" ? `<th>${glLabels()}</th><th class="c">${esc(t("rm_subj_n"))}</th>` :
+    cols.map(c => `<th class="rot"><div>${esc(c.label)}${c.sub ? " · " + esc(c.sub) : ""}</div></th>`).join("");
+  const mxLegend = REPMODE === "sum" ? "" : `<div class="legend mxlg"><b>${esc(t("mx_lg"))}</b><span><i class="k0"></i>${esc(LVL_AR[0] && lvlTxt(0))}</span><span><i class="k2"></i>${esc(lvlTxt(2))}</span><span><i class="k4"></i>${esc(lvlTxt(4))}</span><span><i class="kx"></i>${esc(t("mx_none"))}</span>${EXCL ? `<span><i class="ke"></i>${esc(t("mx_ex"))}</span>` : ""}</div>`;
+  const cellFor = (c, col) => {
+    const mine = respLevels(s, c).filter(o => col.rs.includes(o.r));
+    if (!mine.length) return "<td class='c cx'></td>";
+    const inc = mine.filter(o => !o.out), use = inc.length ? inc : mine, rl = Math.round(mean(use.map(o => o.l)));
+    return `<td class="c m${lc(mean(use.map(o => o.l)))}${inc.length ? "" : " ex"}" title="${esc(col.label + ": " + lvlTxt(mean(use.map(o => o.l))))}"></td>`;
+  };
+  const mrow = c => {
+    if (REPMODE === "sum") {
+      const ps = subjAvgs(s, c); if (!ps.length) return "";
+      const avg = mean(ps.map(x => x.avg)), nf = ps.filter(x => x.avg >= 2.5).length, rl = Math.round(avg);
+      return `<tr><td>${esc(itemTxt(c))}</td><td class="c gcell" title="${esc(lvlTxt(avg))}">${gdot(avg)}</td><td class="c">${nf}/${ps.length}</td></tr>`;
+    }
+    return `<tr><td>${esc(itemTxt(c))}</td>${cols.map(col => cellFor(c, col)).join("")}</tr>`;
+  };
+  const rel = s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "";
+  return `<h2 class="pt no-print">${esc(t("rp_t"))}</h2>${pick}${rel}<div id="srep">
+  <div class="card"><div class="stuhead"><h2>${esc(sName(s))}</h2><span class="scbig"><em>${esc(t("rt_beh"))}</em>${scPill(s.behScore)}</span><span class="scbig"><em>${esc(t("rt_aca"))}</em>${scPill(s.acaScore)}</span>${badge(s.level)}<span class="chip">${esc(clsName(s.grade, s.section))}</span>${s.id ? `<span class="chip">${esc(t("col_id"))}: ${esc(s.id)}</span>` : ""}</div>
+    ${s.why.length ? `<p style="margin:12px 0 0"><b>${esc(t("fu_why"))}:</b> ${s.why.map(w => `<span class="pill">${esc(t(w))}</span>`).join(" ")}</p>` : ""}</div>
+  <div class="card"><h3>${esc(t("rp_matrix"))}</h3>${seg}
+    ${s.resp.length < 2 ? `<div class="note warn">${esc(t("rp_one"))}</div>` : ""}
+    ${mxLegend}<div class="tw"><table class="t mx ${REPMODE === "sum" ? "mxs" : "mxc"}"><thead><tr><th>${esc(t("col_item"))}</th>${head}</tr></thead><tbody>
+    <tr><td colspan="${ncols + 1}" style="background:#fdf6e8"><b>${esc(t("top_beh"))}</b></td></tr>${BEH.map(mrow).join("")}
+    <tr><td colspan="${ncols + 1}" style="background:#e8effb"><b>${esc(t("top_aca"))}</b></td></tr>${ACA.map(mrow).join("")}</tbody></table></div></div></div>`;
+}
+
+function listCard(titleKey, arr) {
+  return `<div class="card"><h3>${esc(t(titleKey))} (${arr.length})</h3>` + (arr.length ? tbl("fu_" + titleKey, [
+    { h: t("col_name"), v: s => sName(s) }, { h: t("col_class"), v: s => clsName(s.grade, s.section) },
+    { h: t("fu_why"), v: s => s.why.map(w => t(w)).join("، ") || "—" },
+    { h: t("col_cons2"), v: s => s.consensus.slice(0, 3).map(itemTxt).join("؛ ") || "—" }], arr, { rowAttr: stuAttr, sort: 0, dir: 1 }) : `<p style="color:var(--muted)">${esc(t("fu_none"))}</p>`) + `</div>`;
+}
+function vFollow() {
+  if (!A.recs.length) return empty();
+  const S = Array.from(A.students.values());
+  const pr = S.filter(s => s.level === 3);
+  return `<h2 class="pt">${esc(t("fu_t"))}</h2><p class="ps">${esc(t("fu_s"))}</p>
+  <div class="grid g4" style="margin-bottom:14px"><div class="stat"><b>${pr.length}</b><span>${esc(t("lv_prio"))}</span></div></div>` +
+    listCard("fu_prio", pr) + `<div class="note">${esc(t("rp_disc"))}</div>`;
+}
+
+/* =====================================================================
+   تقرير ولي الأمر (رسمي – صفحتان A4 – بدون أسماء المعلمين)
+   ===================================================================== */
+const PREC = {
+ B01:"التحدث مع الابن حول آداب النقاش واحترام المعلم وتبادل الآراء بهدوء.",
+ B02:"التأكيد على تناول الطعام في أوقات الاستراحة فقط.",
+ B03:"الحرص على نوم كافٍ ومنتظم ليلاً وتحديد موعد ثابت للنوم.",
+ B04:"التأكيد على استئذان المعلم قبل مغادرة الصف.",
+ B05:"الحرص على انتظام حضور الابن وإبلاغ المدرسة بأسباب أي غياب.",
+ B06:"تجهيز الحقيبة مساءً والاستيقاظ مبكراً لضمان الوصول في الموعد.",
+ B07:"تشجيع الابن على الإصغاء أثناء الشرح وتأجيل الحديث الجانبي لأوقات الاستراحة.",
+ B08:"تدريب الابن على رفع يده وانتظار الإذن قبل الحديث.",
+ B09:"التأكيد على الالتزام بتعليمات المعلمين والتوجيهات الصفية.",
+ B10:"توجيه الابن إلى استخدام ألفاظ مهذبة والتعامل باحترام مع الآخرين.",
+ B11:"التحدث مع الابن عن حل الخلافات بالحوار وطلب مساعدة المعلم، ومشاركة المدرسة أي ظروف قد تؤثر عليه.",
+ B12:"تشجيع الابن على تنفيذ ما يُطلب منه ومناقشة أسباب أي صعوبة مع المعلم.",
+ B13:"التأكيد على المحافظة على ممتلكات المدرسة وممتلكات الآخرين.",
+ B14:"متابعة استخدام الأجهزة الإلكترونية وعدم إحضارها إلا للأغراض التعليمية وبإذن المعلم.",
+ B15:"الحرص على ارتداء الزي المدرسي الكامل والمظهر المعتمد.",
+ A01:"التأكد يومياً من وجود الكتب والأدوات المطلوبة في الحقيبة.",
+ A02:"تخصيص وقت يومي ثابت لحل الواجبات ومتابعتها.",
+ A03:"القراءة اليومية مع الابن وتدريبه على المهارات الأساسية، والتواصل مع المعلم لوضع خطة دعم.",
+ A04:"تشجيع الابن على المشاركة والحوار داخل الصف.",
+ A05:"توفير بيئة هادئة للمذاكرة وتقسيم وقتها إلى فترات قصيرة.",
+ A06:"متابعة إنجاز الأنشطة والمهام الصفية والتواصل مع المعلم بشأنها.",
+ A07:"مراجعة نتائج الاختبارات مع الابن والاستفادة من برامج الدعم والتقوية.",
+ A08:"تحفيز الابن وربط التعلم باهتماماته والثناء على جهده."
+};
+const REPKEY = "marsad_rep_v1";
+function repCfg() {
+  const d = { school: "مدرسة الرازي للبنين", title: "تقرير متابعة الطالب السلوكي والأكاديمي", year: "2026 - 2027", term: "الفصل الدراسي الأول", principal: "بدرية الظنحاني", counselor: "أحمد سعيد" };
+  try { const o = Object.assign({}, d, JSON.parse(localStorage.getItem(REPKEY) || "{}")); if (!o.principal) o.principal = d.principal; if (!o.counselor) o.counselor = d.counselor; return o; } catch (e) { return d; }
+}
+function saveRepCfg(o) { try { localStorage.setItem(REPKEY, JSON.stringify(o)); } catch (e) {} }
+const todayStr = () => { const d = new Date(); return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear(); };
+const DOTS = "............................";
+
+function parentAgg(s) {
+  const rows = {};
+  CODES.forEach(c => {
+    const ps = subjAvgs(s, c);
+    if (!ps.length) { rows[c] = null; return; }
+    const avg = mean(ps.map(x => x.avg));
+    rows[c] = { avg: avg, lvl: Math.round(avg), flagged: ps.filter(x => x.avg >= 2.5).map(x => x.subj), n: ps.length };
+  });
+  return { subs: Array.from(new Set(s.resp.map(r => r.subject))), rows: rows };
+}
+function parentReport(s, R) {
+  const g = parentAgg(s), n = g.subs.length;
+  const stmt = c => (ITEMS[c] && ITEMS[c].ar) ? ITEMS[c].ar : c;
+  const rowHtml = (c, i) => {
+    const r = g.rows[c];
+    if (!r) return `<tr><td class="n">${i + 1}</td><td>${esc(stmt(c))}</td><td class="gc" style="text-align:center;color:#777">لم يُرصد</td><td class="sb">—</td></tr>`;
+    const cells = `<td class="gc">${gdot(r.avg)}</td>`;
+    const sb = !r.flagged.length ? "—" : (r.flagged.length <= 2 ? r.flagged.join("، ") : r.flagged.length + " مواد");
+    return `<tr><td class="n">${i + 1}</td><td>${esc(stmt(c))}</td>${cells}<td class="sb">${esc(sb)}</td></tr>`;
+  };
+  const thead = `<thead><tr><th>#</th><th>العبارة</th><th class="gc">${glLabels()}</th><th>ظهر في</th></tr></thead>`;
+  const flaggedItems = CODES.filter(c => g.rows[c] && (g.rows[c].lvl >= 3 || g.rows[c].flagged.length >= 2)).sort((a, b) => g.rows[b].avg - g.rows[a].avg);
+  const recs = flaggedItems.slice(0, 6).map(c => PREC[c]);
+  const lvNote = [
+    "تشير ملاحظات المعلمين إلى سلوك وأداء مستقرين، ولا توجد ملاحظات تستدعي إجراءً خاصاً، ونشكركم على دعمكم ونأمل مواصلة التعزيز الإيجابي.",
+    "تشير ملاحظات المعلمين إلى بعض الجوانب التي يمكن تحسينها بالتعاون بين البيت والمدرسة، وهي موضحة في هذا التقرير.",
+    "تشير ملاحظات المعلمين إلى عدة جوانب نرى أن دعمها بالتعاون بين البيت والمدرسة سيكون مفيداً لابنكم، وهي موضحة في هذا التقرير.",
+    "تشير ملاحظات المعلمين إلى جوانب نرى أهمية التعاون معكم في دعمها في أقرب وقت، وهي موضحة في هذا التقرير."
+  ][s.level];
+  const follow = s.level >= 2
+    ? `نأمل التكرم بالتواصل مع المرشد الأكاديمي${R.counselor ? " (" + esc(R.counselor) + ")" : ""} خلال أسبوع من استلام هذا التقرير لتحديد موعد لقاء ووضع خطة دعم مشتركة لمصلحة ابنكم.`
+    : `لا حاجة إلى إجراء خاص في الوقت الحالي، ويسعدنا تواصلكم مع المرشد الأكاديمي في أي وقت للاستفسار أو لمشاركتنا أي ملاحظات.`;
+  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${esc(R.title)}<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div>
+    <div class="rh-sign"><span>مديرة المدرسة: <b>${esc(R.principal) || DOTS}</b></span><span>المرشد الأكاديمي: <b>${esc(R.counselor) || DOTS}</b></span></div></header>`;
+  const foot = pg => `<div class="rfoot"><span>وثيقة خاصة بولي الأمر — مبنية على ملاحظات المعلمين الصفية</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
+  const page1 = `<section class="page">${hdr}
+    <div class="ri"><div><small>اسم الطالب</small><b>${esc(s.name)}</b></div><div><small>رقم الطالب</small><b>${esc(s.id || "—")}</b></div><div><small>الصف</small><b>${esc(s.grade)}</b></div><div><small>الشعبة</small><b>${esc(s.section)}</b></div></div>
+    <p class="rpara" style="margin-top:7px"><b>الفاضل / الفاضلة ولي أمر الطالب ${esc(s.name)} المحترم،</b></p>
+    <p class="rpara">تحية طيبة وبعد،</p>
+    <p class="rpara">تحرص ${esc(R.school)} على التعاون الوثيق مع أولياء الأمور لدعم أبنائنا سلوكياً وأكاديمياً. ويسرّنا أن نضع بين أيديكم ملخصاً لملاحظات معلمي ابنكم في <b>${n}</b> ${n === 1 ? "مادة دراسية" : n <= 10 ? "مواد دراسية" : "مادة دراسية"} خلال الفترة الماضية، مبنياً على متابعتهم الصفية. ${lvNote}</p>
+    <div class="rs">أولاً: الجانب السلوكي</div>
+    <table class="rt">${thead}<tbody>${BEH.map(rowHtml).join("")}</tbody></table>
+    <div class="rl">النقطة تمثل متوسط ما رصده المعلمون في جميع المواد: كلما اقتربت من اللون الأخضر كان الأمر أقل ظهوراً، وكلما اقتربت من الأحمر كان أكثر ظهوراً. عمود «ظهر في» يبيّن المواد التي ظهر فيها بدرجة مرتفعة.</div>
+    <div style="flex:1"></div>${foot(1)}</section>`;
+  const page2 = `<section class="page"><div class="rh2"><b>${esc(R.school)}</b><span>${esc(R.title)} — الطالب: <b>${esc(s.name)}</b></span></div>
+    <div class="rs" style="margin-top:2px">ثانياً: الجانب الأكاديمي</div>
+    <table class="rt">${thead}<tbody>${ACA.map(rowHtml).join("")}</tbody></table>
+    <div class="rs">ثالثاً: توصيات للتعاون بين البيت والمدرسة</div>
+    ${recs.length ? `<ul class="rul">${recs.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="rpara">نوصي بمواصلة تشجيع ابنكم والثناء على التزامه، والمتابعة الدورية لواجباته وحضوره.</p>`}
+    <div class="rs">رابعاً: متابعة المدرسة</div>
+    <p class="rpara">${follow}</p>
+    <p class="rpara" style="font-size:8.4pt;color:#444">ملاحظة: هذا التقرير مبني على ملاحظات المعلمين الصفية، وهو لا يمثل تشخيصاً نفسياً أو طبياً ولا يُعدّ حكماً على الطالب.</p>
+    <p class="rpara">شاكرين لكم حسن تعاونكم،،،</p>
+    <div class="rsig"><div>المرشد الأكاديمي<br><b>${esc(R.counselor) || DOTS}</b></div><div>مديرة المدرسة<br><b>${esc(R.principal) || DOTS}</b></div><div>اطلعتُ على التقرير — ولي الأمر<br>الاسم: ${DOTS}<br>التاريخ: ........../........../..........</div></div>
+    ${foot(2)}</section>`;
+  return page1 + page2;
+}
+let PR = { mode: "one", cls: "" };
+function vParent() {
+  if (!A.recs.length) return empty();
+  const S = Array.from(A.students.values()).sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
+  if (!CUR || !A.students.get(CUR)) CUR = S[0].key;
+  const R = repCfg();
+  const clsKeys = Object.keys(A.classes).sort((a, b) => { const x = a.split("/").map(Number), y = b.split("/").map(Number); return x[0] - y[0] || x[1] - y[1]; });
+  if (!PR.cls || !A.classes[PR.cls]) PR.cls = clsKeys[0];
+  const inp = (k, lab) => `<div><label>${esc(t(lab))}</label><input data-rcfg="${k}" value="${esc(R[k])}"></div>`;
+  const targets = PR.mode === "one" ? [A.students.get(CUR)] : A.classes[PR.cls].stu.slice().sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
+  return `<h2 class="pt no-print">${esc(t("pr_t"))}</h2><p class="ps no-print">${esc(t("pr_s"))}</p>
+  <div class="card no-print"><div class="rcfg">${inp("school", "pr_school")}${inp("principal", "pr_principal")}${inp("counselor", "pr_counselor")}${inp("year", "pr_year")}${inp("term", "pr_term")}${inp("title", "pr_title")}</div>
+    <p class="hint">${esc(t("pr_hint"))}</p><label class="chk"><input type="checkbox" data-excl ${EXCL ? "checked" : ""}> ${esc(t("ex_lbl"))}</label>
+    <div class="seg"><button data-prmode="one" class="${PR.mode === "one" ? "on" : ""}">${esc(t("pr_one"))}</button><button data-prmode="class" class="${PR.mode === "class" ? "on" : ""}">${esc(t("pr_class"))}</button></div>
+    <div class="tb">${PR.mode === "one" ? `<select id="pickPR">${S.map(x => `<option value="${SK.indexOf(x.key)}" ${x.key === CUR ? "selected" : ""}>${esc(sName(x))} (${esc(clsName(x.grade, x.section))})</option>`).join("")}</select>`
+      : `<select id="pickPRC">${clsKeys.map(k => `<option ${k === PR.cls ? "selected" : ""}>${esc(k)}</option>`).join("")}</select>`}
+      <button class="btn" id="btnPrintRep">${esc(t("pr_print"))} (${targets.length})</button></div></div>
+  <div class="rwrap" id="reports" dir="rtl">${targets.map(x => parentReport(x, R)).join("")}</div>`;
+}
+
+const VIEWS = { overview: ["📊", vOverview], classes: ["🏫", vClasses], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], import: ["📂", vImport] };
+
+function render() {
+  document.documentElement.lang = LANG; document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
+  document.title = t("title") + " | MARSAD";
+  $("#bTitle").textContent = t("title"); $("#bDesc").textContent = t("desc"); $("#bSchool").textContent = CFG.SCHOOL[LANG === "ar" ? 0 : 1];
+  $("#langBtn").textContent = t("lang");
+  const has = A && A.recs.length;
+  $("#nav").innerHTML = Object.keys(VIEWS).map(k => `<button data-view="${k}" class="${VIEW === k ? "on" : ""}" ${(!has && k !== "import") ? "disabled" : ""}><span class="ic">${VIEWS[k][0]}</span>${esc(t("v_" + k))}</button>`).join("");
+  $("#main").innerHTML = VIEWS[VIEW][1]();
+  bindView();
+}
+function go(v) { VIEW = v; render(); window.scrollTo({ top: 0 }); }
+
+function bindView() {
+  if (VIEW === "import") {
+    const dir = $("#inDir"), fl = $("#inFiles"), drop = $("#drop");
+    $("#btnDir").onclick = () => dir.click(); $("#btnFiles").onclick = () => fl.click();
+    dir.onchange = () => { handleFiles(dir.files); dir.value = ""; }; fl.onchange = () => { handleFiles(fl.files); fl.value = ""; };
+    ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+    drop.addEventListener("drop", async e => { handleFiles(await filesFromDrop(e.dataTransfer)); });
+    $("#btnRoster").onclick = () => $("#inRoster").click();
+    $("#inRoster").onchange = e => { if (e.target.files[0]) loadRosterFile(e.target.files[0]); };
+    const cl = $("#btnClear");
+    if (cl) cl.onclick = () => { if (confirm(t("clear_q"))) { STORE = {}; LASTIMP = null; CUR = null; analyze(); persist(); render(); } };
+  }
+  if (VIEW === "parent") {
+    const p1 = $("#pickPR"); if (p1) p1.onchange = () => { CUR = SK[Number(p1.value)]; render(); };
+    const p2 = $("#pickPRC"); if (p2) p2.onchange = () => { PR.cls = p2.value; render(); };
+    $("#btnPrintRep").onclick = () => window.print();
+  }
+  if (VIEW === "student") {
+    const p = $("#pickStu"); if (p) p.onchange = () => { CUR = p.value === "" ? null : SK[Number(p.value)]; render(); };
+    const pr = $("#btnPrint"); if (pr) pr.onclick = () => window.print();
+  }
+}
+
+/* أحداث عامة بالتفويض */
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-coll],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
+  if (!el) return;
+  if (el.id === "md-close") { closeModal(); return; }
+  if (el.dataset.coll) { const k = el.dataset.coll, box = el.closest(".cl"); COLL[k] = !COLL[k]; box.classList.toggle("closed", !!COLL[k]); return; }
+  if (el.dataset.cscope) { CMPSCOPE = el.dataset.cscope; computeCompletion(); render(); return; }
+  if (el.dataset.cgrp) { CMPGRP = el.dataset.cgrp; computeCompletion(); render(); return; }
+  if (el.dataset.rmode !== undefined) { REPMODE = el.dataset.rmode; render(); return; }
+  if (el.dataset.prmode) { PR.mode = el.dataset.prmode; render(); return; }
+  if (el.dataset.clearitem !== undefined) { e.preventDefault(); F.item = ""; render(); return; }
+  if (el.dataset.view) { go(el.dataset.view); return; }
+  if (el.dataset.sort) { const [id, i] = el.dataset.sort.split(":"), st = TBL[id], n = Number(i); if (st.sort === n) st.dir *= -1; else { st.sort = n; st.dir = 1; } $("#tb-" + id).innerHTML = tblInner(id); return; }
+  if (el.dataset.more) { TBL[el.dataset.more].limit += CFG.PAGE; $("#tb-" + el.dataset.more).innerHTML = tblInner(el.dataset.more); return; }
+  if (el.dataset.csv) { toCSV(el.dataset.csv); return; }
+  if (el.dataset.student !== undefined) { CUR = SK[Number(el.dataset.student)]; closeModal(); go("student"); return; }
+  if (el.dataset.class) { const [g, s] = el.dataset.class.split("/"); F = { grade: g, section: s, level: "", subject: "", item: "", q: "" }; go("students"); return; }
+  if (el.dataset.gradefilter) { F = { grade: el.dataset.gradefilter, section: "", level: "", subject: "", item: "", q: "" }; go("students"); return; }
+  if (el.dataset.item) openItem(el.dataset.item);
+});
+document.addEventListener("input", e => { const id = e.target.dataset && e.target.dataset.tsearch; if (id) { TBL[id].q = e.target.value; TBL[id].limit = CFG.PAGE; $("#tb-" + id).innerHTML = tblInner(id); } });
+document.addEventListener("change", e => {
+  const d0 = e.target.dataset || {};
+  if (d0.cmerge !== undefined) { CMPMERGE = e.target.checked; computeCompletion(); render(); return; }
+  if (d0.rmerge !== undefined) { REPMERGE = e.target.checked; render(); return; }
+  if (d0.excl !== undefined) { EXCL = e.target.checked; render(); return; } const rk = e.target.dataset && e.target.dataset.rcfg; if (rk) { const R0 = repCfg(); R0[rk] = e.target.value; saveRepCfg(R0); render(); return; }
+  const f = e.target.dataset && e.target.dataset.f; if (f) { F[f] = e.target.value; render(); } });
+function fitStudentPrint() {
+  const el = document.getElementById("srep"); if (!el || VIEW !== "student") return;
+  el.classList.add("pfit"); el.style.zoom = "";
+  const maxH = 297 * 96 / 25.4 - 6, h = el.scrollHeight;
+  if (h > maxH) el.style.zoom = (maxH / h).toFixed(3);
+}
+function unfitStudentPrint() { const el = document.getElementById("srep"); if (el) { el.classList.remove("pfit"); el.style.zoom = ""; } }
+window.addEventListener("beforeprint", fitStudentPrint); window.addEventListener("afterprint", unfitStudentPrint);
+$("#langBtn").onclick = () => { LANG = LANG === "ar" ? "en" : "ar"; Object.keys(TBL).forEach(k => delete TBL[k]); render(); };
+
+function openItem(c) {
+  const list = Array.from(A.students.values()).filter(s => s.flagged.includes(c)).sort((a, b) => b.entries[c].length - a.entries[c].length);
+  const m = document.createElement("div"); m.className = "modal"; m.id = "modal";
+  m.innerHTML = `<div class="box"><h3>${esc(t("md_t"))}</h3><p><b>${esc(itemTxt(c))}</b></p>${legend()}<div class="tw"><table class="t"><tbody>` +
+    list.map(s => { const by = s.entries[c].filter(e => e.level >= CFG.FLAG_LEVEL); return `<tr data-student="${SK.indexOf(s.key)}"><td>${esc(sName(s))}</td><td>${esc(clsName(s.grade, s.section))}</td><td>${by.map(e => `<span class="pill">${esc(e.teacher)} – ${esc(lvlTxt(e.level))}</span>`).join("")}</td></tr>`; }).join("") +
+    `</tbody></table></div><p style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="md-filter">${esc(t("v_students"))} (${list.length})</button><button class="btn ghost" id="md-close">${esc(t("close"))}</button></p></div>`;
+  document.body.appendChild(m);
+  m.addEventListener("click", ev => { if (ev.target === m) closeModal(); });
+  $("#md-filter").onclick = () => { F = { grade: "", section: "", level: "", subject: "", item: c, q: "" }; closeModal(); go("students"); };
+}
+function closeModal() { const m = $("#modal"); if (m) m.remove(); }
+
+/* التشغيل */
+(async function init() {
+  if (window.PQ_CLASSES && window.PQ_SUBJECTS) setRoster(window.PQ_CLASSES, window.PQ_SUBJECTS);
+  else { const r0 = await idbGet("roster"); if (r0 && r0.classes) setRoster(r0.classes, r0.subjects); }
+  const saved = await idbGet("store");
+  if (saved && saved.records) { STORE = saved.records; Object.assign(ITEMS, saved.items || {}); }
+  analyze();
+  VIEW = A.recs.length ? "overview" : "import";
+  render();
+})();
+</script>
+</body>
+</html>
