@@ -522,6 +522,18 @@
         </div>
       </div>
 
+      <div class="card" style="cursor:default;">
+        <span class="card-link-badge admin-only" title="رابط رفع تقارير مرصاد" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/sites/AlraziSchool/Shared%20Documents/Forms/AllItems.aspx','_blank')">🔗</span>
+        <span class="icon">🔭</span>
+        <h3>مِرْصاد</h3>
+        <p>رصد المعلمين لسلوك الطلاب وأدائهم، وتحليل النتائج</p>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <a href="./Marsad_input.html" target="_blank" class="btn" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">📝 إدخال</a>
+          <a href="https://emiratesschoolsese.sharepoint.com/sites/AlraziSchool/Shared%20Documents/Forms/AllItems.aspx" target="_blank" class="btn btn-primary teacher-only" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">☁️ رفع التقرير</a>
+          <a href="./marsad_result.html" target="_blank" class="btn btn-primary admin-only" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">📊 النتائج</a>
+        </div>
+      </div>
+
       <a class="card admin-only" href="./weekstar.html" target="_blank">
         <span class="card-link-badge" title="قائمة أسماء نجوم الأسبوع" onclick="event.stopPropagation();event.preventDefault();window.open('https://emiratesschoolsese.sharepoint.com/:f:/s/AlraziSchool/IgBM5cg7NaErQo2oLMe7sCM_AVLrQTWX7fllKweW108c578?e=2aP3ZD','_blank')">🔗</span>
         <span class="icon">🏆</span>
@@ -563,6 +575,12 @@
         <span class="icon">🪪</span>
         <h3>بطاقات التعريف</h3>
         <p>توليد بطاقات تعريف جاهزة للطباعة (PDF) للمعلمين والإداريين، بصورهم الشخصية</p>
+      </a>
+
+      <a class="card admin-only" href="./exams_control.html" target="_blank">
+        <span class="icon">🗂️</span>
+        <h3>كنترول الاختبارات</h3>
+        <p>كشوف اللجان وكشوف التوقيع وتنظيم الاختبارات وطباعة التقارير</p>
       </a>
 
       <a class="card utility" href="javascript:void(0)" onclick="showView('management')">
@@ -976,6 +994,7 @@ function buildGuideView(){
         ${programCard('💬','التواصل السريع','رسائل واتساب جاهزة لأولياء الأمور (استدعاء، استفسار غياب، مخالفة، أو حسابات LMS وألف) بضغطة واحدة لكل طالب.')}
         ${programCard('⭐','نجوم مدرستي','نظام نقاط ومكافآت لكل صف، مع ربط تلقائي بملف حفظ دائم (JSON) يحتفظ ببياناتك بين الجلسات.')}
         ${programCard('🗓️','الخطة الأسبوعية','رابط مباشر لمجلد رفع الخطط الأسبوعية على الشيربوينت.')}
+        ${programCard('🔭','مِرْصاد','المعلمون يُدخلون ملاحظاتهم على الطلاب ويُنتج ملفات JSON، وتحلّل الإدارة النتائج وتُصدر تقارير أولياء الأمور.')}
         ${programCard('🏆','نجوم الأسبوع','اختيار نجم كل صف أسبوعياً من القائمة الحقيقية للطلاب، وطباعة شهادات/بطاقات تكريم، مع تحديث القائمة من بيانات المدرسة بضغطة واحدة.')}
         ${programCard('📅','التقويم الأكاديمي','إدارة فعاليات وتواريخ العام الدراسي، مع ربط تلقائي (قراءة وكتابة) لملفه الخاص وخيار دمج أو استبدال عند الاستيراد.')}
         ${programCard('🎲','التعلم باللعب','أنشطة وألعاب تعليمية تفاعلية للطلاب.')}
