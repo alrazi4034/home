@@ -302,7 +302,8 @@ function buildDB(classes, subjects) {
     const p = key.split("-"), g = p[0], s = p[1]; if (!g || !s) return;
     (DB.grades[g] = DB.grades[g] || {})[s] = (classes[key] || []).map(parseStudent);
   });
-  Object.keys(subjects).forEach(subj => (subjects[subj] || []).forEach(t => {
+  Object.keys(subjects).forEach(subj => (subjects[subj] || []).forEach(t0 => {
+    const t = typeof t0 === "string" ? t0 : t0.name;
     DB.teachers[t] = DB.teachers[t] || []; if (DB.teachers[t].indexOf(subj) < 0) DB.teachers[t].push(subj);
   }));
   DB.ready = true;
@@ -441,7 +442,7 @@ function ctxBar() {
     (CONFIG.SHAREPOINT_URL && CONFIG.SHAREPOINT_URL.indexOf("PUT_") !== 0 ? '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(CONFIG.SHAREPOINT_URL) + '">' + esc(t("openSP")) + "</a>" : "") +
     '</div><div class="prog" id="prog"><i style="width:' + c.pct + '%"></i><span>' + esc(progText(c)) + "</span></div></div>";
 }
-function progText(c) { return t("progress") + " " + c.finished + " " + t("of") + " " + c.total + " " + t("students") + " (" + c.pct + "%)  ·  " + t("done") + " " + c.done + " · " + t("partial") + " " + c.partial + (c.na ? " · " + t("na") + " " + c.na : ""); }
+function progText(c) { return t("progress") + " " + c.finished + " " + t("of") + " " + c.total + " " + t("students") + " (" + c.pct + "%)  ·  " + t("done") + " " + c.done + " · " + t("partial") + " " + c.partial + (c.na ? " · " + t("na") + " " + c.na : "") + (S.exportedAt ? " · " + (S.lang === "ar" ? "آخر تصدير: " : "Last export: ") + new Date(S.exportedAt).toLocaleString("en-GB", { hour12: false }).slice(0, 17).replace(",", "") : ""); }
 function updateProgress() {
   const c = counts(), p = $("#prog"); if (!p) return;
   p.querySelector("i").style.width = c.pct + "%"; p.querySelector("span").textContent = progText(c);
@@ -604,7 +605,7 @@ function downloadBatch() {
   const blob = new Blob([JSON.stringify(b.batch, null, 2)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-  S.exportedAt = Date.now(); save(); toast(t("dlOk") + name);
+  S.exportedAt = Date.now(); save(); updateProgress(); toast(t("dlOk") + name);
 }
 const readText = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsText(f, "utf-8"); });
 function rowFromAnswers(ans, fu) {

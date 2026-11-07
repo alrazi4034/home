@@ -330,6 +330,16 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .rt td.sb2 b{color:#7A2E2E}
 .wbox .pl{white-space:pre-wrap;font-size:8.4pt;line-height:1.45;max-height:44mm;overflow:hidden;margin:3px 0}
 .wbox ul.rul{margin:3px 0;padding-inline-start:16px;font-size:8.6pt}
+
+.tr2{align-items:start;gap:26px}
+.tp3{display:grid;grid-template-columns:34px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.tp3 .medal{font-size:26px}.tp3 .tn small{display:block;color:var(--muted);font-size:11.5px;margin-bottom:4px}
+.tp3 .pn{text-align:center}.tp3 .pn b{font-size:18px;color:var(--brand-d)}.tp3 .pn small{display:block;color:var(--muted);font-size:11px}
+.pb2{height:10px;background:#e6e9ee;display:flex;overflow:hidden;min-width:90px;border:1px solid var(--line)}
+.pb2 .s1{background:#2F6B4F}.pb2 .s2{background:#E0A82E}
+.pcell{display:flex;align-items:center;gap:8px}.pcell .pb2{flex:1}.pcell b{min-width:40px;font-size:12.5px}
+.dt{white-space:nowrap;font-size:12.5px;color:#444}
+@media(max-width:900px){.tr2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -595,7 +605,7 @@ function expandBatch(j, fileName) {
     const fu = s.followUp || {};
     const sub = Date.parse(s.updatedAt) || at;
     const fv = x => x && (typeof x === "object" ? x.answer : x) || "";
-    out.push({ label: label, rec: { responseId: "b|" + tn + "|" + sn + "|" + gr + "-" + sc + "|" + (st.id || st.name) + "|" + sub, submittedAt: sub, lang: j.formLanguage || "",
+    out.push({ label: label, rec: { responseId: "b|" + tn + "|" + sn + "|" + gr + "-" + sc + "|" + (st.id || st.name) + "|" + sub, submittedAt: sub, exp: at, lang: j.formLanguage || "",
       teacher: tn, subject: sn, student: st, lv: lv, na: s.status === "na", parent: fv(fu.parentContacted), social: fv(fu.needsSocialWorker),
       strengths: String(s.strengths || "").trim(), notes: String(s.additionalNotes || "").trim(), fileName: fileName } });
   });
@@ -659,8 +669,10 @@ function parseStudent(raw) {
 }
 /* ---------- ملف الطلاب والمعلمين (المرجع) ---------- */
 let ROSTER = null;
-function setRoster(classes, subjects) {
-  ROSTER = { classes: {}, subjects: Object.keys(subjects || {}), tmap: subjects || {} };
+function setRoster(classes, subjects0) {
+  const subjects = {}, tsec = {}; let hasSec = false;   // المعلم: نص، أو { name, sections }
+  Object.keys(subjects0 || {}).forEach(sb => { subjects[sb] = []; tsec[sb] = {}; (subjects0[sb] || []).forEach(x => { const n = typeof x === "string" ? x : x.name; subjects[sb].push(n); if (x && typeof x === "object" && x.sections !== undefined) { tsec[sb][n] = Number(x.sections) || 0; hasSec = true; } }); });
+  ROSTER = { classes: {}, subjects: Object.keys(subjects), tmap: subjects, tsec: hasSec ? tsec : null };
   Object.keys(classes || {}).forEach(k => { ROSTER.classes[k] = (classes[k] || []).map(parseStudent); });
 }
 function loadRosterFile(file) {
@@ -679,7 +691,7 @@ function loadRosterFile(file) {
 }
 Object.assign(D, {
   g_all: ["كل المواد", "All subjects"], g_A: ["مواد المجموعة أ", "Group A subjects"], g_lbl: ["المواد:", "Subjects:"],
-  g_merge: ["دمج ملاحظات المجموعة ب ", "Merge Group B (one teacher's entry is enough)"],
+  g_merge: ["دمج ملاحظات المجموعة ب (يكفي إدخال معلم واحد من المجموعة)", "Merge Group B (one teacher's entry is enough)"],
   g_mergedB: ["مواد المجموعة ب (مدمجة)", "Group B (merged)"], grpB_short: ["مجموعة ب", "Group B"],
   st_unav: ["غير متاحة الآن", "Not available now"], sel_note: ["تُدرَّس لصفوف مختارة", "Selected classes only"],
   grade_lbl: ["الصف", "Grade"], col_group: ["المجموعة", "Group"], col_entries: ["الإدخالات المنجزة (المدرسة)", "Entries done (school)"],
@@ -708,7 +720,9 @@ Object.assign(D, {
   sc_how_t: ["كيف يُحسب التقييم من 10؟", "How is the score out of 10 calculated?"],
   sc_how: ["١) لكل بند: نأخذ متوسط إجابات معلمي كل مادة، ثم متوسط المواد (فلا يطغى عدد معلمي مادة على غيرها).\n٢) نحوّل المستوى إلى نسبة: لا يظهر = 0 ، أحياناً = 0.5 ، دائماً = 1، ونأخذ متوسط البنود المرصودة (يُستثنى ما لم يلاحظه المعلم).\n٣) التقييم = 10 × (1 − هذا المتوسط).\n٤) يُخصم 0.3 عن كل بند أجمع عليه معلمان فأكثر بـ «دائماً» (بحد أقصى 1.5).\n10 = لا ملاحظات ، 0 = ملاحظات متكررة. يُحسب السلوك من بنود السلوك والأكاديمي من البنود الأكاديمية كلٌّ على حدة.", "1) Per item: average each subject's teachers, then average the subjects.\n2) Convert to burden: never=0, sometimes=0.5, always=1; average the observed items (not-observed excluded).\n3) Score = 10 × (1 − burden).\n4) Minus 0.3 per item that 2+ teachers marked 'always' (max 1.5).\n10 = no concerns, 0 = frequent concerns. Behavior and academic are computed separately."]
 });
-Object.assign(D, { tr_most: ["الأكثر إدخالاً (عدد إدخالات الطلاب)", "Most entries"], tr_least: ["الأقل إنجازاً", "Least completed"],
+Object.assign(D, { tr_asg: ["الشعب المطلوبة", "Required sections"], tr_prog: ["الإنجاز", "Progress"], tr_last: ["آخر تصدير", "Last export"], tr_cls_unit: ["شعب مكتملة", "sections complete"],
+  tr_top3: ["أعلى 3 معلمين إنجازاً (نسبة الشعب المكتملة)", "Top 3 teachers by completion (share of sections)"], tr_top3_s: ["النسبة محسوبة من الشعب المطلوبة لكل معلم، فالمعلم بشعبتين يُقارَن بمن عنده 10 شعب بعدل.", "Measured against each teacher's own sections, so teachers with 2 or 10 sections compare fairly."],
+  tr_bystu: ["الأكثر إدخالاً (بعدد الطلاب)", "Most entries (by students)"], tr_noasg: ["أضف عدد شعب كل معلم في ملف البيانات (PQ_TEACHER_SECTIONS) ليظهر الترتيب.", "Add each teacher's section count to the data file (PQ_TEACHER_SECTIONS)."], tr_most: ["الأكثر إدخالاً", "Most entries"], tr_least: ["الأقل إنجازاً", "Least completed"],
   tr_showall: ["عرض جميع المعلمين", "Show all teachers"], tr_first8: ["عرض أول 8 فقط", "Show first 8"] });
 D.dataBad = ["تعذّر قراءة الملف. تحقق من بنيته.", "Could not read the file. Check its structure."];
 
@@ -746,7 +760,10 @@ function computeCompletion() {
     if (!ent[ck][sk]) ent[ck][sk] = new Set();
     ent[ck][sk].add(skeyOf(r.student));
   });
+  const na = {};   // الطلاب غير الملحوظين: لا يدخلون في المطلوب
+  Object.values(STORE).filter(r => r.na).forEach(r => { const ck = r.student.grade + "-" + r.student.section, sk = nz(r.subject); (na[ck] = na[ck] || {}); (na[ck][sk] = na[ck][sk] || new Set()).add(skeyOf(r.student)); });
   const setOf = (ck, x) => (ent[ck] && ent[ck][nz(x)]) || new Set();
+  const naCnt = (ck, members) => { const u = new Set(); members.forEach(m => setOf(ck, m).forEach(v => u.add(v))); const z = new Set(); members.forEach(m => ((na[ck] && na[ck][nz(m)]) || new Set()).forEach(v => { if (!u.has(v)) z.add(v); })); return z.size; };
   const classes = Object.keys(N).sort((a, b) => { const x = a.split("-").map(Number), y = b.split("-").map(Number); return x[0] - y[0] || x[1] - y[1]; });
   const started = new Set(Object.keys(ent));
   const inScope = new Set(classes.filter(ck => CMPSCOPE === "all" || started.has(ck)));
@@ -757,7 +774,7 @@ function computeCompletion() {
     const o = sj[x]; if (o.un) return;
     const n = setOf(ck, x).size;
     if (!inScope.has(ck)) return;
-    if (o.opt) o.n += n; else { const Nn = N[ck]; o.n += Math.min(n, Nn); o.N += Nn; o.total++; if (Nn && n >= Nn) o.done++; }
+    if (o.opt) o.n += n; else { const Nn = N[ck] - naCnt(ck, [x]); o.n += Math.min(n, Nn); o.N += Nn; o.total++; if (Nn && n >= Nn) o.done++; }
   }));
   A.recs.forEach(r => { const k = subs.find(y => nz(y) === nz(r.subject)); if (k) sj[k].teachers.add(r.teacher); });
   subs.forEach(x => {
@@ -781,21 +798,34 @@ function computeCompletion() {
     rows.forEach(rw => {
       if (rw.un) { cell[ck][rw.id] = { n: 0, N: 0, p: 0, un: true }; return; }
       const u = new Set(); rw.members.forEach(m => setOf(ck, m).forEach(v => u.add(v)));
-      const n = u.size, Nn = rw.opt ? n : N[ck];
+      const n = u.size, Nn = rw.opt ? n : N[ck] - naCnt(ck, rw.members);
       const c = cell[ck][rw.id] = { n: n, N: Nn, p: Nn ? Math.min(100, Math.round(n / Nn * 100)) : 0, opt: !!rw.opt };
       if (!c.opt) { cn += Math.min(n, Nn); cN += Nn; }
     });
     cls[ck] = { n: cn, N: cN, p: cN ? Math.round(cn / cN * 100) : 0 };
     if (inScope.has(ck)) { on += cn; oN += cN; }
   });
-  // --- تقرير إنجاز المعلمين
-  const tm = {}; const TK = n => tm[nz(n)] = tm[nz(n)] || { name: n, subjects: new Set(), pairs: new Set(), byCls: {} };
+  // --- تقرير إنجاز المعلمين (بعدد الشعب المكتملة من المطلوبة)
+  const tm = {}; const TK = n => tm[nz(n)] = tm[nz(n)] || { name: n, subjects: new Set(), pairs: new Set(), byCls: {}, na: {}, exp: 0, expCls: {} };
+  const tsecOf = (sub, n) => { if (!ROSTER || !ROSTER.tsec) return null; const key = Object.keys(ROSTER.tsec).find(k => nz(k) === nz(sub)); const m = key && ROSTER.tsec[key]; if (!m) return null; const k2 = Object.keys(m).find(k => nz(k) === nz(n)); return k2 === undefined ? null : Number(m[k2]) || 0; };
   if (ROSTER) Object.keys(ROSTER.tmap).forEach(sub => { if (subs.some(y => nz(y) === nz(sub))) (ROSTER.tmap[sub] || []).forEach(n => TK(n).subjects.add(sub)); });
-  A.recs.forEach(r => { const o = TK(r.teacher), ck = r.student.grade + "-" + r.student.section, sk = skeyOf(r.student); o.subjects.add(r.subject); o.pairs.add(ck + "|" + nz(r.subject) + "|" + sk); (o.byCls[ck] = o.byCls[ck] || new Set()).add(sk); });
+  Object.values(STORE).forEach(r => {
+    const o = TK(r.teacher), ck = r.student.grade + "-" + r.student.section, sk = skeyOf(r.student), d = r.exp || r.submittedAt || 0;
+    o.subjects.add(r.subject); if (d > o.exp) o.exp = d; if (d > (o.expCls[ck] || 0)) o.expCls[ck] = d;
+    if (r.na) { (o.na[ck] = o.na[ck] || new Set()).add(sk); return; }
+    o.pairs.add(ck + "|" + nz(r.subject) + "|" + sk); (o.byCls[ck] = o.byCls[ck] || new Set()).add(sk);
+  });
   const teachers = Object.values(tm).map(o => {
     const sl = orderSubs(Array.from(o.subjects));
-    return { name: o.name, subjects: sl, total: o.pairs.size, opt: sl.length > 0 && sl.every(isSel),
-      cls: Object.keys(o.byCls).sort((a, b) => { const x = a.split("-").map(Number), y = b.split("-").map(Number); return x[0] - y[0] || x[1] - y[1]; }).map(ck => ({ ck: ck, n: o.byCls[ck].size, N: N[ck] || 0 })) };
+    let asg = 0, known = ROSTER && ROSTER.tsec && sl.length > 0;
+    sl.forEach(sb => { const v = tsecOf(sb, o.name); if (v === null) known = false; else asg += v; });
+    const cks = Array.from(new Set(Object.keys(o.byCls).concat(Object.keys(o.na)))).sort((a, b) => { const x = a.split("-").map(Number), y = b.split("-").map(Number); return x[0] - y[0] || x[1] - y[1]; });
+    const cls = cks.map(ck => { const n = (o.byCls[ck] || new Set()).size, z = (o.na[ck] || new Set()).size, NN = N[ck] || 0; return { ck: ck, n: n, z: z, N: NN, full: NN > 0 && n + z >= NN, d: o.expCls[ck] || 0 }; });
+    const full = cls.filter(c => c.full).length;
+    const frac = cls.reduce((m, c) => m + (c.N ? Math.min(1, (c.n + c.z) / c.N) : 0), 0);
+    const base = known ? Math.max(asg, cls.length) : 0;
+    return { name: o.name, subjects: sl, total: o.pairs.size, opt: sl.length > 0 && sl.every(isSel), cls: cls, asg: known ? asg : null,
+      full: full, frac: frac, pctFull: base ? Math.round(full / base * 100) : 0, pctAll: base ? Math.round(frac / base * 100) : 0, exp: o.exp };
   }).sort((a, b) => subjRank(a.subjects[0] || "") - subjRank(b.subjects[0] || "") || String(a.name).localeCompare(String(b.name), "ar"));
   let noEntry = 0;
   if (ROSTER) Object.keys(rk).forEach(ck => rk[ck].forEach(k => { if (!A.students.has(k)) noEntry++; }));
@@ -1036,25 +1066,34 @@ function statusBadge(st) {
 }
 let STUPREV = false;
 let TRMODE = "most", TRALL = false;
+const fmtDT = ms => { if (!ms) return "—"; const d = new Date(ms), p2 = n => String(n).padStart(2, "0"); return p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); };
 function teacherReport() {
   const C = A.comp, T = C.teachers;
   if (!T.length) return "";
   if (COLL.trall === undefined) COLL.trall = true;
+  const hasAsg = T.some(x => x.asg !== null);
+  const nm = (a, b) => String(a.name).localeCompare(String(b.name), "ar");
+  // الأعلى إنجازاً بنسبة الشعب المكتملة من شعبه (عدالة بين من يدرّس 10 شعب ومن يدرّس شعبتين)
+  const topC = T.filter(x => x.asg).slice().sort((a, b) => b.pctFull - a.pctFull || b.pctAll - a.pctAll || b.asg - a.asg || nm(a, b)).filter(x => x.pctAll > 0).slice(0, 3);
   const mx = Math.max(1, ...T.map(x => x.total));
-  const sorted = T.slice().sort(TRMODE === "most" ? (a, b) => b.total - a.total || String(a.name).localeCompare(String(b.name), "ar") : (a, b) => a.total - b.total || String(a.name).localeCompare(String(b.name), "ar"));
+  const sorted = T.slice().sort(TRMODE === "most" ? (a, b) => b.total - a.total || nm(a, b) : (a, b) => a.total - b.total || nm(a, b));
   const shown = TRALL ? sorted : sorted.filter(x => TRMODE === "least" || x.total).slice(0, 8);
+  const pbar = x => x.asg ? `<div class="pb2" title="${x.full}/${x.asg}"><i class="s1" style="width:${Math.min(100, Math.round(x.full / x.asg * 100))}%"></i><i class="s2" style="width:${Math.max(0, Math.min(100 - Math.round(x.full / x.asg * 100), x.pctAll - Math.round(x.full / x.asg * 100)))}%"></i></div>` : "";
+  const podium = topC.length ? `<div class="tops pod">${topC.map((x, i) => `<div class="tp3"><span class="medal">${["🥇", "🥈", "🥉"][i]}</span><div class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small>${pbar(x)}</div><div class="pn"><b>${x.full} ${LANG === "ar" ? "من" : "of"} ${x.asg}</b><small>${esc(t("tr_cls_unit"))}</small></div></div>`).join("")}</div>` : `<p class="hint">${esc(hasAsg ? t("tr_none") : t("tr_noasg"))}</p>`;
   const bars = shown.length ? `<div class="tops">${shown.map((x, i) => `<div class="tp"><span class="rk">${i + 1}</span><span class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small></span><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%;${TRMODE === "least" ? "background:#B03A2E" : ""}"></i></span><b>${x.total}</b></div>`).join("")}</div>` : "";
-  const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${x.opt ? "co" : c.N && c.n >= c.N ? "cd" : "cp"}" title="${c.n}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
-  const done = x => x.opt ? 0 : x.cls.filter(c => c.N && c.n >= c.N).length;
+  const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${c.full ? "cd" : "cp"}" title="${esc(fmtDT(c.d))} — ${c.n + c.z}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n + c.z}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
   const ctl = `<div class="seg no-print"><button data-trmode="most" class="${TRMODE === "most" ? "on" : ""}">${esc(t("tr_most"))}</button><button data-trmode="least" class="${TRMODE === "least" ? "on" : ""}">${esc(t("tr_least"))}</button><button data-trall="1" class="${TRALL ? "on" : ""}">${esc(TRALL ? t("tr_first8") : t("tr_showall") + " (" + T.length + ")")}</button></div>`;
-  const table = `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span><span><i style="background:#9DB4D6"></i>${esc(t("sel_note"))}</span></div>` +
+  const table = `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span></div>` +
     tbl("tchrep", [
       { h: t("col_teacher"), v: x => x.name, f: x => `<b>${esc(x.name)}</b>` },
       { h: t("col_subject"), v: x => x.subjects.join("، ") || "—" },
-      { h: t("col_ent"), v: x => x.total, f: x => `<b>${x.total}</b>` },
-      { h: t("tr_done"), v: x => done(x), f: x => x.opt ? "—" : `${done(x)}/${x.cls.length}` },
-      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, sort: 2, dir: -1 });
-  const body = ctl + (bars || `<p class="hint">${esc(t("tr_none"))}</p>`) +
+      { h: t("tr_asg"), v: x => x.asg === null ? -1 : x.asg, f: x => x.asg === null ? "—" : x.asg },
+      { h: t("tr_done"), v: x => x.full, f: x => x.asg ? `<b>${x.full}</b> ${LANG === "ar" ? "من" : "of"} ${x.asg}` : `<b>${x.full}</b>` },
+      { h: t("tr_prog"), v: x => x.asg ? x.pctAll : -1, f: x => x.asg ? `<div class="pcell">${pbar(x)}<b>${x.pctFull}%</b></div>` : "—" },
+      { h: t("tr_last"), v: x => x.exp, f: x => `<span class="dt">${esc(fmtDT(x.exp))}</span>` },
+      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, sort: hasAsg ? 4 : 3, dir: -1 });
+  const body = `<div class="grid g2 tr2"><div><h5 class="sh">${esc(t("tr_top3"))}</h5><p class="hint">${esc(t("tr_top3_s"))}</p>${podium}</div>
+    <div><h5 class="sh">${esc(t("tr_bystu"))}</h5>${ctl}${bars || `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>` +
     `<div class="cl sub ${COLL.trall ? "closed" : ""}"><div class="clh" data-coll="trall"><span class="arr"></span><h5 class="sh" style="margin:0">${esc(t("tr_all"))} (${T.length})</h5></div><div class="clbody">${table}</div></div>`;
   return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3></div><div class="clbody">${body}</div></div>`;
 }
