@@ -166,6 +166,15 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:12.5px;min-width:10
 .toast button{background:var(--clay);border:0;padding:3px 10px;cursor:pointer;font-weight:700}
 @media(max-width:760px){.row{grid-template-columns:1fr}.wrap{padding:12px 10px 90px}}
 @media print{.dock,.ctx,header,.gridtools{display:none}}
+
+.retag{background:#eef3ff;border-color:#9db5ee}.retag.better{background:#e5f4ea;border-color:#79b98f}.retag.worse{background:#fdeaea;border-color:#e0a0a0}
+.relist{margin-top:14px;border:1px solid var(--line)}.rehead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--line)}
+.rehead .resa{margin-inline-start:auto;font-size:13px}
+.rerow{display:grid;grid-template-columns:minmax(200px,1.2fr) 190px 1.4fr;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid #eceef2}
+.rerow:not(.on){grid-template-columns:1fr}.rerow.on{background:#f8faff}.rerow .rn{cursor:pointer;font-size:13.5px}.rerow small{color:var(--muted)}
+.rerow select,.rerow input[type=text]{padding:5px 8px;border:1px solid var(--line);font:inherit;font-size:13px;min-width:0;width:100%}
+.rerow select.better{border-color:#2F6B4F;background:#e5f4ea}.rerow select.worse{border-color:#B03A2E;background:#fdeaea}
+@media(max-width:760px){.rerow.on{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -288,6 +297,16 @@ const TXT = {
   portal: ["➡ البوابة", "⬅ Portal"]
 };
 
+Object.assign(TXT, {
+  download_re: ["📥 تنزيل ملف إعادة التقييم", "📥 Download re-evaluation file"],
+  re_new: ["إدخال جديد", "New entry"], re_mode: ["🔄 إعادة تقييم", "🔄 Re-evaluation"],
+  re_info: ["إعادة تقييم طالب أو مجموعة طلاب تغيّر سلوكهم أو مستواهم (للأفضل أو للأسوأ). يُصدَّر ملف مستقل يقارنه برنامج النتائج بالتقييم السابق لقياس الأثر.", "Re-evaluate a student or group whose behaviour/level changed (better or worse). A separate file is exported and compared with the earlier evaluation to measure impact."],
+  re_pick: ["اختر الطلاب المطلوب إعادة تقييمهم", "Choose students to re-evaluate"], re_all: ["تحديد الكل", "Select all"], re_none: ["إلغاء التحديد", "Clear"],
+  re_sel: ["المحدد", "Selected"], re_dir: ["— اتجاه التغير —", "— Direction of change —"], re_better: ["تحسّن", "Improved"], re_worse: ["تراجع", "Declined"],
+  re_why: ["سبب إعادة التقييم (اختياري)", "Reason (optional)"], re_setall: ["تعيين الاتجاه للمحدد:", "Set direction for selected:"],
+  re_need: ["اختر طالباً واحداً على الأقل وحدّد اتجاه التغير (تحسّن/تراجع) لكل طالب محدد.", "Select at least one student and set the direction of change for each."]
+});
+
 /* =====================================================================
    البيانات المرجعية  |  ROSTER
    ===================================================================== */
@@ -312,21 +331,27 @@ function buildDB(classes, subjects) {
 /* =====================================================================
    الحالة والحفظ  |  STATE
    ===================================================================== */
-const S = { loadedKey: "", lang: "ar", teacher: "", subject: "", grade: "", section: "", mode: "", cur: 0, rows: {}, col: { B: false, A: false, F: false, T: true }, wide: false, ddOpen: false, exportedAt: 0 };
+const S = { loadedKey: "", lang: "ar", teacher: "", subject: "", grade: "", section: "", mode: "", cur: 0, rows: {}, col: { B: false, A: false, F: false, T: true }, wide: false, ddOpen: false, exportedAt: 0, re: false, reSel: {}, reFor: "" };
 const LAST_KEY = "marsad_v2_last";
 const safeGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
 const safeSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const $ = s => document.querySelector(s);
-const t = k => TXT[k][S.lang === "ar" ? 0 : 1];
+const t = k => ((S.re && k === "download") ? TXT.download_re : TXT[k])[S.lang === "ar" ? 0 : 1];
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const AIT = "الذكاء الاصطناعي والتكنولوجيا";
 const subjLabel = s => { const a = s === AIT ? "AIT" : s; return S.lang === "en" && SUBJECT_EN[s] ? SUBJECT_EN[s] + " (" + a + ")" : a; };
 const sortAr = a => a.slice().sort((x, y) => x.localeCompare(y, "ar"));
 const sortNum = a => a.slice().sort((x, y) => Number(x) - Number(y));
 const ctxReady = () => !!(S.teacher && S.subject && S.grade && S.section && roster().length);
-const roster = () => (DB.grades[S.grade] && DB.grades[S.grade][S.section]) || [];
+const baseRoster = () => (DB.grades[S.grade] && DB.grades[S.grade][S.section]) || [];
+const roster = () => S.re ? baseRoster().filter(st => S.reSel[skey(st)]) : baseRoster();
+const reOk = () => { const k = Object.keys(S.reSel); return k.length > 0 && k.every(x => S.reSel[x].ch); };
+const reSelKey = () => "marsad_re_sel|" + [S.teacher, S.subject, S.grade + "-" + S.section].join("|");
+const saveSel = () => safeSet(reSelKey(), S.reSel);
+const reIc = st => (S.re && S.reSel[skey(st)]) ? (S.reSel[skey(st)].ch === "better" ? "⬆ " : "⬇ ") : "";
+const reTag = st => { if (!(S.re && S.reSel[skey(st)])) return ""; const x = S.reSel[skey(st)]; return '<span class="chip retag ' + x.ch + '">🔄 ' + esc(t(x.ch === "better" ? "re_better" : "re_worse")) + (x.rn ? " — " + esc(x.rn) : "") + "</span>"; };
 const skey = st => st.id || st.name;
-const ctxKey = () => "marsad_v2|" + [S.teacher, S.subject, S.grade + "-" + S.section].join("|");
+const ctxKey = () => (S.re ? "marsad_re|" : "marsad_v2|") + [S.teacher, S.subject, S.grade + "-" + S.section].join("|");
 const blankRow = () => ({ a: {}, f: {}, st: "", nt: "", na: false, at: 0 });
 const rowOf = st => S.rows[skey(st)] || (S.rows[skey(st)] = blankRow());
 const lvl = key => { const x = SCALE.find(s => s.key === key); return x ? x.level : -1; };
@@ -393,7 +418,9 @@ function renderStart() {
   const subs = S.teacher ? DB.teachers[S.teacher] || [] : [];
   const grades = sortNum(Object.keys(DB.grades));
   const secs = S.grade ? sortNum(Object.keys(DB.grades[S.grade] || {})) : [];
-  const ready = !!(S.teacher && S.subject && S.grade && S.section);
+  if (S.re && S.teacher && S.subject && S.grade && S.section && S.reFor !== reSelKey()) { S.reSel = safeGet(reSelKey()) || {}; S.reFor = reSelKey(); }
+  const baseReady = !!(S.teacher && S.subject && S.grade && S.section);
+  const ready = baseReady && (!S.re || reOk());
   let draft = "";
   if (ready) {
     const d = safeGet(ctxKey());
@@ -402,19 +429,34 @@ function renderStart() {
       if (c.done + c.partial + c.na) draft = '<div class="note info"><b>' + esc(t("restore")) + "</b> " + esc(t("restoreS").replace("{d}", c.done).replace("{p}", c.partial).replace("{n}", c.na).replace("{t}", c.total)) + "</div>";
     }
   }
-  $("#app").innerHTML = '<section class="card"><h2>' + esc(t("startT")) + '</h2><p class="sub">' + esc(t("startS")) + '</p>' +
+  $("#app").innerHTML = '<section class="card"><div class="seg" style="margin-bottom:10px"><button type="button" data-remode="0" class="' + (S.re ? "" : "on") + '">' + esc(t("re_new")) + '</button><button type="button" data-remode="1" class="' + (S.re ? "on" : "") + '">' + esc(t("re_mode")) + '</button></div>' + (S.re ? '<div class="note info">' + esc(t("re_info")) + "</div>" : "") + '<h2>' + esc(t("startT")) + '</h2><p class="sub">' + esc(t("startS")) + '</p>' +
     '<div class="fgrid"><div><label class="fl">' + esc(t("teacher")) + '</label><select id="selT">' + opts(teachers, t("pickTeacher"), S.teacher) + '</select></div>' +
     '<div><label class="fl">' + esc(t("subject")) + '</label><select id="selS"' + (S.teacher ? "" : " disabled") + ">" + opts(subs, t("pickSubject"), S.subject, subjLabel) + '</select></div>' +
     '<div><label class="fl">' + esc(t("grade")) + '</label><select id="selG">' + opts(grades, t("pickGrade"), S.grade) + '</select></div>' +
     '<div><label class="fl">' + esc(t("section")) + '</label><select id="selC"' + (S.grade ? "" : " disabled") + ">" + opts(secs, t("pickSection"), S.section) + "</select></div></div>" +
-    draft + (ready ? "" : '<div class="note">' + esc(t("needClass")) + "</div>") +
+    draft + (ready ? "" : '<div class="note">' + esc(t(baseReady && S.re ? "re_need" : "needClass")) + "</div>") + reList(baseReady) +
     '<div class="modes"><button class="modebtn" data-mode="single" type="button"' + (ready ? "" : " disabled") + '><span class="ic">🧍</span><b>' + esc(t("mSingle")) + '</b><span class="d">' + esc(t("mSingleD")) + '</span></button>' +
     '<button class="modebtn" data-mode="grid" type="button"' + (ready ? "" : " disabled") + '><span class="ic">▦</span><b>' + esc(t("mGrid")) + '</b><span class="d">' + esc(t("mGridD")) + "</span></button></div></section>";
   $("#selT").onchange = e => { S.teacher = e.target.value; const l = DB.teachers[S.teacher] || []; S.subject = l.length === 1 ? l[0] : ""; save(); renderStart(); };
   $("#selS").onchange = e => { S.subject = e.target.value; save(); renderStart(); };
   $("#selG").onchange = e => { S.grade = e.target.value; S.section = ""; save(); renderStart(); };
   $("#selC").onchange = e => { S.section = e.target.value; save(); renderStart(); };
+  document.querySelectorAll("[data-remode]").forEach(b => b.onclick = () => { S.re = b.dataset.remode === "1"; S.mode = ""; S.loadedKey = ""; S.reFor = ""; renderStart(); });
+  document.querySelectorAll("[data-resel]").forEach(b => b.onchange = () => { const k = b.dataset.resel; if (b.checked) S.reSel[k] = S.reSel[k] || { ch: "", rn: "" }; else delete S.reSel[k]; saveSel(); renderStart(); });
+  document.querySelectorAll("[data-rech]").forEach(b => b.onchange = () => { const k = b.dataset.rech; if (S.reSel[k]) { S.reSel[k].ch = b.value; saveSel(); renderStart(); } });
+  document.querySelectorAll("[data-rern]").forEach(b => b.oninput = () => { const k = b.dataset.rern; if (S.reSel[k]) { S.reSel[k].rn = b.value; saveSel(); } });
+  document.querySelectorAll("[data-reall]").forEach(b => b.onclick = () => { S.reSel = {}; if (b.dataset.reall === "1") baseRoster().forEach(st => S.reSel[skey(st)] = { ch: "", rn: "" }); saveSel(); renderStart(); });
+  const rsa = $("#reSetAll"); if (rsa) rsa.onchange = () => { if (!rsa.value) return; Object.keys(S.reSel).forEach(k => S.reSel[k].ch = rsa.value); saveSel(); renderStart(); };
   document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { if (!ctxReady()) return; const had = loadCtx(); S.mode = b.dataset.mode; if (S.cur >= roster().length) S.cur = 0; save(); render(); if (had) toast(t("draftRestored")); });
+}
+function reList(baseReady) {
+  if (!S.re || !baseReady) return "";
+  const R = baseRoster(), n = Object.keys(S.reSel).length;
+  const dir = v => '<option value="">' + esc(t("re_dir")) + '</option><option value="better"' + (v === "better" ? " selected" : "") + '>⬆ ' + esc(t("re_better")) + '</option><option value="worse"' + (v === "worse" ? " selected" : "") + '>⬇ ' + esc(t("re_worse")) + "</option>";
+  return '<div class="relist"><div class="rehead"><b>' + esc(t("re_pick")) + '</b><button class="btn sm" type="button" data-reall="1">' + esc(t("re_all")) + '</button><button class="btn sm" type="button" data-reall="0">' + esc(t("re_none")) + '</button><span class="chip">' + esc(t("re_sel")) + ": <b>" + n + "</b></span>" +
+    '<label class="resa">' + esc(t("re_setall")) + ' <select id="reSetAll">' + dir("") + "</select></label></div>" +
+    R.map(st => { const k = skey(st), x = S.reSel[k]; return '<div class="rerow' + (x ? " on" : "") + '"><label class="rn"><input type="checkbox" data-resel="' + esc(k) + '"' + (x ? " checked" : "") + "> " + esc(st.name) + ' <small>#' + esc(st.id || "—") + "</small></label>" +
+      (x ? '<select data-rech="' + esc(k) + '" class="' + (x.ch || "none") + '">' + dir(x.ch) + '</select><input type="text" data-rern="' + esc(k) + '" value="' + esc(x.rn) + '" placeholder="' + esc(t("re_why")) + '">' : "") + "</div>"; }).join("") + "</div>";
 }
 function renderDataMissing() {
   $("#app").innerHTML = '<section class="card"><h2>' + esc(t("dataTitle")) + '</h2><p class="sub">' + esc(t("dataMsg")) + '</p><input type="file" id="fileData" accept=".js,text/javascript" hidden><button class="btn primary" id="btnPickData" type="button">' + esc(t("dataPick")) + '</button><p class="sub" id="dataErr" style="color:var(--danger);margin-top:12px"></p></section>';
@@ -437,7 +479,7 @@ function ctxBar() {
   const c = counts();
   return '<div class="ctx"><div class="ctx-row">' +
     '<span class="chip">' + esc(t("teacher")) + ': <b>' + esc(S.teacher) + '</b></span><span class="chip">' + esc(t("subject")) + ': <b>' + esc(subjLabel(S.subject)) + '</b></span><span class="chip">' + esc(t("grade")) + '/' + esc(t("section")) + ': <b>' + esc(S.grade + "/" + S.section) + "</b></span>" +
-    '<span class="spacer"></span><div class="seg"><button data-setmode="single" class="' + (S.mode === "single" ? "on" : "") + '" type="button">' + esc(t("mSingle")) + '</button><button data-setmode="grid" class="' + (S.mode === "grid" ? "on" : "") + '" type="button">' + esc(t("mGrid")) + "</button></div>" +
+    (S.re ? '<span class="chip retag">' + esc(t("re_mode")) + "</span>" : "") + '<span class="spacer"></span><div class="seg"><button data-setmode="single" class="' + (S.mode === "single" ? "on" : "") + '" type="button">' + esc(t("mSingle")) + '</button><button data-setmode="grid" class="' + (S.mode === "grid" ? "on" : "") + '" type="button">' + esc(t("mGrid")) + "</button></div>" +
     '<button class="btn sm" data-act="change" type="button">' + esc(t("change")) + '</button><button class="btn sm primary" data-act="download" type="button">' + esc(t("download")) + "</button>" +
     (CONFIG.SHAREPOINT_URL && CONFIG.SHAREPOINT_URL.indexOf("PUT_") !== 0 ? '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(CONFIG.SHAREPOINT_URL) + '">' + esc(t("openSP")) + "</a>" : "") +
     '</div><div class="prog" id="prog"><i style="width:' + c.pct + '%"></i><span>' + esc(progText(c)) + "</span></div></div>";
@@ -477,7 +519,7 @@ function renderSingle() {
     f.opts.map(o => '<button type="button" class="opt f' + (r.f[f.field] === o[0] ? " on" : "") + '" data-setf="' + f.field + '" data-v="' + o[0] + '">' + esc(S.lang === "ar" ? o[1] : o[2]) + "</button>").join("") + "</div></div>").join("");
   const badge = '<span class="badge ' + s0 + '" id="sbadge">' + esc(s0 === "empty" ? t("empty") : t(s0)) + "</span>";
   $("#body").innerHTML = '<div class="sbar">' + ddHTML() + '<button class="btn" data-act="prev" type="button"' + (S.cur === 0 ? " disabled" : "") + ">" + esc(t("prev")) + '</button><button class="btn" data-act="nextopen" type="button">' + esc(t("nextOpen")) + "</button></div>" +
-    '<div class="card"><div class="stuhead"><h2>' + esc(st.name) + '</h2><span class="chip">#' + esc(st.id || "—") + "</span>" + badge +
+    '<div class="card"><div class="stuhead"><h2>' + esc(st.name) + '</h2><span class="chip">#' + esc(st.id || "—") + "</span>" + badge + reTag(st) +
     '<span class="spacer"></span><button class="btn sm" data-act="na" type="button">' + esc(r.na ? t("unmarkNA") : t("markNA")) + "</button></div>" +
     (r.na ? '<div class="note info">' + esc(t("naMsg")) + "</div>" :
       '<div class="qf"><b>' + esc(t("quick")) + "</b>" + SCALE.map(sc => '<button class="qbtn l' + sc.level + '" data-qf="' + SCALE.indexOf(sc) + '" type="button">' + esc(S.lang === "ar" ? sc.s[0] : sc.s[1]) + "</button>").join("") + '<small style="color:var(--soft)">' + esc(t("quickHint")) + "</small></div>" +
@@ -516,7 +558,7 @@ function sumCell(g, r) {
 }
 function rowHTML(st, idx) {
   const k = skey(st), r = rowOf0(st), s = statusOf(st);
-  let h = '<tr class="st-' + s + '" data-k="' + esc(k) + '"><td class="name stk" data-nm="1" title="' + esc(st.name) + ' — #' + esc(st.id || "—") + '">' + (idx + 1) + ". " + esc(st.name) + '</td><td class="tools stk"><div class="tl"><button data-qfo="' + esc(k) + '" title="' + esc(t("fillRow")) + '" type="button">⚡</button><button data-nak="' + esc(k) + '" title="' + esc(t("markNA")) + '" type="button">🚫</button><span class="cnt">' + (r.na ? "—" : filled(r) + "/" + TOTAL) + "</span></div></td>";
+  let h = '<tr class="st-' + s + '" data-k="' + esc(k) + '"><td class="name stk" data-nm="1" title="' + esc(st.name) + ' — #' + esc(st.id || "—") + '">' + (idx + 1) + ". " + reIc(st) + esc(st.name) + '</td><td class="tools stk"><div class="tl"><button data-qfo="' + esc(k) + '" title="' + esc(t("fillRow")) + '" type="button">⚡</button><button data-nak="' + esc(k) + '" title="' + esc(t("markNA")) + '" type="button">🚫</button><span class="cnt">' + (r.na ? "—" : filled(r) + "/" + TOTAL) + "</span></div></td>";
   GROUPS.forEach(g => {
     if (S.col[g.id]) { h += sumCell(g, r); return; }
     if (g.id === "F") h += FOLLOWUP.map(f => '<td class="c">' + cellHTML(f.code, r, f) + "</td>").join("");
@@ -583,17 +625,18 @@ function buildBatch() {
     if (s === "empty") { missing.push(st.name); return; }
     if (s === "partial") missing.push(st.name);
     const e = { id: st.id, name: st.name, sourceEntry: st.raw, status: s, updatedAt: new Date(r.at || Date.now()).toISOString() };
+    if (S.re && S.reSel[skey(st)]) { e.change = S.reSel[skey(st)].ch; e.reason = S.reSel[skey(st)].rn || ""; }
     if (s !== "na") { e.answers = Object.assign({}, r.a); e.followUp = Object.assign({}, r.f); }
     students.push(e);
   });
   const now = new Date();
   return { missing: missing, batch: {
-    schemaVersion: CONFIG.SCHEMA_VERSION, app: CONFIG.APP_NAME, type: "classBatch", batchId: makeId(),
+    schemaVersion: CONFIG.SCHEMA_VERSION, app: CONFIG.APP_NAME, type: S.re ? "reeval" : "classBatch", batchId: makeId(),
     exportedAt: now.toISOString(), exportedAtLocal: now.toLocaleString("en-GB", { hour12: false }), formLanguage: S.lang,
     teacher: { name: S.teacher }, subject: { name: S.subject, code: subjectCode(S.subject) },
     class: { grade: S.grade, section: S.section, classCode: S.grade + "-" + S.section },
     scale: { note: "answers are observation-frequency choices (never / sometimes / always), not a grade or a diagnosis.", values: SCALE.map(x => ({ key: x.key, level: x.level, labelAr: x.ar, labelEn: x.en })) },
-    statements: statements, students: students,
+    statements: statements, students: students, reevaluation: S.re ? { date: now.toISOString() } : undefined,
     totals: { roster: R.length, enteredStudents: students.filter(x => x.status === "done").length, notObserved: students.filter(x => x.status === "na").length, incomplete: students.filter(x => x.status === "partial").length, missingNames: missing }
   } };
 }
@@ -601,7 +644,7 @@ function downloadBatch() {
   const c = counts(); if (c.done + c.partial + c.na === 0) { toast(t("dlNone")); return; }
   const b = buildBatch();
   if (b.missing.length && !confirm(t("dlWarn").replace("{n}", b.missing.length))) return;
-  const name = S.grade + S.section + "_" + subjectCode(S.subject) + ".json";
+  const name = (S.re ? "RE_" : "") + S.grade + S.section + "_" + subjectCode(S.subject) + (S.re ? "_" + new Date().toISOString().slice(0, 10) : "") + ".json";
   const blob = new Blob([JSON.stringify(b.batch, null, 2)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);

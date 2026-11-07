@@ -355,6 +355,23 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .tl3 .tn small{display:block;color:var(--muted);font-size:11.5px}.tl3 .tn .tr{display:block;height:8px;background:#e6e9ee;margin-top:4px}.tl3 .tn .tr i{display:block;height:100%;background:var(--brand)}
 .tl3 .tr3{text-align:center}.tl3 .tr3 b{display:block;font-size:13px;color:var(--brand-d)}.tl3 .tr3 small{display:block;color:var(--muted);font-size:11px}
 @media(max-width:1000px){.g3{grid-template-columns:1fr}}
+
+.trsum{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-inline-start:10px;font-size:13px}
+.cl:not(.closed)>.clh .trsum{display:none}
+.trsum .sm b{font-size:15px}.trsum .sd b{color:#2F6B4F}.trsum .sp b{color:#9a7110}.trsum .sn b{color:#B03A2E}
+.trsum .lb{display:flex;gap:6px;align-items:center}.trsum .lbt{display:block;width:120px;height:9px;background:#e6e9ee}.trsum .lbt i{display:block;height:100%;background:repeating-linear-gradient(45deg,#2F6B4F,#2F6B4F 6px,#3c7f5f 6px,#3c7f5f 12px)}
+.dlu{color:#1f7a45;font-weight:700}.dld{color:#B03A2E;font-weight:700}.dl0{color:#777;font-weight:700}
+.dt2{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.ivb{display:inline-block;padding:2px 10px;font-size:12.5px;font-weight:700;border:1px solid}.ivb.up{background:#e5f4ea;color:#1f7a45;border-color:#79b98f}.ivb.down{background:#fdeaea;color:#B03A2E;border-color:#e0a0a0}.ivb.same{background:#f1f2f4;color:#555;border-color:#c9ccd3}.ivb.nobase{background:#eef3ff;color:#2a4a9c;border-color:#9db5ee}
+.ipage .idates{display:flex;justify-content:space-between;font-size:9.4pt;margin:5px 0;padding:3px 8px;background:#f4f6f8;border:1px solid #d5dae3}
+.icmps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0}
+.icmp{border:1px solid #9fb4bb;padding:5px 8px;text-align:center;background:#fafcfd}.icmp b{display:block;font-size:9.6pt;color:#1D3F8F}
+.icmp .iv{font-size:17pt;font-weight:700;line-height:1.3;direction:ltr}.icmp .iv i{font-style:normal;color:#888;margin:0 8px;font-size:12pt}
+.iverd{border:1px solid;padding:5px 9px;margin:4px 0;font-size:9.2pt;display:flex;flex-direction:column;gap:2px}.iverd b:first-child{font-size:11pt}
+.iverd.up{background:#e9f6ee;border-color:#79b98f}.iverd.down{background:#fdeeee;border-color:#e0a0a0}.iverd.same{background:#f4f5f7;border-color:#c9ccd3}.iverd.nobase{background:#eef3ff;border-color:#9db5ee}
+.ilv{display:inline-block;padding:1px 8px;color:#fff;font-size:8.6pt;border-radius:3px}
+.ipage .rt small{color:#666}
+.ipage>*{flex-shrink:0}.ict{table-layout:fixed}.ict td{font-size:9pt}.ict td.gc{text-align:center}
 </style>
 </head>
 <body>
@@ -532,7 +549,9 @@ const REC = {
    الحالة | STATE
    ===================================================================== */
 let LANG = "ar", VIEW = "import", CUR = null;           // CUR = مفتاح الطالب الحالي
-let STORE = {};                                         // responseId -> record
+let STORE = {};
+let RESTORE = {};                                       // سجلات إعادة التقييم
+let IMP = [], IMPF = "all", IMPCUR = null;                                         // responseId -> record
 let LASTIMP = null, A = null;
 let F = { grade: "", section: "", level: "", subject: "", item: "", q: "" };
 const SK = [];                                          // فهرس مفاتيح الطلاب
@@ -552,7 +571,7 @@ const clsName = (g, s) => g + "/" + s;
 function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open("marsad_result", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
 async function idbSet(k, v) { try { const d = await idb(); await new Promise((res, rej) => { const tx = d.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) {} }
 async function idbGet(k) { try { const d = await idb(); return await new Promise((res, rej) => { const rq = d.transaction("kv").objectStore("kv").get(k); rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); }); } catch (e) { return null; } }
-const persist = () => idbSet("store", { records: STORE, items: ITEMS });
+const persist = () => idbSet("store", { records: STORE, items: ITEMS, re: RESTORE });
 
 /* =====================================================================
    الاستيراد | IMPORT
@@ -626,6 +645,21 @@ function expandBatch(j, fileName) {
   });
   return out;
 }
+function expandRe(j, fileName) {
+  const out = [], tn = String(j.teacher && j.teacher.name || "").trim(), sn = String(j.subject && j.subject.name || "").trim();
+  const cl = j.class || {}, gr = String(cl.grade || ""), sc = String(cl.section || ""), at = Date.parse(j.exportedAt) || 0;
+  (j.students || []).forEach(s => {
+    const st = { id: s.id ? String(s.id).trim() : "", name: String(s.name || "").replace(/\s+/g, " ").trim(), grade: gr, section: sc };
+    const label = fileName + " › " + (st.name || st.id);
+    if (!tn || !sn || !gr || !sc || (!st.id && !st.name)) { out.push({ label: label, errors: [["r_student"]] }); return; }
+    const lv = {}; Object.keys(s.answers || {}).forEach(c => { if (CODES.includes(c)) { const l = levelOf(s.answers[c]); if (l !== undefined) lv[c] = l; } });
+    if (s.status !== "done" && s.status !== "partial" || !BEH.some(c => lv[c] !== undefined) || !ACA.some(c => lv[c] !== undefined)) { out.push({ label: label, errors: [["r_partial"]] }); return; }
+    const sub = Date.parse(s.updatedAt) || at;
+    out.push({ label: label + " 🔄", re: { id: "re|" + tn + "|" + sn + "|" + gr + "-" + sc + "|" + (st.id || st.name) + "|" + sub, teacher: tn, subject: sn, student: st, lv: lv, at: sub, exp: at,
+      change: s.change === "worse" ? "worse" : "better", reason: String(s.reason || "").trim(), fileName: fileName } });
+  });
+  return out;
+}
 async function handleFiles(list) {
   const files = Array.from(list || []);
   const log = []; let nonJson = 0;
@@ -638,11 +672,13 @@ async function handleFiles(list) {
       let j;
       const txt = await readText(f).catch(() => { throw ["r_read"]; });
       try { j = JSON.parse(txt.replace(/^﻿/, "")); } catch (x) { throw ["r_json"]; }
-      if (j && j.type === "classBatch" && Array.isArray(j.students)) cands = expandBatch(j, f.name);
+      if (j && j.type === "reeval" && Array.isArray(j.students)) cands = expandRe(j, f.name);
+      else if (j && j.type === "classBatch" && Array.isArray(j.students)) cands = expandBatch(j, f.name);
       else { const v = validate(j); cands = [v.errors.length ? { label: path, errors: v.errors } : { label: path, rec: Object.assign(v.rec, { fileName: f.name }) }]; }
     } catch (x) { cands = [{ label: path, errors: [Array.isArray(x) ? x : ["r_read"]] }]; }
     cands.forEach(cd => {
       const e = { path: cd.label, status: "invalid", reason: [] };
+      if (cd.re) { if (RESTORE[cd.re.id]) { e.status = "dupf"; e.reason = [["r_same"]]; } else { RESTORE[cd.re.id] = cd.re; e.status = "new"; } log.push(e); return; }
       if (cd.errors) { e.reason = cd.errors; if (cd.errors[0][0] === "r_partial") e.status = "dups"; }
       else {
         const rec = cd.rec, k = respKey(rec);
@@ -735,6 +771,7 @@ Object.assign(D, {
   sc_how_t: ["كيف يُحسب التقييم من 10؟", "How is the score out of 10 calculated?"],
   sc_how: ["١) لكل بند: نأخذ متوسط إجابات معلمي كل مادة، ثم متوسط المواد (فلا يطغى عدد معلمي مادة على غيرها).\n٢) نحوّل المستوى إلى نسبة: لا يظهر = 0 ، أحياناً = 0.5 ، دائماً = 1، ونأخذ متوسط البنود المرصودة (يُستثنى ما لم يلاحظه المعلم).\n٣) التقييم = 10 × (1 − هذا المتوسط).\n٤) يُخصم 0.3 عن كل بند أجمع عليه معلمان فأكثر بـ «دائماً» (بحد أقصى 1.5).\n10 = لا ملاحظات ، 0 = ملاحظات متكررة. يُحسب السلوك من بنود السلوك والأكاديمي من البنود الأكاديمية كلٌّ على حدة.", "1) Per item: average each subject's teachers, then average the subjects.\n2) Convert to burden: never=0, sometimes=0.5, always=1; average the observed items (not-observed excluded).\n3) Score = 10 × (1 − burden).\n4) Minus 0.3 per item that 2+ teachers marked 'always' (max 1.5).\n10 = no concerns, 0 = frequent concerns. Behavior and academic are computed separately."]
 });
+Object.assign(D, { v_impact: ["قياس الأثر", "Impact"] });
 Object.assign(D, { tr_k_done: ["أكملوا", "Completed"], tr_k_prog: ["جارٍ", "In progress"], tr_k_none: ["لم يبدؤوا", "Not started"], tr_k_of: ["من المعلمين أكملوا", "of teachers completed"],
   tr_bflt: ["المجموعة ب:", "Group B:"], tr_b_show: ["عرضهم", "Show"], tr_b_merge: ["دمجهم (يكفي معلم واحد)", "Merge (one teacher enough)"], tr_b_hide: ["إلغاؤهم من الإحصائية", "Exclude"],
   tr_bmerged: ["مجموعة ب (معلم واحد على الأقل)", "Group B (at least one teacher)"], tr_bsub: ["الذكاء الاصطناعي، الرياضة، الفنون، الدراما، الفرنسية", "AIT, PE, Arts, Drama, French"],
@@ -889,6 +926,106 @@ function analyze() {
   A.agree = ag.length ? Math.round(mean(ag) * 100) : null;
   SK.length = 0; A.students.forEach(s => SK.push(s.key));
   computeCompletion();
+  computeImpact();
+}
+
+/* ===== قياس الأثر: مقارنة تقييم الطالب قبل إعادة التقييم وبعده ===== */
+const fmtY = ms => { if (!ms) return "—"; const d = new Date(ms), p2 = n => String(n).padStart(2, "0"); return p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear(); };
+const IMPA = {}; try { Object.assign(IMPA, JSON.parse(localStorage.getItem("marsad_imp") || "{}")); } catch (e) {}
+const impAct = k => IMPA[k] || (IMPA[k] = { plan: "", notes: "" });
+const impSave = () => { try { localStorage.setItem("marsad_imp", JSON.stringify(IMPA)); } catch (e) {} };
+function computeImpact() {
+  IMP = []; const groups = new Map();
+  Object.values(RESTORE).forEach(r => { const k = skeyOf(r.student); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+  groups.forEach((rs, k) => {
+    const base = A.students.get(k), baseResp = base ? base.resp : [], latest = {};
+    rs.forEach(r => { const tk = r.teacher + "|" + r.subject; if (!latest[tk] || r.at > latest[tk].at) latest[tk] = r; });
+    const L = Object.values(latest).sort((a, b) => a.at - b.at), st0 = L[0].student;
+    const mk = resp => { const o = { key: k, id: st0.id, name: (base && base.name) || st0.name, grade: st0.grade, section: st0.section, resp: resp, lowRel: false }; computeStudent(o); return o; };
+    const olds = L.map(r => baseResp.find(x => x.teacher === r.teacher && x.subject === r.subject) || null);
+    const afterResp = baseResp.filter(x => !L.some(r => r.teacher === x.teacher && r.subject === x.subject)).concat(L.map(r => ({ teacher: r.teacher, subject: r.subject, student: r.student, lv: r.lv, submittedAt: r.at, parent: "", strengths: "", notes: "", na: false })));
+    const before = baseResp.length ? mk(baseResp) : null, after = mk(afterResp);
+    const better = [], worse = [], same = [];
+    L.forEach((r, i) => { const o = olds[i]; if (!o) return; CODES.forEach(c => { if (o.lv[c] === undefined || r.lv[c] === undefined) return; const d = o.lv[c] - r.lv[c];
+      (d > 0 ? better : d < 0 ? worse : same).push({ code: c, from: o.lv[c], to: r.lv[c], d: d, teacher: r.teacher, subject: r.subject }); }); });
+    const g = x => x == null ? null : x, df = (a, b) => (a == null || b == null) ? null : r1(b - a);
+    const dComb = before ? df(before.comb, after.comb) : null;
+    const oldAts = olds.filter(Boolean).map(o => o.submittedAt || 0);
+    const verdict = dComb == null ? "nobase" : dComb >= 0.3 ? "up" : dComb <= -0.3 ? "down" : "same";
+    const last = L[L.length - 1];
+    IMP.push({ key: k, name: after.name, id: after.id, grade: after.grade, section: after.section, evals: L.map((r, i) => ({ teacher: r.teacher, subject: r.subject, at: r.at, change: r.change, reason: r.reason, oldAt: olds[i] ? olds[i].submittedAt : 0 })),
+      before: before, after: after, dComb: dComb, dBeh: before ? df(before.behScore, after.behScore) : null, dAca: before ? df(before.acaScore, after.acaScore) : null,
+      dateBefore: oldAts.length ? Math.max.apply(null, oldAts) : (baseResp.length ? Math.max.apply(null, baseResp.map(x => x.submittedAt || 0)) : 0), dateAfter: last.at,
+      better: better, worse: worse, same: same, declared: last.change, reasons: Array.from(new Set(L.map(r => r.reason).filter(Boolean))), verdict: verdict,
+      match: verdict === "nobase" || verdict === "same" ? null : (verdict === "up") === (last.change === "better") });
+  });
+  IMP.sort((a, b) => String(a.name).localeCompare(String(b.name), "ar"));
+}
+const impStmt = c => (ITEMS[c] && ITEMS[c].ar) ? ITEMS[c].ar : c;
+function suggestImpPlan(e) {
+  const stillHigh = CODES.filter(c => e.after.entries[c] && e.after.entries[c].some(x => x.level >= CFG.FLAG_LEVEL)).sort((a, b) => Math.max.apply(null, e.after.entries[b].map(x => x.level)) - Math.max.apply(null, e.after.entries[a].map(x => x.level))).slice(0, 3);
+  const L = [];
+  if (e.verdict === "up") { L.push("الحالة: تحسّن ملحوظ — الهدف المحافظة على المكتسبات وتعزيزها."); L.push("1) تعزيز إيجابي فوري ومعنوي للطالب وإطلاع ولي الأمر على التحسن."); L.push("2) الاستمرار في أسلوب الدعم الذي أثمر مع متابعة دورية كل أسبوعين."); }
+  else if (e.verdict === "down") { L.push("الحالة: تراجع — يلزم تدخل مبكر لمعالجة الأسباب."); L.push("1) لقاء فردي عاجل مع الطالب لتحديد أسباب التراجع."); L.push("2) التواصل مع ولي الأمر والاتفاق على دوره في الدعم."); L.push("3) اجتماع قصير مع معلمي الطالب لتوحيد أسلوب التعامل."); }
+  else { L.push("الحالة: " + (e.verdict === "nobase" ? "لا يوجد تقييم سابق للمقارنة — يُعتمد التقييم الحالي كأساس." : "لا تغيّر جوهري — يلزم تعديل أسلوب الدعم.")); L.push("1) مراجعة أسلوب الدعم المتبع واستبداله بخطة أكثر تحديداً."); L.push("2) جلسة إرشادية فردية لوضع أهداف قصيرة المدى قابلة للقياس."); }
+  if (stillHigh.length) L.push((L.length) + ") التركيز على: " + stillHigh.map(impStmt).join("؛ "));
+  L.push("مدة الخطة: 4 أسابيع بمراجعة أسبوعية، ثم إعادة تقييم ومقارنة النتائج.");
+  if (e.after.comb != null) L.push("مؤشر النجاح: رفع التقييم الإجمالي من " + e.after.comb + " إلى " + Math.min(10, r1(e.after.comb + 1)) + ".");
+  return L.join("\n");
+}
+const dlt = v => v == null ? `<span class="dl0">—</span>` : `<span class="${v >= 0.3 ? "dlu" : v <= -0.3 ? "dld" : "dl0"}">${v > 0.05 ? "▲ +" : v < -0.05 ? "▼ " : "● "}${v.toFixed(1)}</span>`;
+const IMPV = { up: ["تحسّن", "Improved"], down: ["تراجع", "Declined"], same: ["مستقر", "Stable"], nobase: ["بلا مقارنة", "No baseline"] };
+const impBadge = v => `<span class="ivb ${v}">${esc(IMPV[v][LANG === "ar" ? 0 : 1])}</span>`;
+function impReport(e, R) {
+  const ax = impAct(e.key), plan = ax.plan.trim() || "", lines = k => Array.from({ length: k }, () => '<div class="wl"></div>').join("");
+  const b = e.before, a = e.after, days = e.dateBefore && e.dateAfter ? Math.max(0, Math.round((e.dateAfter - e.dateBefore) / 864e5)) : null;
+  const box = (lab, v0, v1, d) => `<div class="icmp"><b>${lab}</b><div class="iv">${v0 == null ? "—" : v0.toFixed(1)}<i>←</i>${v1 == null ? "—" : v1.toFixed(1)}</div>${dlt(d)}</div>`;
+  const rows = e.better.concat(e.worse).sort((x, y) => Math.abs(y.d) - Math.abs(x.d)).slice(0, 7);
+  const lv = l => `<span class="ilv" style="background:${SEG[l]};color:${l <= 1 ? "#333" : "#fff"}">${esc(lvlTxt(l))}</span>`;
+  const tr = rows.map((x, i) => `<tr><td class="n">${i + 1}</td><td>${esc(impStmt(x.code))}<small> — ${esc(x.subject)}</small></td><td class="gc">${lv(x.from)}</td><td class="gc">${lv(x.to)}</td><td class="gc">${x.d > 0 ? '<span class="dlu">▲ تحسّن</span>' : '<span class="dld">▼ تراجع</span>'}</td></tr>`).join("");
+  const still = CODES.filter(c => a.entries[c] && a.entries[c].some(x => x.level >= CFG.FLAG_LEVEL)).slice(0, 4).map(c => esc(impStmt(c))).join("؛ ");
+  const evs = e.evals.map(x => `${esc(x.teacher)} <small>(${esc(x.subject)})</small>`).join("، ");
+  const vtxt = { up: "تحسّن ملحوظ في التقييم الإجمالي", down: "تراجع في التقييم الإجمالي", same: "لا تغيّر جوهري في التقييم الإجمالي", nobase: "لا يوجد تقييم سابق للمقارنة" }[e.verdict];
+  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">تقرير قياس الأثر — مقارنة التقييم السابق بالحالي<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
+  return `<section class="page ipage">${hdr}
+    <div class="ri"><div><small>اسم الطالب</small><b>${esc(e.name)}</b></div><div><small>رقم الطالب</small><b>${esc(e.id || "—")}</b></div><div><small>الصف</small><b>${esc(e.grade)}</b></div><div><small>الشعبة</small><b>${esc(e.section)}</b></div></div>
+    <div class="idates"><span>تاريخ التقييم السابق: <b>${esc(fmtY(e.dateBefore))}</b></span><span>تاريخ إعادة التقييم: <b>${esc(fmtY(e.dateAfter))}</b></span><span>المدة بين التقييمين: <b>${days == null ? "—" : days + " يوم"}</b></span></div>
+    <div class="icmps">${box("الجانب السلوكي", b && b.behScore, a.behScore, e.dBeh)}${box("الجانب الأكاديمي", b && b.acaScore, a.acaScore, e.dAca)}${box("الإجمالي", b && b.comb, a.comb, e.dComb)}</div>
+    <div class="iverd ${e.verdict}"><b>${vtxt}</b><span>المعلم الذي أعاد التقييم: ${evs}</span><span>الاتجاه المُدخل: <b>${e.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</b>${e.match === false ? " — <b>(القياس يخالف الاتجاه المُدخل)</b>" : ""}${e.reasons.length ? " &nbsp;|&nbsp; السبب: " + esc(e.reasons.join("؛ ")) : ""}</span></div>
+    <div class="rs">العناصر التي تغيّرت <small style="font-weight:400;color:#555">(${e.better.length} تحسّن · ${e.worse.length} تراجع · ${e.same.length} دون تغيير)</small></div>
+    ${rows.length ? `<table class="rt ict"><colgroup><col style="width:7mm"><col><col style="width:24mm"><col style="width:24mm"><col style="width:22mm"></colgroup><thead><tr><th>#</th><th>العبارة</th><th class="gc">السابق</th><th class="gc">الحالي</th><th class="gc">التغير</th></tr></thead><tbody>${tr}</tbody></table>` : `<p class="rpara">لا توجد عناصر قابلة للمقارنة.</p>`}
+    ${still ? `<p class="rpara" style="margin-top:4px"><b>ما زال يحتاج دعماً:</b> ${still}</p>` : ""}
+    <div class="rs">الخطة التحسينية</div>
+    <div class="wbox">${plan ? `<div class="pl">${esc(plan)}</div>` : lines(4)}${ax.notes.trim() ? `<b style="font-size:8.6pt">ملاحظات:</b><div class="pl">${esc(ax.notes)}</div>` : ""}</div>
+    <div class="rsig"><div>المرشد الأكاديمي<br><b>${esc(R.counselor) || DOTS}</b></div><div>مديرة المدرسة<br><b>${esc(R.principal) || DOTS}</b></div><div>التاريخ<br>........../........../..........</div></div>
+    <div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — قياس الأثر</span><span>رقم الطالب: ${esc(e.id || "—")}</span></div></section>`;
+}
+function vImpact() {
+  if (!A.recs.length) return empty();
+  const T = esc(t("v_impact"));
+  if (!IMP.length) return `<h2 class="pt">${T}</h2><div class="card empty"><p>لا توجد ملفات إعادة تقييم بعد. استورد ملفات «RE_…» الناتجة من وضع إعادة التقييم في ملف الإدخال.</p><button class="btn" data-view="import">${esc(t("goimp"))}</button></div>`;
+  const R = repCfg(), e0 = IMPCUR != null ? IMP.find(x => x.key === IMPCUR) : null;
+  if (e0) {
+    const ax = impAct(e0.key);
+    return `<h2 class="pt no-print">${T}</h2><div class="tb no-print"><button class="btn ghost" data-impback="1">→ رجوع للقائمة</button><button class="btn" id="btnPrintImp">🖨️ طباعة</button><button class="btn sm" data-impfill="1">💡 اقتراح خطة تحسينية</button></div>
+    <div class="card no-print"><label class="fl">الخطة التحسينية (تظهر في التقرير)</label><textarea data-iax="plan" rows="6" style="width:100%">${esc(ax.plan)}</textarea><label class="fl" style="margin-top:8px">ملاحظات المرشد</label><textarea data-iax="notes" rows="2" style="width:100%">${esc(ax.notes)}</textarea></div>
+    <div class="rwrap" id="reports" dir="rtl">${impReport(e0, R)}</div>`;
+  }
+  const all = IMP, n = all.length, c = v => all.filter(x => x.verdict === v).length, ds = all.map(x => x.dComb).filter(x => x != null), avg = ds.length ? r1(mean(ds)) : null;
+  const rows = IMPF === "all" ? all : all.filter(x => x.verdict === IMPF);
+  const sg = (k, lab) => `<button data-impf="${k}" class="${IMPF === k ? "on" : ""}">${esc(lab)}</button>`;
+  return `<h2 class="pt">${T}</h2><p class="ps">مقارنة تقييم الطلاب الذين أُعيد تقييمهم بتقييمهم السابق، مع تقرير مقارن وخطة تحسينية لكل طالب.</p>
+  <div class="trk" style="margin-bottom:12px"><div class="kc"><b>${n}</b><span>أُعيد تقييمهم</span></div><div class="kc kd"><b>${c("up")}</b><span>تحسّن</span></div><div class="kc kn"><b>${c("down")}</b><span>تراجع</span></div><div class="kc kp"><b>${c("same")}</b><span>مستقر</span></div><div class="kc"><b>${avg == null ? "—" : (avg > 0 ? "+" : "") + avg.toFixed(1)}</b><span>متوسط التغير (من 10)</span></div></div>
+  <div class="card"><div class="seg no-print" style="margin-bottom:10px">${sg("all", "الكل (" + n + ")")}${sg("up", "تحسّن (" + c("up") + ")")}${sg("down", "تراجع (" + c("down") + ")")}${sg("same", "مستقر (" + c("same") + ")")}${c("nobase") ? sg("nobase", "بلا مقارنة (" + c("nobase") + ")") : ""}</div>` +
+  tbl("impact", [
+    { h: t("col_name"), v: x => x.name, f: x => `<b>${esc(x.name)}</b>` }, { h: t("col_class"), v: x => clsName(x.grade, x.section) },
+    { h: "السابق", v: x => x.before ? x.before.comb : -1, f: x => `${x.before ? scPill(x.before.comb) : "—"}<small class="dt2">${esc(fmtY(x.dateBefore))}</small>` },
+    { h: "الحالي", v: x => x.after.comb, f: x => `${scPill(x.after.comb)}<small class="dt2">${esc(fmtY(x.dateAfter))}</small>` },
+    { h: "التغير", v: x => x.dComb == null ? -99 : x.dComb, f: x => dlt(x.dComb) },
+    { h: "الاتجاه المُدخل", v: x => x.declared, f: x => `<span class="ivb ${x.declared === "better" ? "up" : "down"}">${x.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</span>${x.match === false ? ' <span title="القياس يخالف الاتجاه المُدخل">⚠</span>' : ""}` },
+    { h: "النتيجة", v: x => x.verdict, f: x => impBadge(x.verdict) },
+    { h: "المعلم / المادة", v: x => x.evals.map(y => y.teacher).join(" "), f: x => x.evals.map(y => `${esc(y.teacher)}<small class="dt2">${esc(y.subject)}</small>`).join("") },
+    { h: "", v: () => "", f: x => `<button class="btn sm" data-imp="${esc(x.key)}">📄 تقرير</button>` }], rows, { search: true, sort: 4, dir: -1 }) + `</div>`;
 }
 
 /* التقييم من 10: لكل بند نأخذ متوسط كل مادة (متوسط معلميها) ثم متوسط المواد؛ الأعباء = متوسط (المستوى/4) للبنود المرصودة؛
@@ -1138,7 +1275,7 @@ function teacherReport() {
       { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, sort: 4, dir: -1 });
   const body = `<div class="trhead">${kpi}${flt}</div><div class="grid g3 tr3g">${col1}${col2}${col3}</div>` +
     `<div class="cl sub ${COLL.trall ? "closed" : ""}"><div class="clh" data-coll="trall"><span class="arr"></span><h5 class="sh" style="margin:0">${esc(t("tr_all"))} (${T.length})</h5></div><div class="clbody">${table}</div></div>`;
-  return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3></div><div class="clbody">${body}</div></div>`;
+  return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3><span class="trsum"><span class="sm sd">✅ <b>${done.length}</b> ${esc(t("tr_k_done"))}</span><span class="sm sp">🔄 <b>${prog.length}</b> ${esc(t("tr_k_prog"))}</span><span class="sm sn">⏳ <b>${none.length}</b> ${esc(t("tr_k_none"))}</span><span class="lb"><span class="lbt"><i style="width:${pct}%"></i></span><span><b>${pct}%</b></span></span></span></div><div class="clbody">${body}</div></div>`;
 }
 function vOverview() {
   if (!A.recs.length) return empty();
@@ -1521,7 +1658,7 @@ function vParent() {
   <div class="rwrap" id="reports" dir="rtl">${targets.map(x => parentReport(x, R)).join("")}</div>`;
 }
 
-const VIEWS = { overview: ["📊", vOverview], classes: ["🏫", vClasses], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], import: ["📂", vImport] };
+const VIEWS = { overview: ["📊", vOverview], classes: ["🏫", vClasses], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], impact: ["📈", vImpact], import: ["📂", vImport] };
 
 function render() {
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
@@ -1533,7 +1670,7 @@ function render() {
   $("#main").innerHTML = VIEWS[VIEW][1]();
   bindView();
 }
-function go(v) { VIEW = v; STUPREV = false; render(); window.scrollTo({ top: 0 }); }
+function go(v) { if (v === "impact") IMPCUR = null; VIEW = v; STUPREV = false; render(); window.scrollTo({ top: 0 }); }
 
 function bindView() {
   if (VIEW === "import") {
@@ -1546,7 +1683,7 @@ function bindView() {
     $("#btnRoster").onclick = () => $("#inRoster").click();
     $("#inRoster").onchange = e => { if (e.target.files[0]) loadRosterFile(e.target.files[0]); };
     const cl = $("#btnClear");
-    if (cl) cl.onclick = () => { if (confirm(t("clear_q"))) { STORE = {}; LASTIMP = null; CUR = null; analyze(); persist(); render(); } };
+    if (cl) cl.onclick = () => { if (confirm(t("clear_q"))) { STORE = {}; RESTORE = {}; LASTIMP = null; CUR = null; analyze(); persist(); render(); } };
   }
   if (VIEW === "parent") {
     const p1 = $("#pickPR"); if (p1) p1.onchange = () => { CUR = SK[Number(p1.value)]; render(); };
@@ -1557,17 +1694,22 @@ function bindView() {
     const p = $("#pickStu"); if (p) p.onchange = () => { CUR = p.value === "" ? null : SK[Number(p.value)]; STUPREV = false; render(); };
     const pr = $("#btnPrint"); if (pr) pr.onclick = () => window.print();
   }
+  if (VIEW === "impact") { const pr = $("#btnPrintImp"); if (pr) pr.onclick = () => window.print(); }
 }
 
 /* أحداث عامة بالتفويض */
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-coll],[data-trb],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
+  const el = e.target.closest("[data-coll],[data-imp],[data-impback],[data-impfill],[data-impf],[data-trb],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
   if (!el) return;
   if (el.id === "md-close") { closeModal(); return; }
   if (el.dataset.coll) { const k = el.dataset.coll, box = el.closest(".cl"); COLL[k] = !COLL[k]; box.classList.toggle("closed", !!COLL[k]); return; }
   if (el.dataset.prev) { STUPREV = true; render(); window.scrollTo({ top: 0 }); return; }
   if (el.dataset.prevback) { STUPREV = false; render(); return; }
   if (el.dataset.planfill) { const a = actOf(CUR), st = A.students.get(CUR); a.plan = suggestPlan(st); actSave(); render(); return; }
+  if (el.dataset.imp !== undefined) { IMPCUR = el.dataset.imp; render(); window.scrollTo({ top: 0 }); return; }
+  if (el.dataset.impback) { IMPCUR = null; render(); return; }
+  if (el.dataset.impf) { IMPF = el.dataset.impf; render(); return; }
+  if (el.dataset.impfill) { const e = IMP.find(x => x.key === IMPCUR); if (e) { impAct(IMPCUR).plan = suggestImpPlan(e); impSave(); render(); } return; }
   if (el.dataset.trb) { TRB = el.dataset.trb; render(); return; }
   if (el.dataset.trmode) { TRMODE = el.dataset.trmode; render(); return; }
   if (el.dataset.trall) { TRALL = !TRALL; render(); return; }
@@ -1586,6 +1728,8 @@ document.addEventListener("click", e => {
   if (el.dataset.item) openItem(el.dataset.item);
 });
 document.addEventListener("input", e => { const id = e.target.dataset && e.target.dataset.tsearch; if (id) { TBL[id].q = e.target.value; TBL[id].limit = CFG.PAGE; $("#tb-" + id).innerHTML = tblInner(id); } });
+document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) { impAct(IMPCUR)[d.iax] = e.target.value; impSave(); } });
+document.addEventListener("change", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) render(); });
 document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.ax && CUR) { actOf(CUR)[d.ax] = e.target.value; actSave(); } });
 document.addEventListener("change", e => {
   const d0 = e.target.dataset || {};
@@ -1621,7 +1765,7 @@ function closeModal() { const m = $("#modal"); if (m) m.remove(); }
   if (window.PQ_CLASSES && window.PQ_SUBJECTS) setRoster(window.PQ_CLASSES, window.PQ_SUBJECTS);
   else { const r0 = await idbGet("roster"); if (r0 && r0.classes) setRoster(r0.classes, r0.subjects); }
   const saved = await idbGet("store");
-  if (saved && saved.records) { STORE = saved.records; Object.assign(ITEMS, saved.items || {}); }
+  if (saved && saved.records) { STORE = saved.records; RESTORE = saved.re || {}; Object.assign(ITEMS, saved.items || {}); }
   analyze();
   VIEW = A.recs.length ? "overview" : "import";
   render();
