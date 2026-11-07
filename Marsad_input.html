@@ -175,6 +175,7 @@ table.gt{border-collapse:separate;border-spacing:0;font-size:12.5px;min-width:10
 .rerow select,.rerow input[type=text]{padding:5px 8px;border:1px solid var(--line);font:inherit;font-size:13px;min-width:0;width:100%}
 .rerow select.better{border-color:#2F6B4F;background:#e5f4ea}.rerow select.worse{border-color:#B03A2E;background:#fdeaea}
 @media(max-width:760px){.rerow.on{grid-template-columns:1fr}}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}.rgrid .rerow{display:block;grid-template-columns:none;border-inline-end:1px solid #eceef2}
 </style>
 </head>
 <body>
@@ -300,11 +301,11 @@ const TXT = {
 Object.assign(TXT, {
   download_re: ["📥 تنزيل ملف إعادة التقييم", "📥 Download re-evaluation file"],
   re_new: ["إدخال جديد", "New entry"], re_mode: ["🔄 إعادة تقييم", "🔄 Re-evaluation"],
-  re_info: ["إعادة تقييم طالب أو مجموعة طلاب تغيّر سلوكهم أو مستواهم (للأفضل أو للأسوأ). يُصدَّر ملف مستقل يقارنه برنامج النتائج بالتقييم السابق لقياس الأثر.", "Re-evaluate a student or group whose behaviour/level changed (better or worse). A separate file is exported and compared with the earlier evaluation to measure impact."],
+  re_info: ["إعادة تقييم طالب أو مجموعة طلاب تغيّر سلوكهم أو مستواهم. يُصدَّر ملف مستقل يقارنه برنامج النتائج بالتقييم السابق.", "Re-evaluate a student or group whose behaviour/level changed (better or worse). A separate file is exported and compared with the earlier evaluation."],
   re_pick: ["اختر الطلاب المطلوب إعادة تقييمهم", "Choose students to re-evaluate"], re_all: ["تحديد الكل", "Select all"], re_none: ["إلغاء التحديد", "Clear"],
   re_sel: ["المحدد", "Selected"], re_dir: ["— اتجاه التغير —", "— Direction of change —"], re_better: ["تحسّن", "Improved"], re_worse: ["تراجع", "Declined"],
   re_why: ["سبب إعادة التقييم (اختياري)", "Reason (optional)"], re_setall: ["تعيين الاتجاه للمحدد:", "Set direction for selected:"],
-  re_need: ["اختر طالباً واحداً على الأقل وحدّد اتجاه التغير (تحسّن/تراجع) لكل طالب محدد.", "Select at least one student and set the direction of change for each."]
+  re_need: ["اختر طالباً واحداً على الأقل لإعادة تقييمه.", "Select at least one student to re-evaluate."]
 });
 
 /* =====================================================================
@@ -345,11 +346,11 @@ const sortNum = a => a.slice().sort((x, y) => Number(x) - Number(y));
 const ctxReady = () => !!(S.teacher && S.subject && S.grade && S.section && roster().length);
 const baseRoster = () => (DB.grades[S.grade] && DB.grades[S.grade][S.section]) || [];
 const roster = () => S.re ? baseRoster().filter(st => S.reSel[skey(st)]) : baseRoster();
-const reOk = () => { const k = Object.keys(S.reSel); return k.length > 0 && k.every(x => S.reSel[x].ch); };
+const reOk = () => Object.keys(S.reSel).length > 0;
 const reSelKey = () => "marsad_re_sel|" + [S.teacher, S.subject, S.grade + "-" + S.section].join("|");
 const saveSel = () => safeSet(reSelKey(), S.reSel);
-const reIc = st => (S.re && S.reSel[skey(st)]) ? (S.reSel[skey(st)].ch === "better" ? "⬆ " : "⬇ ") : "";
-const reTag = st => { if (!(S.re && S.reSel[skey(st)])) return ""; const x = S.reSel[skey(st)]; return '<span class="chip retag ' + x.ch + '">🔄 ' + esc(t(x.ch === "better" ? "re_better" : "re_worse")) + (x.rn ? " — " + esc(x.rn) : "") + "</span>"; };
+const reIc = st => (S.re && S.reSel[skey(st)]) ? "🔄 " : "";
+const reTag = st => (S.re && S.reSel[skey(st)]) ? '<span class="chip retag">🔄 ' + esc(t("re_mode")) + "</span>" : "";
 const skey = st => st.id || st.name;
 const ctxKey = () => (S.re ? "marsad_re|" : "marsad_v2|") + [S.teacher, S.subject, S.grade + "-" + S.section].join("|");
 const blankRow = () => ({ a: {}, f: {}, st: "", nt: "", na: false, at: 0 });
@@ -443,20 +444,14 @@ function renderStart() {
   $("#selC").onchange = e => { S.section = e.target.value; save(); renderStart(); };
   document.querySelectorAll("[data-remode]").forEach(b => b.onclick = () => { S.re = b.dataset.remode === "1"; S.mode = ""; S.loadedKey = ""; S.reFor = ""; renderStart(); });
   document.querySelectorAll("[data-resel]").forEach(b => b.onchange = () => { const k = b.dataset.resel; if (b.checked) S.reSel[k] = S.reSel[k] || { ch: "", rn: "" }; else delete S.reSel[k]; saveSel(); renderStart(); });
-  document.querySelectorAll("[data-rech]").forEach(b => b.onchange = () => { const k = b.dataset.rech; if (S.reSel[k]) { S.reSel[k].ch = b.value; saveSel(); renderStart(); } });
-  document.querySelectorAll("[data-rern]").forEach(b => b.oninput = () => { const k = b.dataset.rern; if (S.reSel[k]) { S.reSel[k].rn = b.value; saveSel(); } });
   document.querySelectorAll("[data-reall]").forEach(b => b.onclick = () => { S.reSel = {}; if (b.dataset.reall === "1") baseRoster().forEach(st => S.reSel[skey(st)] = { ch: "", rn: "" }); saveSel(); renderStart(); });
-  const rsa = $("#reSetAll"); if (rsa) rsa.onchange = () => { if (!rsa.value) return; Object.keys(S.reSel).forEach(k => S.reSel[k].ch = rsa.value); saveSel(); renderStart(); };
   document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { if (!ctxReady()) return; const had = loadCtx(); S.mode = b.dataset.mode; if (S.cur >= roster().length) S.cur = 0; save(); render(); if (had) toast(t("draftRestored")); });
 }
 function reList(baseReady) {
   if (!S.re || !baseReady) return "";
   const R = baseRoster(), n = Object.keys(S.reSel).length;
-  const dir = v => '<option value="">' + esc(t("re_dir")) + '</option><option value="better"' + (v === "better" ? " selected" : "") + '>⬆ ' + esc(t("re_better")) + '</option><option value="worse"' + (v === "worse" ? " selected" : "") + '>⬇ ' + esc(t("re_worse")) + "</option>";
-  return '<div class="relist"><div class="rehead"><b>' + esc(t("re_pick")) + '</b><button class="btn sm" type="button" data-reall="1">' + esc(t("re_all")) + '</button><button class="btn sm" type="button" data-reall="0">' + esc(t("re_none")) + '</button><span class="chip">' + esc(t("re_sel")) + ": <b>" + n + "</b></span>" +
-    '<label class="resa">' + esc(t("re_setall")) + ' <select id="reSetAll">' + dir("") + "</select></label></div>" +
-    R.map(st => { const k = skey(st), x = S.reSel[k]; return '<div class="rerow' + (x ? " on" : "") + '"><label class="rn"><input type="checkbox" data-resel="' + esc(k) + '"' + (x ? " checked" : "") + "> " + esc(st.name) + ' <small>#' + esc(st.id || "—") + "</small></label>" +
-      (x ? '<select data-rech="' + esc(k) + '" class="' + (x.ch || "none") + '">' + dir(x.ch) + '</select><input type="text" data-rern="' + esc(k) + '" value="' + esc(x.rn) + '" placeholder="' + esc(t("re_why")) + '">' : "") + "</div>"; }).join("") + "</div>";
+  return '<div class="relist"><div class="rehead"><b>' + esc(t("re_pick")) + '</b><button class="btn sm" type="button" data-reall="1">' + esc(t("re_all")) + '</button><button class="btn sm" type="button" data-reall="0">' + esc(t("re_none")) + '</button><span class="chip">' + esc(t("re_sel")) + ": <b>" + n + "</b></span></div>" +
+    '<div class="rgrid">' + R.map(st => { const k = skey(st), x = S.reSel[k]; return '<label class="rerow' + (x ? " on" : "") + '"><input type="checkbox" data-resel="' + esc(k) + '"' + (x ? " checked" : "") + "> " + esc(st.name) + ' <small>#' + esc(st.id || "—") + "</small></label>"; }).join("") + "</div></div>";
 }
 function renderDataMissing() {
   $("#app").innerHTML = '<section class="card"><h2>' + esc(t("dataTitle")) + '</h2><p class="sub">' + esc(t("dataMsg")) + '</p><input type="file" id="fileData" accept=".js,text/javascript" hidden><button class="btn primary" id="btnPickData" type="button">' + esc(t("dataPick")) + '</button><p class="sub" id="dataErr" style="color:var(--danger);margin-top:12px"></p></section>';
@@ -625,7 +620,6 @@ function buildBatch() {
     if (s === "empty") { missing.push(st.name); return; }
     if (s === "partial") missing.push(st.name);
     const e = { id: st.id, name: st.name, sourceEntry: st.raw, status: s, updatedAt: new Date(r.at || Date.now()).toISOString() };
-    if (S.re && S.reSel[skey(st)]) { e.change = S.reSel[skey(st)].ch; e.reason = S.reSel[skey(st)].rn || ""; }
     if (s !== "na") { e.answers = Object.assign({}, r.a); e.followUp = Object.assign({}, r.f); }
     students.push(e);
   });

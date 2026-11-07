@@ -980,16 +980,18 @@ function snapIdx(k, sn) { const sel = SNAPSEL[k]; const i = sel ? sn.findIndex(x
 function viewOf(s) {
   if (!s) return s; const sn = snapsOf(s.key); if (!sn.length) return s;
   const i = snapIdx(s.key, sn), n = sn[i];
-  const note = (i === sn.length - 1 ? "التقييم المعتمد: التقييم المحدَّث (الأحدث)" : "التقييم المعتمد: التقييم الأصلي (سابق)") + " — بتاريخ " + fmtY(n.date);
+  const note = "تاريخ التقييم: " + fmtY(n.date);
   if (i === sn.length - 1) { s.snapNote = note; return s; }
   const c = Object.assign({}, s, { resp: n.resp.slice(), snapNote: note }); computeStudent(c); return c;
 }
-const snapNote = s => s && s.snapNote ? `<div class="snapnote">🕘 ${esc(s.snapNote)}</div>` : "";
+let SHOWDT = true; try { if (localStorage.getItem("marsad_showdt") === "0") SHOWDT = false; } catch (e) {}
+const snapNote = s => (SHOWDT && s && s.snapNote) ? `<div class="snapnote">📅 ${esc(s.snapNote)}</div>` : "";
+const dateTog = () => `<label class="imptog no-print" style="background:#fff8e6;border-color:#e0c36a"><input type="checkbox" data-snapshowdt="1"${SHOWDT ? " checked" : ""}> <b>إظهار تاريخ التقييم في التقرير</b></label>`;
 function snapBar(k) {
   const sn = snapsOf(k); if (!sn.length) return "";
   const i = snapIdx(k, sn), cur = sn[i];
   return `<div class="snapbar no-print"><b>التقييم المعروض:</b> <select data-snapsel="${esc(k)}">${sn.map((x, j) => `<option value="${esc(x.ids[0])}" ${j === i ? "selected" : ""}>${esc(x.label)} — ${esc(fmtY(x.date))}${j === sn.length - 1 ? " (الأحدث)" : ""}</option>`).join("")}</select>
-    <label>تاريخ هذا التقييم <input type="date" data-snapdt="${esc(k)}" value="${ymd(cur.date)}"></label><small>يُعرض المحدَّث افتراضياً — اختر «الأصلي» لعرض تقريره السابق.</small></div>`;
+    <label>تاريخ هذا التقييم <input type="date" data-snapdt="${esc(k)}" value="${ymd(cur.date)}"></label><small>يُعرض المحدَّث افتراضياً — اختر «الأصلي» لعرض تقريره السابق.</small>${dateTog()}</div>`;
 }
 const cntT = n => n === 1 ? "معلم واحد" : n === 2 ? "معلمَين" : n <= 10 ? n + " معلمين" : n + " معلماً";
 function diagList(resp) { const m = new Map(); resp.forEach(r => m.set(r.teacher + "|" + r.subject, r)); const a = Array.from(m.values()).sort((x, y) => String(x.subject).localeCompare(String(y.subject), "ar")); return { n: new Set(a.map(r => r.teacher)).size, txt: a.map(r => r.teacher + " (" + r.subject + ")").join("، ") }; }
@@ -1045,12 +1047,12 @@ function impReport(e, R) {
   const still = CODES.filter(c => a.entries[c] && a.entries[c].some(x => x.level >= CFG.FLAG_LEVEL)).slice(0, 4).map(c => esc(impStmt(c))).join("؛ ");
   const evs = e.nT > 4 ? "" : " — " + e.evals.map(x => `${esc(x.teacher)} <small>(${esc(x.subject)})</small>`).join("، ");
   const vtxt = { up: "تحسّن ملحوظ في التقييم الإجمالي", down: "تراجع في التقييم الإجمالي", same: "لا تغيّر جوهري في التقييم الإجمالي", nobase: "لا يوجد تقييم سابق للمقارنة" }[e.verdict];
-  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${{ up: "تقرير تقدّم الطالب", down: "تقرير متابعة الطالب" }[e.verdict] || "تقرير تغيّر مستوى الطالب"}<small>مقارنة التقييم السابق بالحالي — العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
+  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${{ up: "تقرير تقدّم الطالب", down: "تقرير متابعة تراجع طالب" }[e.verdict] || "تقرير تغيّر مستوى الطالب"}<small>مقارنة التقييم السابق بالحالي — العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
   return `<section class="page ipage">${hdr}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(e.name)}</b></div><div><small>رقم الطالب</small><b>${esc(e.id || "—")}</b></div><div><small>الصف</small><b>${esc(e.grade)}</b></div><div><small>الشعبة</small><b>${esc(e.section)}</b></div></div>
     <div class="idates"><span>تاريخ التقييم السابق: <b>${esc(fmtY(e.dateBefore))}</b></span><span>تاريخ إعادة التقييم: <b>${esc(fmtY(e.dateAfter))}</b></span><span>المدة بين التقييمين: <b>${days == null ? "—" : days + " يوم"}</b></span></div>
     <div class="icmps">${box("الجانب السلوكي", b && b.behScore, a.behScore, e.dBeh)}${box("الجانب الأكاديمي", b && b.acaScore, a.acaScore, e.dAca)}${box("الإجمالي", b && b.comb, a.comb, e.dComb)}</div>
-    <div class="iverd ${e.verdict}"><b>${vtxt}</b><span>عدد المعلمين الذين أجروا إعادة التقييم: <b>${e.nT}</b> في <b>${e.nS}</b> ${e.nS === 1 ? "مادة" : "مواد"}${evs}</span><span>الاتجاه المُدخل: <b>${e.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</b>${e.match === false ? " — <b>(القياس يخالف الاتجاه المُدخل)</b>" : ""}${e.reasons.length ? " &nbsp;|&nbsp; السبب: " + esc(e.reasons.join("؛ ")) : ""}</span></div>
+    <div class="iverd ${e.verdict}"><b>${vtxt}</b><span>عدد المعلمين الذين أجروا إعادة التقييم: <b>${e.nT}</b> في <b>${e.nS}</b> ${e.nS === 1 ? "مادة" : "مواد"}${evs}</span></div>
     <div class="rs">العناصر التي تغيّرت${IMPSAME ? ' <small style="font-weight:400;color:#555">(مقارنة نفس المواد المحدَّثة فقط: ' + e.nS + ")</small>" : ""}  <small style="font-weight:400;color:#555">(${e.better.length} تحسّن · ${e.worse.length} تراجع · ${e.same.length} دون تغيير)</small></div>
     ${rows.length ? `<table class="rt ict"><colgroup><col style="width:7mm"><col><col style="width:24mm"><col style="width:24mm"><col style="width:22mm"></colgroup><thead><tr><th>#</th><th>العبارة</th><th class="gc">السابق</th><th class="gc">الحالي</th><th class="gc">التغير</th></tr></thead><tbody>${tr}</tbody></table>` : `<p class="rpara">لا توجد عناصر قابلة للمقارنة.</p>`}
     ${still ? `<p class="rpara" style="margin-top:4px"><b>ما زال يحتاج دعماً:</b> ${still}</p>` : ""}
@@ -1081,7 +1083,6 @@ function vImpact() {
     { h: "السابق", v: x => x.before ? x.before.comb : -1, f: x => `${x.before ? scPill(x.before.comb) : "—"}<small class="dt2">${esc(fmtY(x.dateBefore))}</small>` },
     { h: "الحالي", v: x => x.after.comb, f: x => `${scPill(x.after.comb)}<small class="dt2">${esc(fmtY(x.dateAfter))}</small>` },
     { h: "التغير (الأبرز أولاً)", v: x => x.dComb == null ? -1 : Math.abs(x.dComb), f: x => dlt(x.dComb) },
-    { h: "الاتجاه المُدخل", v: x => x.declared, f: x => `<span class="ivb ${x.declared === "better" ? "up" : "down"}">${x.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</span>${x.match === false ? ' <span title="القياس يخالف الاتجاه المُدخل">⚠</span>' : ""}` },
     { h: "النتيجة", v: x => x.verdict, f: x => impBadge(x.verdict) },
     { h: "المعلمون الذين حدّثوا", v: x => x.nT, f: x => `<b>${x.nT}</b> ${x.nT === 1 ? "معلم" : "معلمين"}<small class="dt2">${x.nS} ${x.nS === 1 ? "مادة" : "مواد"}</small>` },
     { h: "", v: () => "", f: x => `<button class="btn sm" data-imp="${esc(x.key)}">📄 تقرير</button>` }], rows, { search: true, sort: 4, dir: -1 }) + `</div>`;
@@ -1722,7 +1723,7 @@ let PR = { mode: "one", cls: "" };
 const fnClean = x => String(x || "").replace(/[\\/:*?"<>|]+/g, "-").trim().replace(/\s+/g, "_");
 const fnStu = st => fnClean(String(st.name || "").trim().split(/\s+/).slice(0, 2).join("_")) + "_" + fnClean(st.id || "");
 function printName() {
-  if (VIEW === "impact" && IMPCUR != null) { const e = IMP.find(x => x.key === IMPCUR); if (e) return "تقرير_" + ({ up: "تقدم", down: "متابعة" }[e.verdict] || "تغير") + "_" + fnStu(e); }
+  if (VIEW === "impact" && IMPCUR != null) { const e = IMP.find(x => x.key === IMPCUR); if (e) return "تقرير_" + ({ up: "تقدم", down: "متابعة_تراجع" }[e.verdict] || "تغير") + "_" + fnStu(e); }
   if (VIEW === "parent") { if (PR.mode === "class") return "تقرير_ولي_أمر_الصف_" + fnClean(PR.cls); const st = A.students.get(CUR); if (st) return "تقرير_ولي_أمر_" + fnStu(st); }
   if (VIEW === "student" && STUPREV) { const st = A.students.get(CUR); if (st) return "تقرير_الطالب_" + fnStu(st); }
   const d = new Date(), p2 = n => String(n).padStart(2, "0"); return "تقرير_عام_" + d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate());
@@ -1742,7 +1743,7 @@ function vParent() {
   return `<h2 class="pt no-print">${esc(t("pr_t"))}</h2><p class="ps no-print">${esc(t("pr_s"))}</p>
   <div class="card no-print"><div class="rcfg">${inp("school", "pr_school")}${inp("principal", "pr_principal")}${inp("counselor", "pr_counselor")}${inp("year", "pr_year")}${inp("term", "pr_term")}${inp("title", "pr_title")}</div>
     <p class="hint">${esc(t("pr_hint"))}</p>    <div class="seg"><button data-prmode="one" class="${PR.mode === "one" ? "on" : ""}">${esc(t("pr_one"))}</button><button data-prmode="class" class="${PR.mode === "class" ? "on" : ""}">${esc(t("pr_class"))}</button></div>
-    ${PR.mode === "one" ? snapBar(CUR) : ""}<div class="tb">${PR.mode === "one" ? `<select id="pickPR">${S.map(x => `<option value="${SK.indexOf(x.key)}" ${x.key === CUR ? "selected" : ""}>${esc(sName(x))} (${esc(clsName(x.grade, x.section))})</option>`).join("")}</select>`
+    ${PR.mode === "one" ? snapBar(CUR) : (IMP.length ? dateTog() : "")}<div class="tb">${PR.mode === "one" ? `<select id="pickPR">${S.map(x => `<option value="${SK.indexOf(x.key)}" ${x.key === CUR ? "selected" : ""}>${esc(sName(x))} (${esc(clsName(x.grade, x.section))})</option>`).join("")}</select>`
       : `<select id="pickPRC">${clsKeys.map(k => `<option ${k === PR.cls ? "selected" : ""}>${esc(k)}</option>`).join("")}</select>`}
       <button class="btn" id="btnPrintRep">${esc(t("pr_print"))} (${targets.length})</button></div></div>
   <div class="rwrap" id="reports" dir="rtl">${targets.map(x => parentReport(x, R)).join("")}</div>`;
@@ -1823,6 +1824,7 @@ document.addEventListener("input", e => { const d = e.target.dataset || {}; if (
 document.addEventListener("change", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) render();
   if (d.impsame) { IMPSAME = e.target.checked; try { localStorage.setItem("marsad_impsame", IMPSAME ? "1" : "0"); } catch (x) {} computeImpact(); render(); }
   if (d.idt && IMPCUR != null) { const en = IMP.find(x => x.key === IMPCUR), id = d.idt === "dB" ? "orig|" + IMPCUR : "upd|" + IMPCUR, v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (id) { if (v) SNAPD[id] = v; else delete SNAPD[id]; snapSave(); analyze(); render(); } }
+  if (d.snapshowdt) { SHOWDT = e.target.checked; try { localStorage.setItem("marsad_showdt", SHOWDT ? "1" : "0"); } catch (x) {} render(); }
   if (d.snapsel) { SNAPSEL[d.snapsel] = e.target.value; render(); }
   if (d.snapdt) { const sn = snapsOf(d.snapdt), n = sn[snapIdx(d.snapdt, sn)], v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (n) { SNAPSEL[d.snapdt] = n.ids[0]; n.ids.forEach(id => { if (v) SNAPD[id] = v; else delete SNAPD[id]; }); snapSave(); analyze(); render(); } } });
 document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.ax && CUR) { actOf(CUR)[d.ax] = e.target.value; actSave(); } });
