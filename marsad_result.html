@@ -1337,8 +1337,8 @@ function teacherReport() {
     <div class="kbar"><div class="lb"><div class="lbt"><i style="width:${pct}%"></i></div><span><b>${pct}%</b> <small>${esc(t("tr_k_of"))} ${T.length}</small></span></div></div></div>`;
   const flt = `<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("tr_bflt"))}</span><button data-trb="show" class="${TRB === "show" ? "on" : ""}">${esc(t("tr_b_show"))}</button><button data-trb="merge" class="${TRB === "merge" ? "on" : ""}">${esc(t("tr_b_merge"))}</button><button data-trb="hide" class="${TRB === "hide" ? "on" : ""}">${esc(t("tr_b_hide"))}</button></div>`;
   const col1 = `<div class="tcol"><h5 class="sh">🏁 ${esc(t("tr_c_done"))} (${done.length})</h5><div class="tscroll">${done.length ? done.map((x, i) => row(x, i, `<b>${esc(unit(x.full))}</b><small>${esc(fmtD(trDoneAt(x)))}</small>`)).join("") : `<p class="hint">${esc(t("tr_nodone"))}</p>`}</div></div>`;
-  const col2 = `<div class="tcol"><h5 class="sh">📊 ${esc(t("tr_c_most"))}</h5><div class="tscroll">${most.length ? most.map((x, i) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)} <small class="sbj">— ${sub(x)}</small><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span></span><span class="tr3"><b>${x.total}</b><small>${esc(t("tr_stu"))}</small></span></div>`).join("") : `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>`;
-  const col3 = `<div class="tcol"><h5 class="sh">⏳ ${esc(t("tr_c_none"))} (${none.length})</h5><div class="tscroll">${none.length ? none.map((x, i) => row(x, i, x.asg ? `<b>${esc(unit(x.asg))}</b><small>${esc(t("tr_req"))}</small>` : "—")).join("") : `<p class="hint">${esc(t("tr_allstart"))}</p>`}</div></div>`;
+  const col2 = `<div class="tcol"><h5 class="sh">📊 ${esc(t("tr_c_most"))}</h5><div class="tlist">${most.length ? most.map((x, i) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)} <small class="sbj">— ${sub(x)}</small><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span></span><span class="tr3"><b>${x.total}</b><small>${esc(t("tr_stu"))}</small></span></div>`).join("") : `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>`;
+  const col3 = `<div class="tcol"><h5 class="sh">⏳ ${esc(t("tr_c_none"))} (${none.length})</h5><div class="tlist">${none.length ? none.map((x, i) => row(x, i, x.asg ? `<b>${esc(unit(x.asg))}</b><small>${esc(t("tr_req"))}</small>` : "—")).join("") : `<p class="hint">${esc(t("tr_allstart"))}</p>`}</div></div>`;
   const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${c.full ? "cd" : "cp"}" title="${esc(fmtDT(c.d))} — ${c.n + c.z}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n + c.z}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
   const table = `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span></div>` +
     tbl("tchrep", [
@@ -1354,15 +1354,6 @@ function teacherReport() {
   return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3><span class="trsum"><span class="sm sd">✅ <b>${done.length}</b> ${esc(t("tr_k_done"))}</span><span class="sm sp">🔄 <b>${prog.length}</b> ${esc(t("tr_k_prog"))}</span><span class="sm sn">⏳ <b>${none.length}</b> ${esc(t("tr_k_none"))}</span><span class="lb"><span class="lbt"><i style="width:${pct}%"></i></span><span><b>${pct}%</b></span></span></span></div><div class="clbody">${body}</div></div>`;
 }
 const cl2 = (k, def) => { if (COLL[k] === undefined) COLL[k] = def; return COLL[k] ? "closed" : ""; };
-function followCard(S) {
-  const grades = Array.from(new Set(S.map(x => x.grade))).sort((a, b) => a - b), fo = x => x.level >= 2;
-  const body = grades.map(g => { const gs = S.filter(x => x.grade === g), secs = Array.from(new Set(gs.map(x => x.section))).sort((a, b) => a - b);
-    return `<h5 class="sh" style="margin:10px 0 4px">${LANG === "ar" ? "الصف " : "Grade "}${esc(g)} <small style="font-weight:400;color:var(--muted)">— <b>${gs.filter(fo).length}</b> ${LANG === "ar" ? "من" : "of"} ${gs.length}</small></h5><div class="bars">` +
-      secs.map(sc => { const c = gs.filter(x => x.section === sc), n = c.filter(fo).length, p = pct(n, c.length), ck = clsName(g, sc);
-        return `<div class="bar cb" data-class="${esc(ck)}" title="${esc(ck)}"><span class="lb">${esc(ck)}</span><span class="tr"><i style="width:${p}%;background:var(--brand)"></i></span><span class="vl" style="white-space:nowrap;min-width:110px">${p}% <small>(${n} ${LANG === "ar" ? "من" : "of"} ${c.length})</small></span></div>`; }).join("") + `</div>`; }).join("");
-  const tot = S.filter(fo).length;
-  return `<div class="card cl ${cl2("fol", true)}"><div class="clh" data-coll="fol"><span class="arr"></span><h3>${esc(t("by_grade"))}</h3><span class="trsum"><span class="sm sn">⚠ <b>${tot}</b> ${LANG === "ar" ? "طالباً يُنصح بمتابعتهم من" : "students advised follow-up of"} <b>${S.length}</b></span></span></div><div class="clbody">${body}</div></div>`;
-}
 function vOverview() {
   if (!A.recs.length) return empty();
   const S = Array.from(A.students.values());
@@ -1372,14 +1363,14 @@ function vOverview() {
   return `<h2 class="pt">${esc(t("ov_t"))}</h2>
   ${C.hasRoster ? "" : `<div class="note warn">${esc(t("comp_noroster"))}</div>`}
   <div class="card cl ${COLL.comp === false ? "" : "closed"}"><div class="clh" data-coll="comp"><span class="arr"></span><h3>${esc(t("comp_t"))}</h3><div class="clbar">${lbar(C.overall.p, C.overall.n + "/" + C.overall.N)}</div></div><div class="clbody">
-  ${cmpFilters()}<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("sc_lbl"))}</span><button data-cscope="started" class="${CMPSCOPE === "started" ? "on" : ""}">${esc(t("sc_started"))}</button><button data-cscope="all" class="${CMPSCOPE === "all" ? "on" : ""}">${esc(t("sc_all"))}</button></div>
+  ${cmpFilters()}
   <p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
     <p class="hint" style="margin-top:8px">${esc(t("comp_note"))}${C.hasRoster ? " — " + esc(t("comp_noentry")) + ": " + C.noEntry : ""}</p></div></div>
   ${teacherReport()}
   ${reOverview()}
   <div class="card cl ${cl2("top", false)}"><div class="clh" data-coll="top"><span class="arr"></span><h3>أكثر الملاحظات تكراراً</h3></div><div class="clbody"><p class="hint">${esc(t("top_hint"))}</p>${legend()}
     <div class="grid g2"><div><h4 class="sh">${esc(t("top_beh"))}</h4>${distBars(topItems("B", 8))}</div><div><h4 class="sh">${esc(t("top_aca"))}</h4>${distBars(topItems("A", 8))}</div></div></div></div>
-  ${followCard(S)}<div class="note">${esc(t("method"))}</div>`;
+  ${classesCard()}<div class="note">${esc(t("method"))}</div>`;
 }
 
 /* خط متدرج أخضر ← أحمر مع نقطة تمثل المتوسط (0 = لا يظهر ... 4 = دائماً) */
@@ -1390,8 +1381,8 @@ const rateK = v => v < 0.75 ? 0 : v < 1.5 ? 1 : v < 2.5 ? 2 : v < 3.25 ? 3 : 4;
 const rateTxt = v => (LANG === "ar" ? RATE_AR : RATE_EN)[rateK(v)];
 const ratePill = v => `<span class="pill" ${heat(v)}>${esc(rateTxt(v))}</span>`;
 function heat(v) { const a = Math.min(1, v / 3); return `style="background:rgba(37,99,235,${(0.08 + a * 0.55).toFixed(2)});${a > .6 ? "color:#fff" : ""}"`; }
-function vClasses() {
-  if (!A.recs.length) return empty();
+function classesCard() {
+  if (!A.recs.length) return "";
   const SEGC = ["#2F6B4F", "#2563EB", "#C9A227", "#B03A2E"];
   const ringCol = p => p >= 35 ? "#B03A2E" : p >= 20 ? "#D9822B" : p >= 10 ? "#C9A227" : "#2F6B4F";
   const list = Object.values(A.classes);
@@ -1417,8 +1408,8 @@ function vClasses() {
     return `<tbody class="cl gb ${COLL[key] ? "closed" : ""}"><tr class="grow sumr" data-coll="${key}"><td><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b></td><td>${all.length}</td><td>${resp}</td><td>${scBar(gb)}</td><td>${scBar(ga)}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(all)}</td></tr>
       <tr class="grow hdr" data-coll="${key}"><td colspan="7"><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b> <small>— ${all.length} ${esc(t("col_students"))}</small></td></tr>${cl.map(row).join("")}</tbody>`;
   }).join("");
-  return `<h2 class="pt">${esc(t("cl_t"))}</h2><p class="ps">${esc(t("cl_s2"))}</p>${lg}
-  <div class="card"><div class="tw"><table class="t ctab"><colgroup><col style="width:15%"><col style="width:9%"><col style="width:10%"><col style="width:19%"><col style="width:19%"><col style="width:10%"><col style="width:18%"></colgroup><thead><tr><th>${esc(t("col_class"))}</th><th>${esc(t("col_students"))}</th><th>${esc(t("col_resp"))}</th><th>${esc(t("sc_beh"))}</th><th>${esc(t("sc_aca"))}</th><th>${esc(t("cl_ring"))}</th><th>${esc(t("cl_dist"))}</th></tr></thead>${sections}</table></div></div>`;
+  const allS = Object.values(A.classes).reduce((m, c) => m.concat(c.stu), []), nF = allS.filter(x => x.level >= 2).length, nC = Object.keys(A.classes).length;
+  return `<div class="card cl ${cl2("cls", true)}"><div class="clh" data-coll="cls"><span class="arr"></span><h3>${esc(t("by_grade"))}${LANG === "ar" ? " والشعبة" : " and section"}</h3><span class="trsum"><span class="sm">👥 <b>${allS.length}</b> ${LANG === "ar" ? "طالباً" : "students"}</span><span class="sm">🏫 <b>${nC}</b> ${LANG === "ar" ? "شعبة" : "sections"}</span><span class="sm sn">⚠ <b>${nF}</b> ${LANG === "ar" ? "يُنصح بمتابعتهم" : "advised follow-up"} (<b>${pct(nF, allS.length)}%</b>)</span></span></div><div class="clbody"><p class="hint">${esc(t("cl_s2"))}</p>${lg}<div class="tw"><table class="t ctab"><colgroup><col style="width:15%"><col style="width:9%"><col style="width:10%"><col style="width:19%"><col style="width:19%"><col style="width:10%"><col style="width:18%"></colgroup><thead><tr><th>${esc(t("col_class"))}</th><th>${esc(t("col_students"))}</th><th>${esc(t("col_resp"))}</th><th>${esc(t("sc_beh"))}</th><th>${esc(t("sc_aca"))}</th><th>${esc(t("cl_ring"))}</th><th>${esc(t("cl_dist"))}</th></tr></thead>${sections}</table></div></div></div>`;
 }
 
 function vSubjects() {
@@ -1757,7 +1748,7 @@ function vParent() {
   <div class="rwrap" id="reports" dir="rtl">${targets.map(x => parentReport(x, R)).join("")}</div>`;
 }
 
-const VIEWS = { overview: ["📊", vOverview], classes: ["🏫", vClasses], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], impact: ["📈", vImpact], import: ["📂", vImport] };
+const VIEWS = { overview: ["📊", vOverview], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], impact: ["📈", vImpact], import: ["📂", vImport] };
 
 function render() {
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
