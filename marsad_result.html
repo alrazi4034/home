@@ -340,6 +340,21 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .pcell{display:flex;align-items:center;gap:8px}.pcell .pb2{flex:1}.pcell b{min-width:40px;font-size:12.5px}
 .dt{white-space:nowrap;font-size:12.5px;color:#444}
 @media(max-width:900px){.tr2{grid-template-columns:1fr}}
+
+.trhead{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.trk{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;flex:1;min-width:320px}
+.trk .kc{border:1px solid var(--line);padding:6px 16px;text-align:center;min-width:92px}.trk .kc b{display:block;font-size:24px;line-height:1.1}.trk .kc span{font-size:12px;color:var(--muted)}
+.trk .kd{border-top:3px solid #2F6B4F}.trk .kd b{color:#2F6B4F}.trk .kp{border-top:3px solid #E0A82E}.trk .kp b{color:#9a7110}.trk .kn{border-top:3px solid #B03A2E}.trk .kn b{color:#B03A2E}
+.trk .kbar{flex:1;min-width:200px;align-self:center}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.tr3g .tcol{border:1px solid var(--line);padding:8px 12px;min-width:0}.tr3g h5.sh{margin:2px 0 6px}
+.tscroll{max-height:290px;overflow:auto}
+.tl3{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #eceef2;font-size:13px}
+.tl3 .rk{background:#d5dae3;color:#333;text-align:center;font-size:12px;height:20px;line-height:20px}
+.tl3 .rk1{background:#E0A82E;color:#fff}.tl3 .rk2{background:#9aa3b2;color:#fff}.tl3 .rk3{background:#B07A4A;color:#fff}
+.tl3 .tn small{display:block;color:var(--muted);font-size:11.5px}.tl3 .tn .tr{display:block;height:8px;background:#e6e9ee;margin-top:4px}.tl3 .tn .tr i{display:block;height:100%;background:var(--brand)}
+.tl3 .tr3{text-align:center}.tl3 .tr3 b{display:block;font-size:13px;color:var(--brand-d)}.tl3 .tr3 small{display:block;color:var(--muted);font-size:11px}
+@media(max-width:1000px){.g3{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -720,7 +735,12 @@ Object.assign(D, {
   sc_how_t: ["كيف يُحسب التقييم من 10؟", "How is the score out of 10 calculated?"],
   sc_how: ["١) لكل بند: نأخذ متوسط إجابات معلمي كل مادة، ثم متوسط المواد (فلا يطغى عدد معلمي مادة على غيرها).\n٢) نحوّل المستوى إلى نسبة: لا يظهر = 0 ، أحياناً = 0.5 ، دائماً = 1، ونأخذ متوسط البنود المرصودة (يُستثنى ما لم يلاحظه المعلم).\n٣) التقييم = 10 × (1 − هذا المتوسط).\n٤) يُخصم 0.3 عن كل بند أجمع عليه معلمان فأكثر بـ «دائماً» (بحد أقصى 1.5).\n10 = لا ملاحظات ، 0 = ملاحظات متكررة. يُحسب السلوك من بنود السلوك والأكاديمي من البنود الأكاديمية كلٌّ على حدة.", "1) Per item: average each subject's teachers, then average the subjects.\n2) Convert to burden: never=0, sometimes=0.5, always=1; average the observed items (not-observed excluded).\n3) Score = 10 × (1 − burden).\n4) Minus 0.3 per item that 2+ teachers marked 'always' (max 1.5).\n10 = no concerns, 0 = frequent concerns. Behavior and academic are computed separately."]
 });
-Object.assign(D, { tr_asg: ["الشعب المطلوبة", "Required sections"], tr_prog: ["الإنجاز", "Progress"], tr_last: ["آخر تصدير", "Last export"], tr_cls_unit: ["شعب مكتملة", "sections complete"],
+Object.assign(D, { tr_k_done: ["أكملوا", "Completed"], tr_k_prog: ["جارٍ", "In progress"], tr_k_none: ["لم يبدؤوا", "Not started"], tr_k_of: ["من المعلمين أكملوا", "of teachers completed"],
+  tr_bflt: ["المجموعة ب:", "Group B:"], tr_b_show: ["عرضهم", "Show"], tr_b_merge: ["دمجهم (يكفي معلم واحد)", "Merge (one teacher enough)"], tr_b_hide: ["إلغاؤهم من الإحصائية", "Exclude"],
+  tr_bmerged: ["مجموعة ب (معلم واحد على الأقل)", "Group B (at least one teacher)"], tr_bsub: ["الذكاء الاصطناعي، الرياضة، الفنون، الدراما، الفرنسية", "AIT, PE, Arts, Drama, French"],
+  tr_c_done: ["أكملوا شعبهم — الأسرع أولاً", "Completed — fastest first"], tr_c_most: ["الأكثر إدخالاً (بعدد الطلاب)", "Most entries (students)"], tr_c_none: ["لم يبدؤوا بعد", "Not started yet"],
+  tr_nodone: ["لم يُكمل أحد بعد", "No one has completed yet"], tr_allstart: ["بدأ جميع المعلمين", "Everyone has started"], tr_stu: ["طالب", "students"], tr_req: ["مطلوبة", "required"],
+  tr_asg: ["الشعب المطلوبة", "Required sections"], tr_prog: ["الإنجاز", "Progress"], tr_last: ["آخر تصدير", "Last export"], tr_cls_unit: ["شعب مكتملة", "sections complete"],
   tr_top3: ["أعلى 3 معلمين إنجازاً (نسبة الشعب المكتملة)", "Top 3 teachers by completion (share of sections)"], tr_top3_s: ["النسبة محسوبة من الشعب المطلوبة لكل معلم، فالمعلم بشعبتين يُقارَن بمن عنده 10 شعب بعدل.", "Measured against each teacher's own sections, so teachers with 2 or 10 sections compare fairly."],
   tr_bystu: ["الأكثر إدخالاً (بعدد الطلاب)", "Most entries (by students)"], tr_noasg: ["أضف عدد شعب كل معلم في ملف البيانات (PQ_TEACHER_SECTIONS) ليظهر الترتيب.", "Add each teacher's section count to the data file (PQ_TEACHER_SECTIONS)."], tr_most: ["الأكثر إدخالاً", "Most entries"], tr_least: ["الأقل إنجازاً", "Least completed"],
   tr_showall: ["عرض جميع المعلمين", "Show all teachers"], tr_first8: ["عرض أول 8 فقط", "Show first 8"] });
@@ -1065,35 +1085,58 @@ function statusBadge(st) {
   return `<span class="badge ${m[0]}">${esc(m[1])}</span>`;
 }
 let STUPREV = false;
-let TRMODE = "most", TRALL = false;
+let TRB = "show";   // المجموعة ب في تقرير المعلمين: show | hide | merge
 const fmtDT = ms => { if (!ms) return "—"; const d = new Date(ms), p2 = n => String(n).padStart(2, "0"); return p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p2(d.getHours()) + ":" + p2(d.getMinutes()); };
+const fmtD = ms => { if (!ms) return "—"; const d = new Date(ms), p2 = n => String(n).padStart(2, "0"); return p2(d.getDate()) + "/" + p2(d.getMonth() + 1); };
+function trList() {
+  const T = A.comp.teachers, isB = x => x.subjects.length > 0 && x.subjects.every(sb => grpOf(sb) === "B");
+  if (TRB === "show") return T;
+  const rest = T.filter(x => !isB(x)); if (TRB === "hide") return rest;
+  const Bs = T.filter(isB); if (!Bs.length) return rest;
+  // دمج: يكفي معلم واحد على الأقل من المجموعة ب لتغطية الشعبة
+  const cks = A.comp.classes.filter(ck => (A.comp.N[ck] || 0) > 0), cls = []; let full = 0, frac = 0;
+  cks.forEach(ck => {
+    const cs = Bs.map(x => x.cls.find(c => c.ck === ck)).filter(Boolean); if (!cs.length) return;
+    const fc = cs.filter(c => c.full), best = cs.slice().sort((a, b) => (b.n + b.z) - (a.n + a.z))[0];
+    if (fc.length) { full++; frac++; cls.push({ ck: ck, n: best.n, z: best.z, N: best.N, full: true, d: Math.min.apply(null, fc.map(c => c.d || Infinity)) }); }
+    else { frac += best.N ? Math.min(1, (best.n + best.z) / best.N) : 0; cls.push({ ck: ck, n: best.n, z: best.z, N: best.N, full: false, d: best.d }); }
+  });
+  const asg = cks.length;
+  const m = { name: t("tr_bmerged"), merged: true, subjects: Array.from(new Set(Bs.reduce((a, x) => a.concat(x.subjects), []))), total: Bs.reduce((a, x) => a + x.total, 0), opt: false, cls: cls, asg: asg, full: full, frac: frac,
+    pctFull: asg ? Math.round(full / asg * 100) : 0, pctAll: asg ? Math.round(frac / asg * 100) : 0, exp: Math.max.apply(null, Bs.map(x => x.exp)) };
+  return rest.concat([m]);
+}
+const trState = x => (x.asg && x.full >= x.asg) ? "done" : (x.cls.length ? "prog" : "none");
+const trDoneAt = x => Math.max.apply(null, x.cls.filter(c => c.full).map(c => c.d || 0).concat([0]));
 function teacherReport() {
-  const C = A.comp, T = C.teachers;
-  if (!T.length) return "";
+  const C = A.comp; if (!C.teachers.length) return "";
   if (COLL.trall === undefined) COLL.trall = true;
-  const hasAsg = T.some(x => x.asg !== null);
-  const nm = (a, b) => String(a.name).localeCompare(String(b.name), "ar");
-  // الأعلى إنجازاً بنسبة الشعب المكتملة من شعبه (عدالة بين من يدرّس 10 شعب ومن يدرّس شعبتين)
-  const topC = T.filter(x => x.asg).slice().sort((a, b) => b.pctFull - a.pctFull || b.pctAll - a.pctAll || b.asg - a.asg || nm(a, b)).filter(x => x.pctAll > 0).slice(0, 3);
-  const mx = Math.max(1, ...T.map(x => x.total));
-  const sorted = T.slice().sort(TRMODE === "most" ? (a, b) => b.total - a.total || nm(a, b) : (a, b) => a.total - b.total || nm(a, b));
-  const shown = TRALL ? sorted : sorted.filter(x => TRMODE === "least" || x.total).slice(0, 8);
-  const pbar = x => x.asg ? `<div class="pb2" title="${x.full}/${x.asg}"><i class="s1" style="width:${Math.min(100, Math.round(x.full / x.asg * 100))}%"></i><i class="s2" style="width:${Math.max(0, Math.min(100 - Math.round(x.full / x.asg * 100), x.pctAll - Math.round(x.full / x.asg * 100)))}%"></i></div>` : "";
-  const podium = topC.length ? `<div class="tops pod">${topC.map((x, i) => `<div class="tp3"><span class="medal">${["🥇", "🥈", "🥉"][i]}</span><div class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small>${pbar(x)}</div><div class="pn"><b>${x.full} ${LANG === "ar" ? "من" : "of"} ${x.asg}</b><small>${esc(t("tr_cls_unit"))}</small></div></div>`).join("")}</div>` : `<p class="hint">${esc(hasAsg ? t("tr_none") : t("tr_noasg"))}</p>`;
-  const bars = shown.length ? `<div class="tops">${shown.map((x, i) => `<div class="tp"><span class="rk">${i + 1}</span><span class="tn">${esc(x.name)}<small>${esc(x.subjects.join("، "))}</small></span><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%;${TRMODE === "least" ? "background:#B03A2E" : ""}"></i></span><b>${x.total}</b></div>`).join("")}</div>` : "";
+  const T = trList(), nm = (a, b) => String(a.name).localeCompare(String(b.name), "ar");
+  const unit = n => n + " " + (LANG === "ar" ? (n === 1 ? "شعبة" : n === 2 ? "شعبتان" : "شعب") : (n === 1 ? "section" : "sections"));
+  const done = T.filter(x => trState(x) === "done").sort((a, b) => trDoneAt(a) - trDoneAt(b) || nm(a, b));
+  const prog = T.filter(x => trState(x) === "prog"), none = T.filter(x => trState(x) === "none").sort(nm);
+  const most = T.filter(x => x.total && !x.merged).slice().sort((a, b) => b.total - a.total || nm(a, b)).slice(0, 6), mx = Math.max(1, ...T.map(x => x.total));
+  const pbar = x => { if (!x.asg) return ""; const f = Math.min(100, Math.round(x.full / x.asg * 100)); return `<div class="pb2" title="${x.full}/${x.asg}"><i class="s1" style="width:${f}%"></i><i class="s2" style="width:${Math.max(0, Math.min(100 - f, x.pctAll - f))}%"></i></div>`; };
+  const sub = x => esc(x.merged ? t("tr_bsub") : x.subjects.join("، "));
+  const row = (x, i, right) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)}<small>${sub(x)}</small></span><span class="tr3">${right}</span></div>`;
+  const pct = T.length ? Math.round(done.length / T.length * 100) : 0;
+  const kpi = `<div class="trk"><div class="kc kd"><b>${done.length}</b><span>${esc(t("tr_k_done"))}</span></div><div class="kc kp"><b>${prog.length}</b><span>${esc(t("tr_k_prog"))}</span></div><div class="kc kn"><b>${none.length}</b><span>${esc(t("tr_k_none"))}</span></div>
+    <div class="kbar"><div class="lb"><div class="lbt"><i style="width:${pct}%"></i></div><span><b>${pct}%</b> <small>${esc(t("tr_k_of"))} ${T.length}</small></span></div></div></div>`;
+  const flt = `<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("tr_bflt"))}</span><button data-trb="show" class="${TRB === "show" ? "on" : ""}">${esc(t("tr_b_show"))}</button><button data-trb="merge" class="${TRB === "merge" ? "on" : ""}">${esc(t("tr_b_merge"))}</button><button data-trb="hide" class="${TRB === "hide" ? "on" : ""}">${esc(t("tr_b_hide"))}</button></div>`;
+  const col1 = `<div class="tcol"><h5 class="sh">🏁 ${esc(t("tr_c_done"))} (${done.length})</h5><div class="tscroll">${done.length ? done.map((x, i) => row(x, i, `<b>${esc(unit(x.full))}</b><small>${esc(fmtD(trDoneAt(x)))}</small>`)).join("") : `<p class="hint">${esc(t("tr_nodone"))}</p>`}</div></div>`;
+  const col2 = `<div class="tcol"><h5 class="sh">📊 ${esc(t("tr_c_most"))}</h5><div class="tscroll">${most.length ? most.map((x, i) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)}<small>${sub(x)}</small><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span></span><span class="tr3"><b>${x.total}</b><small>${esc(t("tr_stu"))}</small></span></div>`).join("") : `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>`;
+  const col3 = `<div class="tcol"><h5 class="sh">⏳ ${esc(t("tr_c_none"))} (${none.length})</h5><div class="tscroll">${none.length ? none.map((x, i) => row(x, i, x.asg ? `<b>${esc(unit(x.asg))}</b><small>${esc(t("tr_req"))}</small>` : "—")).join("") : `<p class="hint">${esc(t("tr_allstart"))}</p>`}</div></div>`;
   const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${c.full ? "cd" : "cp"}" title="${esc(fmtDT(c.d))} — ${c.n + c.z}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n + c.z}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
-  const ctl = `<div class="seg no-print"><button data-trmode="most" class="${TRMODE === "most" ? "on" : ""}">${esc(t("tr_most"))}</button><button data-trmode="least" class="${TRMODE === "least" ? "on" : ""}">${esc(t("tr_least"))}</button><button data-trall="1" class="${TRALL ? "on" : ""}">${esc(TRALL ? t("tr_first8") : t("tr_showall") + " (" + T.length + ")")}</button></div>`;
   const table = `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span></div>` +
     tbl("tchrep", [
       { h: t("col_teacher"), v: x => x.name, f: x => `<b>${esc(x.name)}</b>` },
-      { h: t("col_subject"), v: x => x.subjects.join("، ") || "—" },
+      { h: t("col_subject"), v: x => x.merged ? t("tr_bsub") : x.subjects.join("، ") || "—", f: x => sub(x) },
       { h: t("tr_asg"), v: x => x.asg === null ? -1 : x.asg, f: x => x.asg === null ? "—" : x.asg },
       { h: t("tr_done"), v: x => x.full, f: x => x.asg ? `<b>${x.full}</b> ${LANG === "ar" ? "من" : "of"} ${x.asg}` : `<b>${x.full}</b>` },
       { h: t("tr_prog"), v: x => x.asg ? x.pctAll : -1, f: x => x.asg ? `<div class="pcell">${pbar(x)}<b>${x.pctFull}%</b></div>` : "—" },
       { h: t("tr_last"), v: x => x.exp, f: x => `<span class="dt">${esc(fmtDT(x.exp))}</span>` },
-      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, sort: hasAsg ? 4 : 3, dir: -1 });
-  const body = `<div class="grid g2 tr2"><div><h5 class="sh">${esc(t("tr_top3"))}</h5><p class="hint">${esc(t("tr_top3_s"))}</p>${podium}</div>
-    <div><h5 class="sh">${esc(t("tr_bystu"))}</h5>${ctl}${bars || `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>` +
+      { h: t("tr_cls"), v: x => x.cls.map(c => dispCls(c.ck)).join(" "), f: x => `<div class="chips">${chips(x)}</div>` }], T, { search: true, sort: 4, dir: -1 });
+  const body = `<div class="trhead">${kpi}${flt}</div><div class="grid g3 tr3g">${col1}${col2}${col3}</div>` +
     `<div class="cl sub ${COLL.trall ? "closed" : ""}"><div class="clh" data-coll="trall"><span class="arr"></span><h5 class="sh" style="margin:0">${esc(t("tr_all"))} (${T.length})</h5></div><div class="clbody">${table}</div></div>`;
   return `<div class="card cl ${COLL.tr ? "closed" : ""}"><div class="clh" data-coll="tr"><span class="arr"></span><h3>${esc(t("tr_t"))}</h3></div><div class="clbody">${body}</div></div>`;
 }
@@ -1518,13 +1561,14 @@ function bindView() {
 
 /* أحداث عامة بالتفويض */
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-coll],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
+  const el = e.target.closest("[data-coll],[data-trb],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
   if (!el) return;
   if (el.id === "md-close") { closeModal(); return; }
   if (el.dataset.coll) { const k = el.dataset.coll, box = el.closest(".cl"); COLL[k] = !COLL[k]; box.classList.toggle("closed", !!COLL[k]); return; }
   if (el.dataset.prev) { STUPREV = true; render(); window.scrollTo({ top: 0 }); return; }
   if (el.dataset.prevback) { STUPREV = false; render(); return; }
   if (el.dataset.planfill) { const a = actOf(CUR), st = A.students.get(CUR); a.plan = suggestPlan(st); actSave(); render(); return; }
+  if (el.dataset.trb) { TRB = el.dataset.trb; render(); return; }
   if (el.dataset.trmode) { TRMODE = el.dataset.trmode; render(); return; }
   if (el.dataset.trall) { TRALL = !TRALL; render(); return; }
   if (el.dataset.cscope) { CMPSCOPE = el.dataset.cscope; computeCompletion(); render(); return; }
