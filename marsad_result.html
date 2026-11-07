@@ -378,6 +378,10 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .snapnote{font-size:8.6pt;color:#7a5a00;background:#fff8e6;border:1px solid #e0c36a;padding:1px 8px;margin:3px 0;text-align:center}
 .tl3 .tn small.sbj{display:inline;font-size:11.5px}
 .diagline{font-size:7.8pt;color:#333;border:1px solid #cfdadd;background:#f7fafb;padding:2px 8px;margin-top:5px;line-height:1.5;text-align:justify}
+.re2{display:grid;grid-template-columns:1.35fr 1fr;gap:20px}@media(max-width:1000px){.re2{grid-template-columns:1fr}}
+.rcn{margin-inline-start:auto;font-size:13px;color:var(--muted)}.rcn b{color:var(--brand-d);font-size:15px}
+.rct{width:100%;border-collapse:collapse;font-size:13px}.rct th{background:#eef1f6;text-align:start;padding:5px 8px;font-weight:600}.rct td{padding:5px 8px;border-bottom:1px solid #eceef2}.rct tr.clk{cursor:pointer}.rct tr.clk:hover{background:#f4f7ff}
+.rsr{grid-template-columns:1fr 90px 60px}.rsr .tr{display:block;height:8px;background:#e6e9ee}.rsr .tr i{display:block;height:100%;background:var(--brand)}
 </style>
 </head>
 <body>
@@ -1295,6 +1299,23 @@ function trList() {
 }
 const trState = x => (x.asg && x.full >= x.asg) ? "done" : (x.cls.length ? "prog" : "none");
 const trDoneAt = x => Math.max.apply(null, x.cls.filter(c => c.full).map(c => c.d || 0).concat([0]));
+function reOverview() {
+  if (!IMP.length) return "";
+  const cl = k => { if (COLL[k] === undefined) COLL[k] = true; return COLL[k] ? "closed" : ""; };
+  const byC = {}; IMP.forEach(e => { const ck = clsName(e.grade, e.section); (byC[ck] = byC[ck] || []).push(e); });
+  const cks = Object.keys(byC).sort((a, b) => { const x = a.split("/").map(Number), y = b.split("/").map(Number); return x[0] - y[0] || x[1] - y[1]; });
+  const sc = {}; IMP.forEach(e => new Set(e.evals.map(x => x.subject)).forEach(sj => sc[sj] = (sc[sj] || 0) + 1));
+  const subs = Object.keys(sc).sort((a, b) => sc[b] - sc[a] || String(a).localeCompare(String(b), "ar")), mx = Math.max.apply(null, subs.map(x => sc[x]));
+  const stu = n => n + " " + (n === 1 ? "طالب" : n === 2 ? "طالبان" : n <= 10 ? "طلاب" : "طالباً");
+  const sub = n => n + " " + (n === 1 ? "مادة" : n === 2 ? "مادتين" : n <= 10 ? "مواد" : "مادة");
+  const classes = cks.map((ck, i) => { const list = byC[ck].slice().sort((a, b) => b.nS - a.nS || String(a.name).localeCompare(String(b.name), "ar")), tot = A.classes[ck] ? A.classes[ck].stu.length : 0, key = "rc" + i;
+    return `<div class="cl sub ${cl(key)}"><div class="clh" data-coll="${key}"><span class="arr"></span><h5 class="sh" style="margin:0">${esc(ck)}</h5><span class="rcn"><b>${list.length}</b> ${LANG === "ar" ? "من" : "of"} ${tot}</span></div>
+      <div class="clbody"><table class="rct"><thead><tr><th>${esc(t("col_name"))}</th><th>أُعيد تقييمه من</th><th>النتيجة</th><th>التغير</th></tr></thead><tbody>${list.map(e => { const st = A.students.get(e.key); return `<tr ${st ? stuAttr(st) : ""} class="${st ? "clk" : ""}"><td><b>${esc(e.name)}</b></td><td>${esc(sub(e.nS))} <small>(${esc(cntT(e.nT))})</small></td><td>${impBadge(e.verdict)}</td><td>${dlt(e.dComb)}</td></tr>`; }).join("")}</tbody></table></div></div>`; }).join("");
+  const subj = subs.map(sj => { const all = A.subj[sj] ? A.subj[sj].stu.size : 0; return `<div class="tl3 rsr"><span class="tn">${esc(sj)}</span><span class="tr3"><span class="tr"><i style="width:${Math.round(sc[sj] / mx * 100)}%"></i></span></span><span class="tr3"><b>${sc[sj]}</b><small>${all ? (LANG === "ar" ? "من " : "of ") + all : ""}</small></span></div>`; }).join("");
+  const body = `<div class="re2"><div><h5 class="sh">🏫 الطلاب المعاد تقييمهم حسب الشعبة <small style="font-weight:400;color:var(--muted)">— اضغط على الشعبة لعرض الطلاب</small></h5>${classes}</div>
+    <div><h5 class="sh">📚 عدد الطلاب الذين أُعيد تقييمهم في كل مادة</h5><div class="tscroll" style="max-height:420px">${subj}</div></div></div>`;
+  return `<div class="card cl ${cl("re")}"><div class="clh" data-coll="re"><span class="arr"></span><h3>🔄 التقييمات المعادة</h3><span class="trsum"><span class="sm sd">👥 <b>${IMP.length}</b> ${esc(stu(IMP.length).replace(/^\d+ /, ""))} أُعيد تقييمهم</span><span class="sm sp">🏫 <b>${cks.length}</b> ${cks.length === 1 ? "شعبة" : "شعب"}</span><span class="sm">📚 <b>${subs.length}</b> ${subs.length === 1 ? "مادة" : "مواد"}</span></span></div><div class="clbody">${body}</div></div>`;
+}
 function teacherReport() {
   const C = A.comp; if (!C.teachers.length) return "";
   if (COLL.trall === undefined) COLL.trall = true;
@@ -1340,6 +1361,7 @@ function vOverview() {
   <p class="hint">${esc(t("comp_s"))}</p>${compMatrix()}
     <p class="hint" style="margin-top:8px">${esc(t("comp_note"))}${C.hasRoster ? " — " + esc(t("comp_noentry")) + ": " + C.noEntry : ""}</p></div></div>
   ${teacherReport()}
+  ${reOverview()}
   <div class="grid g2"><div class="card"><h3>${esc(t("top_beh"))}</h3><p class="hint">${esc(t("top_hint"))}</p>${legend()}${distBars(topItems("B", 8))}</div>
   <div class="card"><h3>${esc(t("top_aca"))}</h3><p class="hint">${esc(t("top_hint"))}</p>${legend()}${distBars(topItems("A", 8))}</div></div>
   <div class="card"><h3>${esc(t("by_grade"))}</h3>${simpleBars(gRows)}</div><div class="note">${esc(t("method"))}</div>`;
