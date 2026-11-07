@@ -376,6 +376,8 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .impdates{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}.impdates label{display:flex;flex-direction:column;font-size:13px;gap:3px}.impdates input{padding:5px 8px;border:1px solid var(--line);font:inherit}
 .snapbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 10px;margin:8px 0;background:#fff8e6;border:1px solid #e0c36a}.snapbar select,.snapbar input{padding:5px 8px;border:1px solid var(--line);font:inherit;font-size:13px}.snapbar small{color:#666}
 .snapnote{font-size:8.6pt;color:#7a5a00;background:#fff8e6;border:1px solid #e0c36a;padding:1px 8px;margin:3px 0;text-align:center}
+.tl3 .tn small.sbj{display:inline;font-size:11.5px}
+.diagline{font-size:7.8pt;color:#333;border:1px solid #cfdadd;background:#f7fafb;padding:2px 8px;margin-top:5px;line-height:1.5;text-align:justify}
 </style>
 </head>
 <body>
@@ -816,7 +818,7 @@ function computeCompletion() {
   A.students.forEach(st => { const ck = st.grade + "-" + st.section; obs[ck] = (obs[ck] || 0) + 1; if (N[ck] === undefined) N[ck] = obs[ck]; });
   Object.keys(N).forEach(ck => { if (!ROSTER || !ROSTER.classes[ck]) N[ck] = obs[ck] || 0; });
   const ent = {};
-  A.recs.forEach(r => {
+  A.baseRecs.forEach(r => {
     const ck = r.student.grade + "-" + r.student.section, sk = nz(r.subject);
     if (!ent[ck]) ent[ck] = {};
     if (!ent[ck][sk]) ent[ck][sk] = new Set();
@@ -838,7 +840,7 @@ function computeCompletion() {
     if (!inScope.has(ck)) return;
     if (o.opt) o.n += n; else { const Nn = N[ck] - naCnt(ck, [x]); o.n += Math.min(n, Nn); o.N += Nn; o.total++; if (Nn && n >= Nn) o.done++; }
   }));
-  A.recs.forEach(r => { const k = subs.find(y => nz(y) === nz(r.subject)); if (k) sj[k].teachers.add(r.teacher); });
+  A.baseRecs.forEach(r => { const k = subs.find(y => nz(y) === nz(r.subject)); if (k) sj[k].teachers.add(r.teacher); });
   subs.forEach(x => {
     const o = sj[x]; o.teachers = Array.from(o.teachers);
     o.p = o.opt ? (o.n ? 100 : 0) : (o.N ? Math.round(o.n / o.N * 100) : 0);
@@ -898,8 +900,8 @@ function computeCompletion() {
    التحليل | ANALYSIS
    ===================================================================== */
 function analyze() {
-  const recs = effRecs(Object.values(STORE).filter(r => !r.na));   // الطالب غير الملحوظ لا يُحتسب؛ وتُعتمد آخر إعادة تقييم
-  A = { recs: recs, students: new Map(), teachers: new Set(), subjects: new Set(), items: {}, classes: {}, subj: {} };
+  const recs0 = Object.values(STORE).filter(r => !r.na), recs = effRecs(recs0);   // الطالب غير الملحوظ لا يُحتسب؛ وتُعتمد آخر إعادة تقييم (حسب المادة)
+  A = { recs: recs, baseRecs: recs0, students: new Map(), teachers: new Set(), subjects: new Set(), items: {}, classes: {}, subj: {} };
   CODES.forEach(c => A.items[c] = { code: c, counts: [0, 0, 0, 0, 0], n: 0, stu: new Set(), bySubj: {} });
   recs.forEach(r => {
     A.teachers.add(r.teacher); A.subjects.add(r.subject);
@@ -939,35 +941,39 @@ const fmtY = ms => { if (!ms) return "—"; const d = new Date(ms), p2 = n => St
 const IMPA = {}; try { Object.assign(IMPA, JSON.parse(localStorage.getItem("marsad_imp") || "{}")); } catch (e) {}
 const impAct = k => IMPA[k] || (IMPA[k] = { plan: "", notes: "" });
 const ymd = ms => { if (!ms) return ""; const d = new Date(ms), p2 = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); };
-const sameTog = () => `<label class="imptog no-print"><input type="checkbox" data-impsame="1"${IMPSAME ? " checked" : ""}> <b>مقارنة نفس المواد (المعلمين) فقط</b> <small>— يُقارَن تقييم المعلمين الذين أعادوا التقييم فقط، وليس كل معلمي الطالب</small></label>`;
+const sameTog = () => `<label class="imptog no-print"><input type="checkbox" data-impsame="1"${IMPSAME ? " checked" : ""}> <b>مقارنة نفس المواد فقط</b> <small>— يُقارَن التقييم في المواد التي حُدّثت فقط (حسب المادة لا اسم المعلم)، وإلا تُحتسب بقية المواد كما كانت</small></label>`;
 const impSave = () => { try { localStorage.setItem("marsad_imp", JSON.stringify(IMPA)); } catch (e) {} };
 const SNAPD = {}; try { Object.assign(SNAPD, JSON.parse(localStorage.getItem("marsad_snapd") || "{}")); } catch (e) {}
 const snapSave = () => { try { localStorage.setItem("marsad_snapd", JSON.stringify(SNAPD)); } catch (e) {} };
 const SNAPSEL = {};
 const effAt = r => SNAPD[r.id] || r.at;
 function reGroups() { const g = new Map(); Object.values(RESTORE).forEach(r => { const k = skeyOf(r.student); if (!g.has(k)) g.set(k, []); g.get(k).push(r); }); return g; }
+// آخر إعادة تقييم لكل (مادة، معلم) — المطابقة بالمادة لا باسم المعلم لأن المعلم قد يتغير
+function updInfo(rs) { const latest = {}; rs.forEach(r => { const id = r.subject + "|" + r.teacher; if (!latest[id] || r.at > latest[id].at) latest[id] = r; }); const L = Object.values(latest).sort((a, b) => a.at - b.at); return { L: L, US: new Set(L.map(r => r.subject)) }; }
 function effRecs(recs0) {
-  const rep = {}; reGroups().forEach((rs, k) => rs.forEach(r => { const id = k + "|" + r.teacher + "|" + r.subject; if (!rep[id] || effAt(r) > effAt(rep[id])) rep[id] = r; }));
-  if (!Object.keys(rep).length) return recs0;
-  return recs0.map(x => { const r = rep[skeyOf(x.student) + "|" + x.teacher + "|" + x.subject]; return r ? Object.assign({}, x, { lv: r.lv, submittedAt: effAt(r), reeval: true }) : x; });
-}
-// لقطات التقييم للطالب: الأصلي ثم كل إعادة تقييم (تُجمع إعادات اليوم الواحد)
-function snapsOf(k) {
-  const rs = reGroups().get(k); if (!rs) return [];
-  const orig = Object.values(STORE).filter(x => !x.na && skeyOf(x.student) === k); if (!orig.length) return [];
-  const sorted = rs.slice().sort((a, b) => effAt(a) - effAt(b)), out = [];
-  out.push({ ids: ["orig|" + k], date: SNAPD["orig|" + k] || Math.max.apply(null, orig.map(x => x.submittedAt || 0)), resp: orig.slice(), label: "التقييم الأصلي" });
-  const cur = {}; orig.forEach(x => cur[x.teacher + "|" + x.subject] = x);
-  const days = []; sorted.forEach(r => { const d = ymd(effAt(r)), last = days[days.length - 1]; if (last && last.d === d) last.rs.push(r); else days.push({ d: d, rs: [r] }); });
-  days.forEach((g, i) => { g.rs.forEach(r => { cur[r.teacher + "|" + r.subject] = Object.assign({}, orig.find(x => x.teacher === r.teacher && x.subject === r.subject) || { student: r.student, teacher: r.teacher, subject: r.subject }, { lv: r.lv, submittedAt: effAt(r), reeval: true }); });
-    out.push({ ids: g.rs.map(r => r.id), date: Math.max.apply(null, g.rs.map(effAt)), resp: Object.values(cur), label: "إعادة تقييم " + (i + 1) }); });
+  const info = new Map(); reGroups().forEach((rs, k) => info.set(k, updInfo(rs)));
+  if (!info.size) return recs0;
+  const seen = new Set(), out = [];
+  recs0.forEach(x => { const k = skeyOf(x.student), u = info.get(k);
+    if (!u || !u.US.has(x.subject)) { out.push(x); return; }
+    const id = k + "|" + x.subject; if (seen.has(id)) return; seen.add(id);
+    u.L.filter(r => r.subject === x.subject).forEach(r => out.push(Object.assign({}, x, { teacher: r.teacher, lv: r.lv, submittedAt: r.at, reeval: true }))); });
   return out;
+}
+const origOf = k => Object.values(STORE).filter(x => !x.na && skeyOf(x.student) === k);
+// تقييمان فقط: الأصلي، والمحدَّث (المواد المحدَّثة + بقية المواد كما كانت)
+function snapsOf(k) {
+  const rs = reGroups().get(k); if (!rs) return []; const orig = origOf(k); if (!orig.length) return [];
+  const u = updInfo(rs), oldU = orig.filter(x => u.US.has(x.subject)), keep = orig.filter(x => !u.US.has(x.subject));
+  const upd = keep.concat(u.L.map(r => Object.assign({}, orig.find(x => x.subject === r.subject) || { student: r.student, na: false }, { teacher: r.teacher, subject: r.subject, lv: r.lv, submittedAt: r.at, reeval: true })));
+  const d0 = Math.max.apply(null, (oldU.length ? oldU : orig).map(x => x.submittedAt || 0)), d1 = Math.max.apply(null, u.L.map(r => r.at));
+  return [{ ids: ["orig|" + k], date: SNAPD["orig|" + k] || d0, resp: orig, label: "التقييم الأصلي" }, { ids: ["upd|" + k], date: SNAPD["upd|" + k] || d1, resp: upd, label: "التقييم المحدَّث" }];
 }
 function snapIdx(k, sn) { const sel = SNAPSEL[k]; const i = sel ? sn.findIndex(x => x.ids.includes(sel)) : -1; return i >= 0 ? i : sn.length - 1; }
 function viewOf(s) {
   if (!s) return s; const sn = snapsOf(s.key); if (!sn.length) return s;
   const i = snapIdx(s.key, sn), n = sn[i];
-  const note = (i === sn.length - 1 ? "التقييم المعتمد: آخر تقييم" : "التقييم المعتمد: تقييم سابق") + " — " + n.label + " بتاريخ " + fmtY(n.date);
+  const note = (i === sn.length - 1 ? "التقييم المعتمد: التقييم المحدَّث (الأحدث)" : "التقييم المعتمد: التقييم الأصلي (سابق)") + " — بتاريخ " + fmtY(n.date);
   if (i === sn.length - 1) { s.snapNote = note; return s; }
   const c = Object.assign({}, s, { resp: n.resp.slice(), snapNote: note }); computeStudent(c); return c;
 }
@@ -976,33 +982,31 @@ function snapBar(k) {
   const sn = snapsOf(k); if (!sn.length) return "";
   const i = snapIdx(k, sn), cur = sn[i];
   return `<div class="snapbar no-print"><b>التقييم المعروض:</b> <select data-snapsel="${esc(k)}">${sn.map((x, j) => `<option value="${esc(x.ids[0])}" ${j === i ? "selected" : ""}>${esc(x.label)} — ${esc(fmtY(x.date))}${j === sn.length - 1 ? " (الأحدث)" : ""}</option>`).join("")}</select>
-    <label>تاريخ هذا التقييم <input type="date" data-snapdt="${esc(k)}" value="${ymd(cur.date)}"></label><small>يُعرض الأحدث افتراضياً — اختر تقييماً سابقاً لعرض تقريره.</small></div>`;
+    <label>تاريخ هذا التقييم <input type="date" data-snapdt="${esc(k)}" value="${ymd(cur.date)}"></label><small>يُعرض المحدَّث افتراضياً — اختر «الأصلي» لعرض تقريره السابق.</small></div>`;
 }
+const cntT = n => n === 1 ? "معلم واحد" : n === 2 ? "معلمَين" : n <= 10 ? n + " معلمين" : n + " معلماً";
+function diagList(resp) { const m = new Map(); resp.forEach(r => m.set(r.teacher + "|" + r.subject, r)); const a = Array.from(m.values()).sort((x, y) => String(x.subject).localeCompare(String(y.subject), "ar")); return { n: new Set(a.map(r => r.teacher)).size, txt: a.map(r => r.teacher + " (" + r.subject + ")").join("، ") }; }
+const diagLine = (s, extra) => { const d = diagList(s.resp); return d.n ? `<div class="diagline">التقرير مستند على تشخيص ${cntT(d.n)} وهم: ${esc(d.txt)}${extra ? " — " + esc(extra) : ""}.</div>` : ""; };
 function computeImpact() {
-  IMP = []; const groups = new Map(); Object.values(RESTORE).forEach(r => r.eat = effAt(r));
-  Object.values(RESTORE).forEach(r => { const k = skeyOf(r.student); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
-  groups.forEach((rs, k) => {
-    const base = A.students.get(k), baseResp = Object.values(STORE).filter(x => !x.na && skeyOf(x.student) === k), latest = {};
-    rs.forEach(r => { const tk = r.teacher + "|" + r.subject; if (!latest[tk] || r.eat > latest[tk].eat) latest[tk] = r; });
-    const L = Object.values(latest).sort((a, b) => a.eat - b.eat), st0 = L[0].student;
+  IMP = [];
+  reGroups().forEach((rs, k) => {
+    const base = A.students.get(k), baseResp = origOf(k), st0 = rs[0].student, u = updInfo(rs), L = u.L;
     const mk = resp => { const o = { key: k, id: st0.id, name: (base && base.name) || st0.name, grade: st0.grade, section: st0.section, resp: resp, lowRel: false }; computeStudent(o); return o; };
-    const olds = L.map(r => baseResp.find(x => x.teacher === r.teacher && x.subject === r.subject) || null);
-    const afterResp = baseResp.filter(x => !L.some(r => r.teacher === x.teacher && r.subject === x.subject)).concat(L.map(r => ({ teacher: r.teacher, subject: r.subject, student: r.student, lv: r.lv, submittedAt: r.eat, parent: "", strengths: "", notes: "", na: false })));
-    const sameT = x => L.some(r => r.teacher === x.teacher && r.subject === x.subject);
-    const bR = IMPSAME ? baseResp.filter(sameT) : baseResp, aR = IMPSAME ? afterResp.filter(sameT) : afterResp;
+    const oldU = baseResp.filter(x => u.US.has(x.subject)), keep = baseResp.filter(x => !u.US.has(x.subject));
+    const newResp = L.map(r => ({ teacher: r.teacher, subject: r.subject, student: r.student, lv: r.lv, submittedAt: r.at, parent: "", strengths: "", notes: "", na: false }));
+    const bR = IMPSAME ? oldU : baseResp, aR = IMPSAME ? newResp : keep.concat(newResp);
     const before = bR.length ? mk(bR) : null, after = mk(aR);
     const better = [], worse = [], same = [];
-    L.forEach((r, i) => { const o = olds[i]; if (!o) return; CODES.forEach(c => { if (o.lv[c] === undefined || r.lv[c] === undefined) return; const d = o.lv[c] - r.lv[c];
-      (d > 0 ? better : d < 0 ? worse : same).push({ code: c, from: o.lv[c], to: r.lv[c], d: d, teacher: r.teacher, subject: r.subject }); }); });
-    const g = x => x == null ? null : x, df = (a, b) => (a == null || b == null) ? null : r1(b - a);
+    u.US.forEach(sj => { const olds = oldU.filter(x => x.subject === sj), news = L.filter(r => r.subject === sj); if (!olds.length) return;
+      CODES.forEach(c => { const o = olds.map(x => x.lv[c]).filter(v => v !== undefined), n = news.map(x => x.lv[c]).filter(v => v !== undefined); if (!o.length || !n.length) return;
+        const f = Math.round(mean(o)), to = Math.round(mean(n)), d = f - to; (d > 0 ? better : d < 0 ? worse : same).push({ code: c, from: f, to: to, d: d, subject: sj, teacher: news.map(x => x.teacher).join("، ") }); }); });
+    const df = (a, b) => (a == null || b == null) ? null : r1(b - a);
     const dComb = before ? df(before.comb, after.comb) : null;
-    const oldAts = olds.filter(Boolean).map(o => o.submittedAt || 0), ovr = IMPA[k] || {};
-    const verdict = dComb == null ? "nobase" : dComb >= 0.3 ? "up" : dComb <= -0.3 ? "down" : "same";
-    const last = L[L.length - 1];
-    IMP.push({ key: k, name: after.name, id: after.id, grade: after.grade, section: after.section, evals: L.map((r, i) => ({ teacher: r.teacher, subject: r.subject, at: r.eat, change: r.change, reason: r.reason, oldAt: olds[i] ? olds[i].submittedAt : 0 })),
-      before: before, after: after, dComb: dComb, dBeh: before ? df(before.behScore, after.behScore) : null, dAca: before ? df(before.acaScore, after.acaScore) : null,
-      dateBefore: SNAPD["orig|" + k] || (oldAts.length ? Math.max.apply(null, oldAts) : (baseResp.length ? Math.max.apply(null, baseResp.map(x => x.submittedAt || 0)) : 0)), dateAfter: last.eat, lastId: last.id, autoB: oldAts.length ? Math.max.apply(null, oldAts) : 0, autoA: last.eat, sameN: bR.length, allN: baseResp.length,
-      better: better, worse: worse, same: same, declared: last.change, reasons: Array.from(new Set(L.map(r => r.reason).filter(Boolean))), verdict: verdict,
+    const d0 = Math.max.apply(null, (oldU.length ? oldU : baseResp).map(x => x.submittedAt || 0)), d1 = Math.max.apply(null, L.map(r => r.at));
+    const verdict = dComb == null ? "nobase" : dComb >= 0.3 ? "up" : dComb <= -0.3 ? "down" : "same", last = L[L.length - 1];
+    IMP.push({ key: k, name: after.name, id: after.id, grade: after.grade, section: after.section, evals: L.map(r => ({ teacher: r.teacher, subject: r.subject, at: r.at, change: r.change, reason: r.reason })),
+      nT: new Set(L.map(r => r.teacher)).size, nS: u.US.size, before: before, after: after, dComb: dComb, dBeh: before ? df(before.behScore, after.behScore) : null, dAca: before ? df(before.acaScore, after.acaScore) : null,
+      dateBefore: SNAPD["orig|" + k] || d0, dateAfter: SNAPD["upd|" + k] || d1, better: better, worse: worse, same: same, declared: last.change, reasons: Array.from(new Set(L.map(r => r.reason).filter(Boolean))), verdict: verdict,
       match: verdict === "nobase" || verdict === "same" ? null : (verdict === "up") === (last.change === "better") });
   });
   IMP.sort((a, b) => String(a.name).localeCompare(String(b.name), "ar"));
@@ -1030,21 +1034,21 @@ function impReport(e, R) {
   const lv = l => `<span class="ilv" style="background:${SEG[l]};color:${l <= 1 ? "#333" : "#fff"}">${esc(lvlTxt(l))}</span>`;
   const tr = rows.map((x, i) => `<tr><td class="n">${i + 1}</td><td>${esc(impStmt(x.code))}<small> — ${esc(x.subject)}</small></td><td class="gc">${lv(x.from)}</td><td class="gc">${lv(x.to)}</td><td class="gc">${x.d > 0 ? '<span class="dlu">▲ تحسّن</span>' : '<span class="dld">▼ تراجع</span>'}</td></tr>`).join("");
   const still = CODES.filter(c => a.entries[c] && a.entries[c].some(x => x.level >= CFG.FLAG_LEVEL)).slice(0, 4).map(c => esc(impStmt(c))).join("؛ ");
-  const evs = e.evals.map(x => `${esc(x.teacher)} <small>(${esc(x.subject)})</small>`).join("، ");
+  const evs = e.nT > 4 ? "" : " — " + e.evals.map(x => `${esc(x.teacher)} <small>(${esc(x.subject)})</small>`).join("، ");
   const vtxt = { up: "تحسّن ملحوظ في التقييم الإجمالي", down: "تراجع في التقييم الإجمالي", same: "لا تغيّر جوهري في التقييم الإجمالي", nobase: "لا يوجد تقييم سابق للمقارنة" }[e.verdict];
   const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${{ up: "تقرير تقدّم الطالب", down: "تقرير متابعة الطالب" }[e.verdict] || "تقرير تغيّر مستوى الطالب"}<small>مقارنة التقييم السابق بالحالي — العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
   return `<section class="page ipage">${hdr}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(e.name)}</b></div><div><small>رقم الطالب</small><b>${esc(e.id || "—")}</b></div><div><small>الصف</small><b>${esc(e.grade)}</b></div><div><small>الشعبة</small><b>${esc(e.section)}</b></div></div>
     <div class="idates"><span>تاريخ التقييم السابق: <b>${esc(fmtY(e.dateBefore))}</b></span><span>تاريخ إعادة التقييم: <b>${esc(fmtY(e.dateAfter))}</b></span><span>المدة بين التقييمين: <b>${days == null ? "—" : days + " يوم"}</b></span></div>
     <div class="icmps">${box("الجانب السلوكي", b && b.behScore, a.behScore, e.dBeh)}${box("الجانب الأكاديمي", b && b.acaScore, a.acaScore, e.dAca)}${box("الإجمالي", b && b.comb, a.comb, e.dComb)}</div>
-    <div class="iverd ${e.verdict}"><b>${vtxt}</b><span>المعلم الذي أعاد التقييم: ${evs}</span><span>الاتجاه المُدخل: <b>${e.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</b>${e.match === false ? " — <b>(القياس يخالف الاتجاه المُدخل)</b>" : ""}${e.reasons.length ? " &nbsp;|&nbsp; السبب: " + esc(e.reasons.join("؛ ")) : ""}</span></div>
-    <div class="rs">العناصر التي تغيّرت${IMPSAME ? ' <small style="font-weight:400;color:#555">(مقارنة نفس المعلمين: ' + e.evals.length + " فقط)</small>" : ""}  <small style="font-weight:400;color:#555">(${e.better.length} تحسّن · ${e.worse.length} تراجع · ${e.same.length} دون تغيير)</small></div>
+    <div class="iverd ${e.verdict}"><b>${vtxt}</b><span>عدد المعلمين الذين أجروا إعادة التقييم: <b>${e.nT}</b> في <b>${e.nS}</b> ${e.nS === 1 ? "مادة" : "مواد"}${evs}</span><span>الاتجاه المُدخل: <b>${e.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</b>${e.match === false ? " — <b>(القياس يخالف الاتجاه المُدخل)</b>" : ""}${e.reasons.length ? " &nbsp;|&nbsp; السبب: " + esc(e.reasons.join("؛ ")) : ""}</span></div>
+    <div class="rs">العناصر التي تغيّرت${IMPSAME ? ' <small style="font-weight:400;color:#555">(مقارنة نفس المواد المحدَّثة فقط: ' + e.nS + ")</small>" : ""}  <small style="font-weight:400;color:#555">(${e.better.length} تحسّن · ${e.worse.length} تراجع · ${e.same.length} دون تغيير)</small></div>
     ${rows.length ? `<table class="rt ict"><colgroup><col style="width:7mm"><col><col style="width:24mm"><col style="width:24mm"><col style="width:22mm"></colgroup><thead><tr><th>#</th><th>العبارة</th><th class="gc">السابق</th><th class="gc">الحالي</th><th class="gc">التغير</th></tr></thead><tbody>${tr}</tbody></table>` : `<p class="rpara">لا توجد عناصر قابلة للمقارنة.</p>`}
     ${still ? `<p class="rpara" style="margin-top:4px"><b>ما زال يحتاج دعماً:</b> ${still}</p>` : ""}
     <div class="rs">الخطة التحسينية</div>
     <div class="wbox">${plan ? `<div class="pl">${esc(plan)}</div>` : lines(4)}${ax.notes.trim() ? `<b style="font-size:8.6pt">ملاحظات:</b><div class="pl">${esc(ax.notes)}</div>` : ""}</div>
     <div class="rsig"><div>المرشد الأكاديمي<br><b>${esc(R.counselor) || DOTS}</b></div><div>مديرة المدرسة<br><b>${esc(R.principal) || DOTS}</b></div><div>التاريخ<br>........../........../..........</div></div>
-    <div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — متابعة التغيّر</span><span>رقم الطالب: ${esc(e.id || "—")}</span></div></section>`;
+    ${diagLine(a, IMPSAME ? "المواد المحدَّثة فقط" : "ومواد لم تُحدَّث حافظ فيها الطالب على أدائه السابق")}<div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — متابعة التغيّر</span><span>رقم الطالب: ${esc(e.id || "—")}</span></div></section>`;
 }
 function vImpact() {
   if (!A.recs.length) return empty();
@@ -1070,7 +1074,7 @@ function vImpact() {
     { h: "التغير (الأبرز أولاً)", v: x => x.dComb == null ? -1 : Math.abs(x.dComb), f: x => dlt(x.dComb) },
     { h: "الاتجاه المُدخل", v: x => x.declared, f: x => `<span class="ivb ${x.declared === "better" ? "up" : "down"}">${x.declared === "better" ? "⬆ تحسّن" : "⬇ تراجع"}</span>${x.match === false ? ' <span title="القياس يخالف الاتجاه المُدخل">⚠</span>' : ""}` },
     { h: "النتيجة", v: x => x.verdict, f: x => impBadge(x.verdict) },
-    { h: "المعلم / المادة", v: x => x.evals.map(y => y.teacher).join(" "), f: x => x.evals.map(y => `${esc(y.teacher)}<small class="dt2">${esc(y.subject)}</small>`).join("") },
+    { h: "المعلمون الذين حدّثوا", v: x => x.nT, f: x => `<b>${x.nT}</b> ${x.nT === 1 ? "معلم" : "معلمين"}<small class="dt2">${x.nS} ${x.nS === 1 ? "مادة" : "مواد"}</small>` },
     { h: "", v: () => "", f: x => `<button class="btn sm" data-imp="${esc(x.key)}">📄 تقرير</button>` }], rows, { search: true, sort: 4, dir: -1 }) + `</div>`;
 }
 
@@ -1301,13 +1305,13 @@ function teacherReport() {
   const most = T.filter(x => x.total && !x.merged).slice().sort((a, b) => b.total - a.total || nm(a, b)).slice(0, 6), mx = Math.max(1, ...T.map(x => x.total));
   const pbar = x => { if (!x.asg) return ""; const f = Math.min(100, Math.round(x.full / x.asg * 100)); return `<div class="pb2" title="${x.full}/${x.asg}"><i class="s1" style="width:${f}%"></i><i class="s2" style="width:${Math.max(0, Math.min(100 - f, x.pctAll - f))}%"></i></div>`; };
   const sub = x => esc(x.merged ? t("tr_bsub") : x.subjects.join("، "));
-  const row = (x, i, right) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)}<small>${sub(x)}</small></span><span class="tr3">${right}</span></div>`;
+  const row = (x, i, right) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)} <small class="sbj">— ${sub(x)}</small></span><span class="tr3">${right}</span></div>`;
   const pct = T.length ? Math.round(done.length / T.length * 100) : 0;
   const kpi = `<div class="trk"><div class="kc kd"><b>${done.length}</b><span>${esc(t("tr_k_done"))}</span></div><div class="kc kp"><b>${prog.length}</b><span>${esc(t("tr_k_prog"))}</span></div><div class="kc kn"><b>${none.length}</b><span>${esc(t("tr_k_none"))}</span></div>
     <div class="kbar"><div class="lb"><div class="lbt"><i style="width:${pct}%"></i></div><span><b>${pct}%</b> <small>${esc(t("tr_k_of"))} ${T.length}</small></span></div></div></div>`;
   const flt = `<div class="seg no-print"><span style="align-self:center;color:var(--muted);font-size:13px">${esc(t("tr_bflt"))}</span><button data-trb="show" class="${TRB === "show" ? "on" : ""}">${esc(t("tr_b_show"))}</button><button data-trb="merge" class="${TRB === "merge" ? "on" : ""}">${esc(t("tr_b_merge"))}</button><button data-trb="hide" class="${TRB === "hide" ? "on" : ""}">${esc(t("tr_b_hide"))}</button></div>`;
   const col1 = `<div class="tcol"><h5 class="sh">🏁 ${esc(t("tr_c_done"))} (${done.length})</h5><div class="tscroll">${done.length ? done.map((x, i) => row(x, i, `<b>${esc(unit(x.full))}</b><small>${esc(fmtD(trDoneAt(x)))}</small>`)).join("") : `<p class="hint">${esc(t("tr_nodone"))}</p>`}</div></div>`;
-  const col2 = `<div class="tcol"><h5 class="sh">📊 ${esc(t("tr_c_most"))}</h5><div class="tscroll">${most.length ? most.map((x, i) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)}<small>${sub(x)}</small><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span></span><span class="tr3"><b>${x.total}</b><small>${esc(t("tr_stu"))}</small></span></div>`).join("") : `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>`;
+  const col2 = `<div class="tcol"><h5 class="sh">📊 ${esc(t("tr_c_most"))}</h5><div class="tscroll">${most.length ? most.map((x, i) => `<div class="tl3"><span class="rk ${i < 3 ? "rk" + (i + 1) : ""}">${i + 1}</span><span class="tn">${esc(x.name)} <small class="sbj">— ${sub(x)}</small><span class="tr"><i style="width:${Math.round(x.total / mx * 100)}%"></i></span></span><span class="tr3"><b>${x.total}</b><small>${esc(t("tr_stu"))}</small></span></div>`).join("") : `<p class="hint">${esc(t("tr_none"))}</p>`}</div></div>`;
   const col3 = `<div class="tcol"><h5 class="sh">⏳ ${esc(t("tr_c_none"))} (${none.length})</h5><div class="tscroll">${none.length ? none.map((x, i) => row(x, i, x.asg ? `<b>${esc(unit(x.asg))}</b><small>${esc(t("tr_req"))}</small>` : "—")).join("") : `<p class="hint">${esc(t("tr_allstart"))}</p>`}</div></div>`;
   const chips = x => x.cls.length ? x.cls.map(c => `<span class="cchip ${c.full ? "cd" : "cp"}" title="${esc(fmtDT(c.d))} — ${c.n + c.z}/${c.N}">${esc(dispCls(c.ck))}<small>${c.n + c.z}/${c.N}</small></span>`).join("") : `<span class="cchip cn">${esc(t("tr_none"))}</span>`;
   const table = `<div class="legend"><span><i style="background:#2F6B4F"></i>${esc(t("tr_lg_d"))}</span><span><i style="background:#E0A82E"></i>${esc(t("tr_lg_p"))}</span></div>` +
@@ -1541,7 +1545,7 @@ function studentReport(s, R) {
   const thead = `<thead><tr><th>#</th><th>العبارة</th><th class="gc">${glLabels()}</th><th>ظهر في (المعلم)</th></tr></thead>`;
   const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">تقرير الطالب — للمدرسة والمرشد الأكاديمي<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div>
     <div class="rh-sign"><span>مديرة المدرسة: <b>${esc(R.principal) || DOTS}</b></span><span>المرشد الأكاديمي: <b>${esc(R.counselor) || DOTS}</b></span></div></header>`;
-  const foot = pg => `<div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — لا تُسلَّم لولي الأمر</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
+  const foot = pg => (pg === 2 ? diagLine(s) : "") + `<div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — لا تُسلَّم لولي الأمر</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
   const lvTxt = ["لا توجد مؤشرات تستدعي المتابعة", "يُنصح بالمراقبة", "يُنصح بالمتابعة", "متابعة ذات أولوية"][s.level];
   const consTxt = s.consensus.length ? s.consensus.slice(0, 5).map(c => esc(stmt(c))).join("؛ ") : "—";
   const ax = actOf(s.key), selA = suggestActions(s).filter(a => ax.sel[a.id]), hasAct = selA.length || ax.plan.trim() || ax.notes.trim();
@@ -1661,12 +1665,12 @@ function parentReport(s, R) {
     : `لا حاجة إلى إجراء خاص في الوقت الحالي، ويسعدنا تواصلكم مع المرشد الأكاديمي في أي وقت للاستفسار أو لمشاركتنا أي ملاحظات.`;
   const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${esc(R.title)}<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div>
     <div class="rh-sign"><span>مديرة المدرسة: <b>${esc(R.principal) || DOTS}</b></span><span>المرشد الأكاديمي: <b>${esc(R.counselor) || DOTS}</b></span></div></header>`;
-  const foot = pg => `<div class="rfoot"><span>وثيقة خاصة بولي الأمر — مبنية على ملاحظات المعلمين الصفية</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
+  const foot = pg => (pg === 2 ? diagLine(s) : "") + `<div class="rfoot"><span>وثيقة خاصة بولي الأمر — مبنية على ملاحظات المعلمين الصفية</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
   const page1 = `<section class="page">${hdr}${snapNote(s)}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(s.name)}</b></div><div><small>رقم الطالب</small><b>${esc(s.id || "—")}</b></div><div><small>الصف</small><b>${esc(s.grade)}</b></div><div><small>الشعبة</small><b>${esc(s.section)}</b></div></div>
     <p class="rpara" style="margin-top:7px"><b>الفاضل / الفاضلة ولي أمر الطالب ${esc(s.name)} المحترم،</b></p>
     <p class="rpara">تحية طيبة وبعد،</p>
-    <p class="rpara">تحرص ${esc(R.school)} على التعاون الوثيق مع أولياء الأمور لدعم أبنائنا سلوكياً وأكاديمياً. ويسرّنا أن نضع بين أيديكم ملخصاً لملاحظات معلمي ابنكم في <b>${n}</b> ${n === 1 ? "مادة دراسية" : n <= 10 ? "مواد دراسية" : "مادة دراسية"} خلال الفترة الماضية، مبنياً على متابعتهم الصفية. ${lvNote}</p>
+    <p class="rpara">تحرص ${esc(R.school)} على التعاون الوثيق مع أولياء الأمور لدعم أبنائنا سلوكياً وأكاديمياً. ويسرّنا أن نضع بين أيديكم ملخصاً لملاحظات <b>${s.teachers.size}</b> من معلمي ابنكم في <b>${n}</b> ${n === 1 ? "مادة دراسية" : n <= 10 ? "مواد دراسية" : "مادة دراسية"} خلال الفترة الماضية، مبنياً على متابعتهم الصفية. ${lvNote}</p>
     <div class="pscw">${scLine("الجانب السلوكي", s.behScore)}${scLine("الجانب الأكاديمي", s.acaScore)}<div class="pscl">التقييم من 10: كلما اقتربت الأيقونة من الأخضر قلّت الملاحظات، وكلما اقتربت من الأحمر زادت الحاجة للمتابعة والدعم.</div></div>
     <div class="rs">أولاً: الجانب السلوكي</div>
     <table class="rt">${thead}<tbody>${BEH.map(rowHtml).join("")}</tbody></table>
@@ -1753,7 +1757,7 @@ document.addEventListener("click", e => {
   if (el.dataset.prevback) { STUPREV = false; render(); return; }
   if (el.dataset.planfill) { const a = actOf(CUR), st = A.students.get(CUR); a.plan = suggestPlan(st); actSave(); render(); return; }
   if (el.dataset.imp !== undefined) { IMPCUR = el.dataset.imp; render(); window.scrollTo({ top: 0 }); return; }
-  if (el.dataset.impdtreset) { const en = IMP.find(x => x.key === IMPCUR); delete SNAPD["orig|" + IMPCUR]; if (en) delete SNAPD[en.lastId]; snapSave(); analyze(); render(); return; }
+  if (el.dataset.impdtreset) { const en = IMP.find(x => x.key === IMPCUR); delete SNAPD["orig|" + IMPCUR]; delete SNAPD["upd|" + IMPCUR]; snapSave(); analyze(); render(); return; }
   if (el.dataset.impback) { IMPCUR = null; render(); return; }
   if (el.dataset.impf) { IMPF = el.dataset.impf; render(); return; }
   if (el.dataset.impfill) { const e = IMP.find(x => x.key === IMPCUR); if (e) { impAct(IMPCUR).plan = suggestImpPlan(e); impSave(); render(); } return; }
@@ -1778,7 +1782,7 @@ document.addEventListener("input", e => { const id = e.target.dataset && e.targe
 document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) { impAct(IMPCUR)[d.iax] = e.target.value; impSave(); } });
 document.addEventListener("change", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) render();
   if (d.impsame) { IMPSAME = e.target.checked; try { localStorage.setItem("marsad_impsame", IMPSAME ? "1" : "0"); } catch (x) {} computeImpact(); render(); }
-  if (d.idt && IMPCUR != null) { const en = IMP.find(x => x.key === IMPCUR), id = d.idt === "dB" ? "orig|" + IMPCUR : en && en.lastId, v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (id) { if (v) SNAPD[id] = v; else delete SNAPD[id]; snapSave(); analyze(); render(); } }
+  if (d.idt && IMPCUR != null) { const en = IMP.find(x => x.key === IMPCUR), id = d.idt === "dB" ? "orig|" + IMPCUR : "upd|" + IMPCUR, v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (id) { if (v) SNAPD[id] = v; else delete SNAPD[id]; snapSave(); analyze(); render(); } }
   if (d.snapsel) { SNAPSEL[d.snapsel] = e.target.value; render(); }
   if (d.snapdt) { const sn = snapsOf(d.snapdt), n = sn[snapIdx(d.snapdt, sn)], v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (n) { SNAPSEL[d.snapdt] = n.ids[0]; n.ids.forEach(id => { if (v) SNAPD[id] = v; else delete SNAPD[id]; }); snapSave(); analyze(); render(); } } });
 document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.ax && CUR) { actOf(CUR)[d.ax] = e.target.value; actSave(); } });
