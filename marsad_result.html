@@ -374,6 +374,8 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .ipage>*{flex-shrink:0}.ict{table-layout:fixed}.ict td{font-size:9pt}.ict td.gc{text-align:center}
 .imptog{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 10px;margin-bottom:10px;background:#eef3ff;border:1px solid #9db5ee;cursor:pointer}.imptog small{color:#555}
 .impdates{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}.impdates label{display:flex;flex-direction:column;font-size:13px;gap:3px}.impdates input{padding:5px 8px;border:1px solid var(--line);font:inherit}
+.snapbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 10px;margin:8px 0;background:#fff8e6;border:1px solid #e0c36a}.snapbar select,.snapbar input{padding:5px 8px;border:1px solid var(--line);font:inherit;font-size:13px}.snapbar small{color:#666}
+.snapnote{font-size:8.6pt;color:#7a5a00;background:#fff8e6;border:1px solid #e0c36a;padding:1px 8px;margin:3px 0;text-align:center}
 </style>
 </head>
 <body>
@@ -774,7 +776,7 @@ Object.assign(D, {
   sc_how_t: ["كيف يُحسب التقييم من 10؟", "How is the score out of 10 calculated?"],
   sc_how: ["١) لكل بند: نأخذ متوسط إجابات معلمي كل مادة، ثم متوسط المواد (فلا يطغى عدد معلمي مادة على غيرها).\n٢) نحوّل المستوى إلى نسبة: لا يظهر = 0 ، أحياناً = 0.5 ، دائماً = 1، ونأخذ متوسط البنود المرصودة (يُستثنى ما لم يلاحظه المعلم).\n٣) التقييم = 10 × (1 − هذا المتوسط).\n٤) يُخصم 0.3 عن كل بند أجمع عليه معلمان فأكثر بـ «دائماً» (بحد أقصى 1.5).\n10 = لا ملاحظات ، 0 = ملاحظات متكررة. يُحسب السلوك من بنود السلوك والأكاديمي من البنود الأكاديمية كلٌّ على حدة.", "1) Per item: average each subject's teachers, then average the subjects.\n2) Convert to burden: never=0, sometimes=0.5, always=1; average the observed items (not-observed excluded).\n3) Score = 10 × (1 − burden).\n4) Minus 0.3 per item that 2+ teachers marked 'always' (max 1.5).\n10 = no concerns, 0 = frequent concerns. Behavior and academic are computed separately."]
 });
-Object.assign(D, { v_impact: ["قياس الأثر", "Impact"] });
+Object.assign(D, { v_impact: ["متابعة التغيّر", "Change tracking"] });
 Object.assign(D, { tr_k_done: ["أكملوا", "Completed"], tr_k_prog: ["جارٍ", "In progress"], tr_k_none: ["لم يبدؤوا", "Not started"], tr_k_of: ["من المعلمين أكملوا", "of teachers completed"],
   tr_bflt: ["المجموعة ب:", "Group B:"], tr_b_show: ["عرضهم", "Show"], tr_b_merge: ["دمجهم (يكفي معلم واحد)", "Merge (one teacher enough)"], tr_b_hide: ["إلغاؤهم من الإحصائية", "Exclude"],
   tr_bmerged: ["مجموعة ب (معلم واحد على الأقل)", "Group B (at least one teacher)"], tr_bsub: ["الذكاء الاصطناعي، الرياضة، الفنون، الدراما، الفرنسية", "AIT, PE, Arts, Drama, French"],
@@ -896,7 +898,7 @@ function computeCompletion() {
    التحليل | ANALYSIS
    ===================================================================== */
 function analyze() {
-  const recs = Object.values(STORE).filter(r => !r.na);   // الطالب غير الملحوظ لا يُحتسب
+  const recs = effRecs(Object.values(STORE).filter(r => !r.na));   // الطالب غير الملحوظ لا يُحتسب؛ وتُعتمد آخر إعادة تقييم
   A = { recs: recs, students: new Map(), teachers: new Set(), subjects: new Set(), items: {}, classes: {}, subj: {} };
   CODES.forEach(c => A.items[c] = { code: c, counts: [0, 0, 0, 0, 0], n: 0, stu: new Set(), bySubj: {} });
   recs.forEach(r => {
@@ -939,16 +941,53 @@ const impAct = k => IMPA[k] || (IMPA[k] = { plan: "", notes: "" });
 const ymd = ms => { if (!ms) return ""; const d = new Date(ms), p2 = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); };
 const sameTog = () => `<label class="imptog no-print"><input type="checkbox" data-impsame="1"${IMPSAME ? " checked" : ""}> <b>مقارنة نفس المواد (المعلمين) فقط</b> <small>— يُقارَن تقييم المعلمين الذين أعادوا التقييم فقط، وليس كل معلمي الطالب</small></label>`;
 const impSave = () => { try { localStorage.setItem("marsad_imp", JSON.stringify(IMPA)); } catch (e) {} };
+const SNAPD = {}; try { Object.assign(SNAPD, JSON.parse(localStorage.getItem("marsad_snapd") || "{}")); } catch (e) {}
+const snapSave = () => { try { localStorage.setItem("marsad_snapd", JSON.stringify(SNAPD)); } catch (e) {} };
+const SNAPSEL = {};
+const effAt = r => SNAPD[r.id] || r.at;
+function reGroups() { const g = new Map(); Object.values(RESTORE).forEach(r => { const k = skeyOf(r.student); if (!g.has(k)) g.set(k, []); g.get(k).push(r); }); return g; }
+function effRecs(recs0) {
+  const rep = {}; reGroups().forEach((rs, k) => rs.forEach(r => { const id = k + "|" + r.teacher + "|" + r.subject; if (!rep[id] || effAt(r) > effAt(rep[id])) rep[id] = r; }));
+  if (!Object.keys(rep).length) return recs0;
+  return recs0.map(x => { const r = rep[skeyOf(x.student) + "|" + x.teacher + "|" + x.subject]; return r ? Object.assign({}, x, { lv: r.lv, submittedAt: effAt(r), reeval: true }) : x; });
+}
+// لقطات التقييم للطالب: الأصلي ثم كل إعادة تقييم (تُجمع إعادات اليوم الواحد)
+function snapsOf(k) {
+  const rs = reGroups().get(k); if (!rs) return [];
+  const orig = Object.values(STORE).filter(x => !x.na && skeyOf(x.student) === k); if (!orig.length) return [];
+  const sorted = rs.slice().sort((a, b) => effAt(a) - effAt(b)), out = [];
+  out.push({ ids: ["orig|" + k], date: SNAPD["orig|" + k] || Math.max.apply(null, orig.map(x => x.submittedAt || 0)), resp: orig.slice(), label: "التقييم الأصلي" });
+  const cur = {}; orig.forEach(x => cur[x.teacher + "|" + x.subject] = x);
+  const days = []; sorted.forEach(r => { const d = ymd(effAt(r)), last = days[days.length - 1]; if (last && last.d === d) last.rs.push(r); else days.push({ d: d, rs: [r] }); });
+  days.forEach((g, i) => { g.rs.forEach(r => { cur[r.teacher + "|" + r.subject] = Object.assign({}, orig.find(x => x.teacher === r.teacher && x.subject === r.subject) || { student: r.student, teacher: r.teacher, subject: r.subject }, { lv: r.lv, submittedAt: effAt(r), reeval: true }); });
+    out.push({ ids: g.rs.map(r => r.id), date: Math.max.apply(null, g.rs.map(effAt)), resp: Object.values(cur), label: "إعادة تقييم " + (i + 1) }); });
+  return out;
+}
+function snapIdx(k, sn) { const sel = SNAPSEL[k]; const i = sel ? sn.findIndex(x => x.ids.includes(sel)) : -1; return i >= 0 ? i : sn.length - 1; }
+function viewOf(s) {
+  if (!s) return s; const sn = snapsOf(s.key); if (!sn.length) return s;
+  const i = snapIdx(s.key, sn), n = sn[i];
+  const note = (i === sn.length - 1 ? "التقييم المعتمد: آخر تقييم" : "التقييم المعتمد: تقييم سابق") + " — " + n.label + " بتاريخ " + fmtY(n.date);
+  if (i === sn.length - 1) { s.snapNote = note; return s; }
+  const c = Object.assign({}, s, { resp: n.resp.slice(), snapNote: note }); computeStudent(c); return c;
+}
+const snapNote = s => s && s.snapNote ? `<div class="snapnote">🕘 ${esc(s.snapNote)}</div>` : "";
+function snapBar(k) {
+  const sn = snapsOf(k); if (!sn.length) return "";
+  const i = snapIdx(k, sn), cur = sn[i];
+  return `<div class="snapbar no-print"><b>التقييم المعروض:</b> <select data-snapsel="${esc(k)}">${sn.map((x, j) => `<option value="${esc(x.ids[0])}" ${j === i ? "selected" : ""}>${esc(x.label)} — ${esc(fmtY(x.date))}${j === sn.length - 1 ? " (الأحدث)" : ""}</option>`).join("")}</select>
+    <label>تاريخ هذا التقييم <input type="date" data-snapdt="${esc(k)}" value="${ymd(cur.date)}"></label><small>يُعرض الأحدث افتراضياً — اختر تقييماً سابقاً لعرض تقريره.</small></div>`;
+}
 function computeImpact() {
-  IMP = []; const groups = new Map();
+  IMP = []; const groups = new Map(); Object.values(RESTORE).forEach(r => r.eat = effAt(r));
   Object.values(RESTORE).forEach(r => { const k = skeyOf(r.student); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
   groups.forEach((rs, k) => {
-    const base = A.students.get(k), baseResp = base ? base.resp : [], latest = {};
-    rs.forEach(r => { const tk = r.teacher + "|" + r.subject; if (!latest[tk] || r.at > latest[tk].at) latest[tk] = r; });
-    const L = Object.values(latest).sort((a, b) => a.at - b.at), st0 = L[0].student;
+    const base = A.students.get(k), baseResp = Object.values(STORE).filter(x => !x.na && skeyOf(x.student) === k), latest = {};
+    rs.forEach(r => { const tk = r.teacher + "|" + r.subject; if (!latest[tk] || r.eat > latest[tk].eat) latest[tk] = r; });
+    const L = Object.values(latest).sort((a, b) => a.eat - b.eat), st0 = L[0].student;
     const mk = resp => { const o = { key: k, id: st0.id, name: (base && base.name) || st0.name, grade: st0.grade, section: st0.section, resp: resp, lowRel: false }; computeStudent(o); return o; };
     const olds = L.map(r => baseResp.find(x => x.teacher === r.teacher && x.subject === r.subject) || null);
-    const afterResp = baseResp.filter(x => !L.some(r => r.teacher === x.teacher && r.subject === x.subject)).concat(L.map(r => ({ teacher: r.teacher, subject: r.subject, student: r.student, lv: r.lv, submittedAt: r.at, parent: "", strengths: "", notes: "", na: false })));
+    const afterResp = baseResp.filter(x => !L.some(r => r.teacher === x.teacher && r.subject === x.subject)).concat(L.map(r => ({ teacher: r.teacher, subject: r.subject, student: r.student, lv: r.lv, submittedAt: r.eat, parent: "", strengths: "", notes: "", na: false })));
     const sameT = x => L.some(r => r.teacher === x.teacher && r.subject === x.subject);
     const bR = IMPSAME ? baseResp.filter(sameT) : baseResp, aR = IMPSAME ? afterResp.filter(sameT) : afterResp;
     const before = bR.length ? mk(bR) : null, after = mk(aR);
@@ -960,9 +999,9 @@ function computeImpact() {
     const oldAts = olds.filter(Boolean).map(o => o.submittedAt || 0), ovr = IMPA[k] || {};
     const verdict = dComb == null ? "nobase" : dComb >= 0.3 ? "up" : dComb <= -0.3 ? "down" : "same";
     const last = L[L.length - 1];
-    IMP.push({ key: k, name: after.name, id: after.id, grade: after.grade, section: after.section, evals: L.map((r, i) => ({ teacher: r.teacher, subject: r.subject, at: r.at, change: r.change, reason: r.reason, oldAt: olds[i] ? olds[i].submittedAt : 0 })),
+    IMP.push({ key: k, name: after.name, id: after.id, grade: after.grade, section: after.section, evals: L.map((r, i) => ({ teacher: r.teacher, subject: r.subject, at: r.eat, change: r.change, reason: r.reason, oldAt: olds[i] ? olds[i].submittedAt : 0 })),
       before: before, after: after, dComb: dComb, dBeh: before ? df(before.behScore, after.behScore) : null, dAca: before ? df(before.acaScore, after.acaScore) : null,
-      dateBefore: ovr.dB || (oldAts.length ? Math.max.apply(null, oldAts) : (baseResp.length ? Math.max.apply(null, baseResp.map(x => x.submittedAt || 0)) : 0)), dateAfter: ovr.dA || last.at, autoB: oldAts.length ? Math.max.apply(null, oldAts) : 0, autoA: last.at, sameN: bR.length, allN: baseResp.length,
+      dateBefore: SNAPD["orig|" + k] || (oldAts.length ? Math.max.apply(null, oldAts) : (baseResp.length ? Math.max.apply(null, baseResp.map(x => x.submittedAt || 0)) : 0)), dateAfter: last.eat, lastId: last.id, autoB: oldAts.length ? Math.max.apply(null, oldAts) : 0, autoA: last.eat, sameN: bR.length, allN: baseResp.length,
       better: better, worse: worse, same: same, declared: last.change, reasons: Array.from(new Set(L.map(r => r.reason).filter(Boolean))), verdict: verdict,
       match: verdict === "nobase" || verdict === "same" ? null : (verdict === "up") === (last.change === "better") });
   });
@@ -993,7 +1032,7 @@ function impReport(e, R) {
   const still = CODES.filter(c => a.entries[c] && a.entries[c].some(x => x.level >= CFG.FLAG_LEVEL)).slice(0, 4).map(c => esc(impStmt(c))).join("؛ ");
   const evs = e.evals.map(x => `${esc(x.teacher)} <small>(${esc(x.subject)})</small>`).join("، ");
   const vtxt = { up: "تحسّن ملحوظ في التقييم الإجمالي", down: "تراجع في التقييم الإجمالي", same: "لا تغيّر جوهري في التقييم الإجمالي", nobase: "لا يوجد تقييم سابق للمقارنة" }[e.verdict];
-  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">تقرير قياس الأثر — مقارنة التقييم السابق بالحالي<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
+  const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${{ up: "تقرير تقدّم الطالب", down: "تقرير متابعة الطالب" }[e.verdict] || "تقرير تغيّر مستوى الطالب"}<small>مقارنة التقييم السابق بالحالي — العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
   return `<section class="page ipage">${hdr}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(e.name)}</b></div><div><small>رقم الطالب</small><b>${esc(e.id || "—")}</b></div><div><small>الصف</small><b>${esc(e.grade)}</b></div><div><small>الشعبة</small><b>${esc(e.section)}</b></div></div>
     <div class="idates"><span>تاريخ التقييم السابق: <b>${esc(fmtY(e.dateBefore))}</b></span><span>تاريخ إعادة التقييم: <b>${esc(fmtY(e.dateAfter))}</b></span><span>المدة بين التقييمين: <b>${days == null ? "—" : days + " يوم"}</b></span></div>
@@ -1005,7 +1044,7 @@ function impReport(e, R) {
     <div class="rs">الخطة التحسينية</div>
     <div class="wbox">${plan ? `<div class="pl">${esc(plan)}</div>` : lines(4)}${ax.notes.trim() ? `<b style="font-size:8.6pt">ملاحظات:</b><div class="pl">${esc(ax.notes)}</div>` : ""}</div>
     <div class="rsig"><div>المرشد الأكاديمي<br><b>${esc(R.counselor) || DOTS}</b></div><div>مديرة المدرسة<br><b>${esc(R.principal) || DOTS}</b></div><div>التاريخ<br>........../........../..........</div></div>
-    <div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — قياس الأثر</span><span>رقم الطالب: ${esc(e.id || "—")}</span></div></section>`;
+    <div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — متابعة التغيّر</span><span>رقم الطالب: ${esc(e.id || "—")}</span></div></section>`;
 }
 function vImpact() {
   if (!A.recs.length) return empty();
@@ -1437,7 +1476,7 @@ function vStudent() {
   const S = Array.from(A.students.values()).sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
   const pick = `<div class="tb no-print"><select id="pickStu"><option value="">${esc(t("rp_pick"))}</option>${S.map(s => `<option value="${SK.indexOf(s.key)}" ${s.key === CUR ? "selected" : ""}>${esc(sName(s))} (${esc(clsName(s.grade, s.section))})</option>`).join("")}</select>
     ${CUR ? `<button class="btn sm" data-view="parent">${esc(t("rp_parent"))}</button><button class="btn sm" data-prev="1">🖨️ معاينة وطباعة</button>` : ""}<button class="btn ghost sm" data-view="students">${esc(t("rp_back"))}</button></div>`;
-  const s = CUR && A.students.get(CUR);
+  const s = CUR && viewOf(A.students.get(CUR));
   if (!s) return `<h2 class="pt">${esc(t("rp_t"))}</h2><div class="card">${pick}</div>`;
   const subs = orderSubs(Array.from(new Set(s.resp.map(r => r.subject))));
   const useSubs = REPMODE === "A" ? subs.filter(x => grpOf(x) === "A") : subs;
@@ -1473,7 +1512,7 @@ function vStudent() {
   const R = repCfg();
   if (STUPREV) return `<div class="tb no-print"><button class="btn ghost" data-prevback="1">→ رجوع للتعديل</button><button class="btn" id="btnPrint">🖨️ طباعة</button></div><div class="rwrap" id="reports" dir="rtl">${studentReport(s, R)}</div>`;
   const ax = actOf(s.key), sug = suggestActions(s);
-  return `<h2 class="pt no-print">${esc(t("rp_t"))}</h2>${pick}${rel}
+  return `<h2 class="pt no-print">${esc(t("rp_t"))}</h2>${pick}${snapBar(CUR)}${rel}
   <div class="card"><div class="stuhead"><h2>${esc(sName(s))}</h2><span class="scbig"><em>${esc(t("rt_beh"))}</em>${scPill(s.behScore)}</span><span class="scbig"><em>${esc(t("rt_aca"))}</em>${scPill(s.acaScore)}</span>${badge(s.level)}<span class="chip">${esc(clsName(s.grade, s.section))}</span>${s.id ? `<span class="chip">${esc(t("col_id"))}: ${esc(s.id)}</span>` : ""}</div>
     ${s.why.length ? `<p style="margin:12px 0 0"><b>${esc(t("fu_why"))}:</b> ${s.why.map(w => `<span class="pill">${esc(t(w))}</span>`).join(" ")}</p>` : ""}</div>
   <div class="card" id="cact"><h3>إجراءات المرشد الأكاديمي</h3><p class="hint">اقتراحات البرنامج مبنية على تقييم الطالب وملاحظات معلميه. اختر ما يناسب وعدّل الخطة، ثم اضغط «معاينة وطباعة». تُحفظ تلقائياً على هذا الجهاز.</p>
@@ -1507,7 +1546,7 @@ function studentReport(s, R) {
   const consTxt = s.consensus.length ? s.consensus.slice(0, 5).map(c => esc(stmt(c))).join("؛ ") : "—";
   const ax = actOf(s.key), selA = suggestActions(s).filter(a => ax.sel[a.id]), hasAct = selA.length || ax.plan.trim() || ax.notes.trim();
   const lines = k => Array.from({ length: k }, () => '<div class="wl"></div>').join("");
-  const page1 = `<section class="page">${hdr}
+  const page1 = `<section class="page">${hdr}${snapNote(s)}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(s.name)}</b></div><div><small>رقم الطالب</small><b>${esc(s.id || "—")}</b></div><div><small>الصف</small><b>${esc(s.grade)}</b></div><div><small>الشعبة</small><b>${esc(s.section)}</b></div></div>
     <div class="pscw"><div class="sth"><span>مبني على ملاحظات <b>${s.teachers.size}</b> معلم في <b>${n}</b> مادة</span><span>مستوى المتابعة: <b>${lvTxt}</b></span></div>${scLine("الجانب السلوكي", s.behScore)}${scLine("الجانب الأكاديمي", s.acaScore)}<div class="pscl">التقييم من 10: كلما اقتربت الأيقونة من الأخضر قلّت الملاحظات، وكلما اقتربت من الأحمر زادت الحاجة للمتابعة والدعم.</div></div>
     <div class="rs">أولاً: الجانب السلوكي</div>
@@ -1623,7 +1662,7 @@ function parentReport(s, R) {
   const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${esc(R.title)}<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div>
     <div class="rh-sign"><span>مديرة المدرسة: <b>${esc(R.principal) || DOTS}</b></span><span>المرشد الأكاديمي: <b>${esc(R.counselor) || DOTS}</b></span></div></header>`;
   const foot = pg => `<div class="rfoot"><span>وثيقة خاصة بولي الأمر — مبنية على ملاحظات المعلمين الصفية</span><span>رقم الطالب: ${esc(s.id || "—")} &nbsp;|&nbsp; صفحة ${pg} من 2</span></div>`;
-  const page1 = `<section class="page">${hdr}
+  const page1 = `<section class="page">${hdr}${snapNote(s)}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(s.name)}</b></div><div><small>رقم الطالب</small><b>${esc(s.id || "—")}</b></div><div><small>الصف</small><b>${esc(s.grade)}</b></div><div><small>الشعبة</small><b>${esc(s.section)}</b></div></div>
     <p class="rpara" style="margin-top:7px"><b>الفاضل / الفاضلة ولي أمر الطالب ${esc(s.name)} المحترم،</b></p>
     <p class="rpara">تحية طيبة وبعد،</p>
@@ -1655,11 +1694,11 @@ function vParent() {
   const clsKeys = Object.keys(A.classes).sort((a, b) => { const x = a.split("/").map(Number), y = b.split("/").map(Number); return x[0] - y[0] || x[1] - y[1]; });
   if (!PR.cls || !A.classes[PR.cls]) PR.cls = clsKeys[0];
   const inp = (k, lab) => `<div><label>${esc(t(lab))}</label><input data-rcfg="${k}" value="${esc(R[k])}"></div>`;
-  const targets = PR.mode === "one" ? [A.students.get(CUR)] : A.classes[PR.cls].stu.slice().sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
+  const targets = (PR.mode === "one" ? [A.students.get(CUR)] : A.classes[PR.cls].stu.slice().sort((a, b) => sName(a).localeCompare(sName(b), "ar"))).map(viewOf);
   return `<h2 class="pt no-print">${esc(t("pr_t"))}</h2><p class="ps no-print">${esc(t("pr_s"))}</p>
   <div class="card no-print"><div class="rcfg">${inp("school", "pr_school")}${inp("principal", "pr_principal")}${inp("counselor", "pr_counselor")}${inp("year", "pr_year")}${inp("term", "pr_term")}${inp("title", "pr_title")}</div>
     <p class="hint">${esc(t("pr_hint"))}</p>    <div class="seg"><button data-prmode="one" class="${PR.mode === "one" ? "on" : ""}">${esc(t("pr_one"))}</button><button data-prmode="class" class="${PR.mode === "class" ? "on" : ""}">${esc(t("pr_class"))}</button></div>
-    <div class="tb">${PR.mode === "one" ? `<select id="pickPR">${S.map(x => `<option value="${SK.indexOf(x.key)}" ${x.key === CUR ? "selected" : ""}>${esc(sName(x))} (${esc(clsName(x.grade, x.section))})</option>`).join("")}</select>`
+    ${PR.mode === "one" ? snapBar(CUR) : ""}<div class="tb">${PR.mode === "one" ? `<select id="pickPR">${S.map(x => `<option value="${SK.indexOf(x.key)}" ${x.key === CUR ? "selected" : ""}>${esc(sName(x))} (${esc(clsName(x.grade, x.section))})</option>`).join("")}</select>`
       : `<select id="pickPRC">${clsKeys.map(k => `<option ${k === PR.cls ? "selected" : ""}>${esc(k)}</option>`).join("")}</select>`}
       <button class="btn" id="btnPrintRep">${esc(t("pr_print"))} (${targets.length})</button></div></div>
   <div class="rwrap" id="reports" dir="rtl">${targets.map(x => parentReport(x, R)).join("")}</div>`;
@@ -1714,7 +1753,7 @@ document.addEventListener("click", e => {
   if (el.dataset.prevback) { STUPREV = false; render(); return; }
   if (el.dataset.planfill) { const a = actOf(CUR), st = A.students.get(CUR); a.plan = suggestPlan(st); actSave(); render(); return; }
   if (el.dataset.imp !== undefined) { IMPCUR = el.dataset.imp; render(); window.scrollTo({ top: 0 }); return; }
-  if (el.dataset.impdtreset) { const a = impAct(IMPCUR); delete a.dB; delete a.dA; impSave(); computeImpact(); render(); return; }
+  if (el.dataset.impdtreset) { const en = IMP.find(x => x.key === IMPCUR); delete SNAPD["orig|" + IMPCUR]; if (en) delete SNAPD[en.lastId]; snapSave(); analyze(); render(); return; }
   if (el.dataset.impback) { IMPCUR = null; render(); return; }
   if (el.dataset.impf) { IMPF = el.dataset.impf; render(); return; }
   if (el.dataset.impfill) { const e = IMP.find(x => x.key === IMPCUR); if (e) { impAct(IMPCUR).plan = suggestImpPlan(e); impSave(); render(); } return; }
@@ -1739,7 +1778,9 @@ document.addEventListener("input", e => { const id = e.target.dataset && e.targe
 document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) { impAct(IMPCUR)[d.iax] = e.target.value; impSave(); } });
 document.addEventListener("change", e => { const d = e.target.dataset || {}; if (d.iax && IMPCUR != null) render();
   if (d.impsame) { IMPSAME = e.target.checked; try { localStorage.setItem("marsad_impsame", IMPSAME ? "1" : "0"); } catch (x) {} computeImpact(); render(); }
-  if (d.idt && IMPCUR != null) { const a = impAct(IMPCUR), v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (v) a[d.idt] = v; else delete a[d.idt]; impSave(); computeImpact(); render(); } });
+  if (d.idt && IMPCUR != null) { const en = IMP.find(x => x.key === IMPCUR), id = d.idt === "dB" ? "orig|" + IMPCUR : en && en.lastId, v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (id) { if (v) SNAPD[id] = v; else delete SNAPD[id]; snapSave(); analyze(); render(); } }
+  if (d.snapsel) { SNAPSEL[d.snapsel] = e.target.value; render(); }
+  if (d.snapdt) { const sn = snapsOf(d.snapdt), n = sn[snapIdx(d.snapdt, sn)], v = e.target.value ? new Date(e.target.value + "T12:00:00").getTime() : 0; if (n) { SNAPSEL[d.snapdt] = n.ids[0]; n.ids.forEach(id => { if (v) SNAPD[id] = v; else delete SNAPD[id]; }); snapSave(); analyze(); render(); } } });
 document.addEventListener("input", e => { const d = e.target.dataset || {}; if (d.ax && CUR) { actOf(CUR)[d.ax] = e.target.value; actSave(); } });
 document.addEventListener("change", e => {
   const d0 = e.target.dataset || {};
