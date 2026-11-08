@@ -385,6 +385,12 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
 .rsr{grid-template-columns:1fr 90px 60px}.rsr .tr{display:block;height:8px;background:#e6e9ee}.rsr .tr i{display:block;height:100%;background:var(--brand)}
 .updic{display:inline-block;background:#e5f4ea;color:#1f7a45;border:1px solid #79b98f;font-size:11px;padding:0 6px;margin-inline-end:4px;font-weight:700}
 .bars .bar.cb{display:grid;grid-template-columns:60px 1fr 150px;gap:10px;align-items:center}.bars .bar.cb .vl{min-width:0!important;text-align:start}
+.ctab th{font-size:11.5px;padding:6px 5px;line-height:1.3}.crp{padding:2px 8px}
+.cpage>*{flex-shrink:0}.crk{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:4px 0}.crk div{border:1px solid #9fb4bb;padding:3px 4px;text-align:center;background:#fafcfd}.crk b{display:block;font-size:15pt;color:#1D3F8F;line-height:1.3}.crk small{font-size:8.4pt;color:#555}
+.cdist{display:flex;height:17px;margin:4px 0 2px}.cdist i{display:block;color:#fff;font-style:normal;font-size:8.5pt;text-align:center;line-height:17px}.cleg{display:flex;gap:14px;flex-wrap:wrap;font-size:8.6pt;margin-bottom:3px}.cleg i{display:inline-block;width:9px;height:9px;margin-inline-end:4px}
+.ctwo{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cil{margin:2px 0;padding-inline-start:15px;font-size:8.8pt;line-height:1.45}.cil li{margin:1px 0}
+.cplan ol{margin:2px 0;padding-inline-start:18px;font-size:9pt;line-height:1.55}.cplan .wl{margin-top:5px}
+.plist{font-size:8.8pt;line-height:1.5}.plist .pc{margin:1px 0}
 </style>
 </head>
 <body>
@@ -401,6 +407,8 @@ textarea.ax{width:100%;box-sizing:border-box;border:1px solid var(--line);paddin
    ===================================================================== */
 const CFG = {
   FLAG_LEVEL: 3,            // «دائماً» (4) يُعدّ ملاحظة بارزة
+  /* خصم اتفاق المعلمين على «دائماً» لعبارة واحدة: يتدرج بعدد المعلمين (4 فأكثر = الحد الأعلى) — قابل للتجربة والتعديل */
+  PEN: { 2: 0.1, 3: 0.2, 4: 0.3 }, PEN_CAP: 1.5,
   PAGE: 100,
   SCHOOL: ["مدرسة الرازي", "Al Razi School"],
   /* مواد انتقائية لا تشمل كل الطلاب: لا تدخل في نسبة الإنجاز */
@@ -1096,10 +1104,10 @@ function scoreOf(s, pre) {
     const m = {}; s.resp.forEach(r => { if (r.lv[c] !== undefined) (m[r.subject] = m[r.subject] || []).push(r.lv[c]); });
     const k = Object.keys(m); if (!k.length) return;
     ps.push(mean(k.map(x => mean(m[x]))) / 4);
-    if (new Set(s.resp.filter(r => r.lv[c] >= CFG.FLAG_LEVEL).map(r => r.teacher)).size >= 2) pen++;
+    { const nT = new Set(s.resp.filter(r => r.lv[c] >= CFG.FLAG_LEVEL).map(r => r.teacher)).size; if (nT >= 2) pen += CFG.PEN[Math.min(nT, 4)]; }
   });
   if (!ps.length) return null;
-  return Math.max(0, Math.round((10 * (1 - mean(ps)) - Math.min(1.5, pen * 0.3)) * 10) / 10);
+  return Math.max(0, Math.round((10 * (1 - mean(ps)) - Math.min(CFG.PEN_CAP, pen)) * 10) / 10);
 }
 const scCol = v => { const h = Math.round(Math.max(0, Math.min(10, v)) * 12); return { b: `hsl(${h},62%,44%)`, bg: `hsl(${h},70%,90%)`, tx: `hsl(${h},70%,22%)` }; };
 const scPill = v => { if (v == null) return `<span class="scp none">—</span>`; const c = scCol(v); return `<span class="scp" style="background:${c.bg};color:${c.tx};border-color:${c.b}"><b>${v.toFixed(1)}</b><small>/10</small></span>`; };
@@ -1397,7 +1405,7 @@ function classesCard() {
   const row = c => {
     const n = c.stu.length, p = pct(c.follow, n);
     return `<tr class="clk" data-class="${esc(c.key)}"><td><b class="cn2">${esc(c.key)}</b></td><td>${n}</td><td>${c.resp}</td>
-      <td>${scBar(avg(c.bs))}</td><td>${scBar(avg(c.as))}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(c.stu)}</td></tr>`;
+      <td>${scBar(avg(c.bs))}</td><td>${scBar(avg(c.as))}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(c.stu)}</td><td class="no-print"><button class="btn sm ghost crp" data-crprint="${esc(c.key)}" title="طباعة تقرير الشعبة">🖨️</button></td></tr>`;
   };
   const sections = grades.map(g => {
     const cl = list.filter(c => c.key.split("/")[0] === g).sort((a, b) => Number(a.key.split("/")[1]) - Number(b.key.split("/")[1]));
@@ -1406,11 +1414,11 @@ function classesCard() {
     const gb = avg(all.map(s => s.behScore).filter(x => x != null)), ga = avg(all.map(s => s.acaScore).filter(x => x != null));
     const key = "c" + g; if (COLL[key] === undefined) COLL[key] = true;
     const resp = cl.reduce((m, c) => m + c.resp, 0);
-    return `<tbody class="cl gb ${COLL[key] ? "closed" : ""}"><tr class="grow sumr" data-coll="${key}"><td><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b></td><td>${all.length}</td><td>${resp}</td><td>${scBar(gb)}</td><td>${scBar(ga)}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(all)}</td></tr>
-      <tr class="grow hdr" data-coll="${key}"><td colspan="7"><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b> <small>— ${all.length} ${esc(t("col_students"))}</small></td></tr>${cl.map(row).join("")}</tbody>`;
+    return `<tbody class="cl gb ${COLL[key] ? "closed" : ""}"><tr class="grow sumr" data-coll="${key}"><td><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b></td><td>${all.length}</td><td>${resp}</td><td>${scBar(gb)}</td><td>${scBar(ga)}</td><td><span class="dotp" style="background:${ringCol(p)}">${p}%</span></td><td>${stackOf(all)}</td><td class="no-print"><button class="btn sm ghost crp" data-crgrade="${esc(g)}" title="طباعة تقارير شعب الصف">🖨️</button></td></tr>
+      <tr class="grow hdr" data-coll="${key}"><td colspan="8"><span class="arr"></span> <b>${esc(t("grade_lbl"))} ${esc(g)}</b> <small>— ${all.length} ${esc(t("col_students"))}</small></td></tr>${cl.map(row).join("")}</tbody>`;
   }).join("");
   const allS = Object.values(A.classes).reduce((m, c) => m.concat(c.stu), []), nF = allS.filter(x => x.level >= 2).length, nC = Object.keys(A.classes).length;
-  return `<div class="card cl ${cl2("cls", true)}"><div class="clh" data-coll="cls"><span class="arr"></span><h3>${esc(t("by_grade"))}${LANG === "ar" ? " والشعبة" : " and section"}</h3><span class="trsum"><span class="sm">👥 <b>${allS.length}</b> ${LANG === "ar" ? "طالباً" : "students"}</span><span class="sm">🏫 <b>${nC}</b> ${LANG === "ar" ? "شعبة" : "sections"}</span><span class="sm sn">⚠ <b>${nF}</b> ${LANG === "ar" ? "يُنصح بمتابعتهم" : "advised follow-up"} (<b>${pct(nF, allS.length)}%</b>)</span></span></div><div class="clbody"><p class="hint">${esc(t("cl_s2"))}</p>${lg}<div class="tw"><table class="t ctab"><colgroup><col style="width:15%"><col style="width:9%"><col style="width:10%"><col style="width:19%"><col style="width:19%"><col style="width:10%"><col style="width:18%"></colgroup><thead><tr><th>${esc(t("col_class"))}</th><th>${esc(t("col_students"))}</th><th>${esc(t("col_resp"))}</th><th>${esc(t("sc_beh"))}</th><th>${esc(t("sc_aca"))}</th><th>${esc(t("cl_ring"))}</th><th>${esc(t("cl_dist"))}</th></tr></thead>${sections}</table></div></div></div>`;
+  return `<div class="card cl ${cl2("cls", true)}"><div class="clh" data-coll="cls"><span class="arr"></span><h3>${LANG === "ar" ? "تقارير الصفوف" : "Class reports"}</h3><span class="trsum"><span class="sm">👥 <b>${allS.length}</b> ${LANG === "ar" ? "طالباً" : "students"}</span><span class="sm">🏫 <b>${nC}</b> ${LANG === "ar" ? "شعبة" : "sections"}</span><span class="sm sn">⚠ <b>${nF}</b> ${LANG === "ar" ? "يُنصح بمتابعتهم" : "advised follow-up"} (<b>${pct(nF, allS.length)}%</b>)</span></span></div><div class="clbody"><div class="tb no-print"><button class="btn" data-crprint="school">🖨️ ${LANG === "ar" ? "تقرير المدرسة" : "School report"}</button><button class="btn ghost" data-crprint="all">🖨️ ${LANG === "ar" ? "تقارير كل الشعب" : "All sections"}</button></div><p class="hint">${esc(t("cl_s2"))} ${LANG === "ar" ? "— 🖨️ لطباعة تقرير شعبة أو صف." : ""}</p>${lg}<div class="tw"><table class="t ctab"><colgroup><col style="width:12%"><col style="width:8%"><col style="width:10%"><col style="width:17%"><col style="width:17%"><col style="width:10%"><col style="width:18%"><col style="width:8%"></colgroup><thead><tr><th>${LANG === "ar" ? "الشعبة" : "Section"}</th><th>${LANG === "ar" ? "الطلاب" : "Students"}</th><th>${LANG === "ar" ? "الردود" : "Resp."}</th><th>${LANG === "ar" ? "السلوكي /10" : "Behav. /10"}</th><th>${LANG === "ar" ? "الأكاديمي /10" : "Acad. /10"}</th><th>${LANG === "ar" ? "المتابعة" : "Follow-up"}</th><th>${LANG === "ar" ? "التوزيع" : "Distribution"}</th><th class="no-print"></th></tr></thead>${sections}</table></div></div></div>`;
 }
 
 function vSubjects() {
@@ -1724,6 +1732,7 @@ const fnClean = x => String(x || "").replace(/[\\/:*?"<>|]+/g, "-").trim().repla
 const fnStu = st => fnClean(String(st.name || "").trim().split(/\s+/).slice(0, 2).join("_")) + "_" + fnClean(st.id || "");
 function printName() {
   if (VIEW === "impact" && IMPCUR != null) { const e = IMP.find(x => x.key === IMPCUR); if (e) return "تقرير_" + ({ up: "تقدم", down: "متابعة_تراجع" }[e.verdict] || "تغير") + "_" + fnStu(e); }
+  if (VIEW === "creport" && CRPT) return CRPT.k === "school" ? "تقرير_المدرسة" : CRPT.k === "all" ? "تقارير_الشعب_والمدرسة" : CRPT.k === "grade" ? "تقرير_الصف_" + fnClean(CRPT.key) : "تقرير_الشعبة_" + fnClean(CRPT.key);
   if (VIEW === "parent") { if (PR.mode === "class") return "تقرير_ولي_أمر_الصف_" + fnClean(PR.cls); const st = A.students.get(CUR); if (st) return "تقرير_ولي_أمر_" + fnStu(st); }
   if (VIEW === "student" && STUPREV) { const st = A.students.get(CUR); if (st) return "تقرير_الطالب_" + fnStu(st); }
   const d = new Date(), p2 = n => String(n).padStart(2, "0"); return "تقرير_عام_" + d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate());
@@ -1731,6 +1740,68 @@ function printName() {
 let __title0 = null;
 window.addEventListener("beforeprint", () => { if (__title0 === null) __title0 = document.title; try { document.title = printName(); } catch (e) {} });
 window.addEventListener("afterprint", () => { if (__title0 !== null) { document.title = __title0; __title0 = null; } });
+/* ===== تقارير الصفوف والمدرسة (A4 لكل شعبة) ===== */
+let CRPT = null;
+const LVC = ["#2F6B4F", "#2563EB", "#C9A227", "#B03A2E"], LVN = ["لا ملاحظات بارزة", "يُنصح بالمراقبة", "يُنصح بالمتابعة", "متابعة ذات أولوية"];
+const ckSort = (a, b) => { const x = a.split("/").map(Number), y = b.split("/").map(Number); return x[0] - y[0] || x[1] - y[1]; };
+const clip = (x, n) => { x = String(x); return x.length > n ? x.slice(0, n - 1) + "…" : x; };
+function itemFreq(stu, pre) { const m = {}; stu.forEach(x => x.flagged.forEach(c => { if (c[0] === pre) m[c] = (m[c] || 0) + 1; })); return Object.keys(m).sort((a, b) => m[b] - m[a]).map(c => ({ c: c, n: m[c], p: pct(m[c], stu.length) })); }
+const crHdr = (R, title) => `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${esc(title)}<small>العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
+const crDist = stu => { const c = [0, 1, 2, 3].map(l => stu.filter(s => s.level === l).length), n = stu.length || 1;
+  return `<div class="cdist">${c.map((v, i) => v ? `<i style="flex:${v};background:${LVC[i]}">${v}</i>` : "").join("")}</div><div class="cleg">${c.map((v, i) => `<span><i style="background:${LVC[i]}"></i>${LVN[i]}: <b>${v}</b></span>`).join("")}</div>`; };
+const crIssues = (stu, pre, k) => { const f = itemFreq(stu, pre).slice(0, k); return f.length ? `<ul class="cil">${f.map(x => `<li>${esc(impStmt(x.c))} <b>— ${x.n} ${LANG === "ar" ? "طالب" : ""} (${x.p}%)</b></li>`).join("")}</ul>` : `<p class="rpara">لا عبارات بارزة.</p>`; };
+const stuIssues = s => s.flagged.slice().sort((a, b) => (s.consensus.includes(b) ? 1 : 0) - (s.consensus.includes(a) ? 1 : 0)).slice(0, 2).map(c => clip(impStmt(c), 52)).join(" ؛ ") || "—";
+const planBox = lines => `<div class="rs">خطة إجرائية مختصرة</div><div class="wbox cplan"><ol>${lines.map(l => `<li>${esc(l)}</li>`).join("")}</ol><div class="wl"></div><div class="wl"></div></div>`;
+const crFoot = (resp, R, lab) => diagLine({ resp: resp }) + `<div class="rfoot"><span>وثيقة داخلية خاصة بالمدرسة — للمرشد الأكاديمي والمديرة</span><span>${esc(lab)}</span></div>`;
+function classPage(c, R) {
+  const stu = c.stu, n = stu.length, av = a => a.length ? Math.round(mean(a) * 10) / 10 : null, prio = stu.filter(s => s.level === 3).sort((a, b) => a.comb - b.comb), fol = stu.filter(s => s.level >= 2).length;
+  const kb = av(c.bs), ka = av(c.as), kc = x => x == null ? "—" : x.toFixed(1);
+  const tB = itemFreq(stu, "B")[0], tA = itemFreq(stu, "A")[0];
+  const plan = [prio.length ? `لقاء المرشد الأكاديمي مع الطلاب ذوي الأولوية (${prio.length}) خلال أسبوع ووضع خطة فردية لكل طالب.` : "لا طلاب ذوو أولوية حالياً — الاستمرار في المتابعة الدورية.",
+    tB ? `التركيز الصفي على: «${clip(impStmt(tB.c), 70)}» (${tB.p}% من الطلاب).` : "مراجعة الملاحظات السلوكية مع معلمي الشعبة.",
+    tA ? `دعم أكاديمي في: «${clip(impStmt(tA.c), 70)}» (${tA.p}% من الطلاب).` : "مراجعة الصعوبات الأكاديمية مع معلمي الشعبة.",
+    "اجتماع قصير لمعلمي الشعبة لتوحيد أسلوب التعامل، والتواصل مع أولياء أمور طلاب الأولوية.", "إعادة تقييم الطلاب المتابَعين بعد 4 أسابيع وقياس التغيّر."];
+  const maxR = 8, rows = prio.slice(0, maxR).map((s, i) => `<tr><td class="n">${i + 1}</td><td><b>${esc(sName(s))}</b></td><td class="gc"><b style="color:${scCol(s.comb).tx}">${s.comb.toFixed(1)}</b></td><td>${esc(stuIssues(s))}</td></tr>`).join("");
+  return `<section class="page cpage">${crHdr(R, "تقرير حالة الشعبة " + c.key)}
+    <div class="crk"><div><b>${n}</b><small>طالباً</small></div><div><b>${kc(kb)}</b><small>التقييم السلوكي /10</small></div><div><b>${kc(ka)}</b><small>التقييم الأكاديمي /10</small></div><div><b>${pct(fol, n)}%</b><small>يُنصح بمتابعتهم (${fol})</small></div><div><b>${prio.length}</b><small>ذوو أولوية</small></div></div>
+    ${crDist(stu)}
+    <div class="ctwo"><div><div class="rs">أبرز الملاحظات السلوكية</div>${crIssues(stu, "B", 3)}</div><div><div class="rs">أبرز الصعوبات الأكاديمية</div>${crIssues(stu, "A", 3)}</div></div>
+    <div class="rs">الطلاب ذوو الأولوية (${prio.length}) وأبرز مشكلاتهم</div>
+    ${prio.length ? `<table class="rt ict"><colgroup><col style="width:7mm"><col style="width:46mm"><col style="width:16mm"><col></colgroup><thead><tr><th>#</th><th>الطالب</th><th class="gc">التقييم</th><th>أبرز المشكلات</th></tr></thead><tbody>${rows}</tbody></table>${prio.length > maxR ? `<p class="rpara">… و${prio.length - maxR} طلاب آخرون في تبويب الطلاب.</p>` : ""}` : `<p class="rpara">لا يوجد طلاب ذوو أولوية في هذه الشعبة.</p>`}
+    ${planBox(plan)}
+    <div style="flex:1"></div>${crFoot(stu.reduce((m, s) => m.concat(s.resp), []), R, "الشعبة " + c.key)}</section>`;
+}
+function schoolPage(R) {
+  const all = Array.from(A.students.values()), n = all.length, av = a => a.length ? Math.round(mean(a) * 10) / 10 : null, kc = x => x == null ? "—" : x.toFixed(1);
+  const prio = all.filter(s => s.level === 3).sort((a, b) => a.comb - b.comb), fol = all.filter(s => s.level >= 2).length;
+  const grades = Array.from(new Set(all.map(s => s.grade))).sort((a, b) => a - b);
+  const gRows = grades.map(g => { const gs = all.filter(s => s.grade === g), f = gs.filter(s => s.level >= 2).length, pr = gs.filter(s => s.level === 3).length;
+    return `<tr><td><b>الصف ${esc(g)}</b></td><td class="gc">${gs.length}</td><td class="gc">${kc(av(gs.map(s => s.behScore).filter(x => x != null)))}</td><td class="gc">${kc(av(gs.map(s => s.acaScore).filter(x => x != null)))}</td><td class="gc">${f} (${pct(f, gs.length)}%)</td><td class="gc"><b>${pr}</b></td></tr>`; }).join("");
+  const byC = {}; prio.forEach(s => { const k = clsName(s.grade, s.section); (byC[k] = byC[k] || []).push(s); });
+  let shown = 0; const maxN = 24, lines = Object.keys(byC).sort(ckSort).map(k => { const l = byC[k].slice(0, Math.max(0, maxN - shown)); shown += l.length; return l.length ? `<div class="pc"><b>${esc(k)} (${byC[k].length}):</b> ${l.map(s => esc(sName(s))).join("، ")}${byC[k].length > l.length ? " …" : ""}</div>` : `<div class="pc"><b>${esc(k)} (${byC[k].length})</b></div>`; }).join("");
+  const tB = itemFreq(all, "B")[0], tA = itemFreq(all, "A")[0];
+  const worst = Object.values(A.classes).slice().sort((a, b) => pct(b.follow, b.stu.length) - pct(a.follow, a.stu.length)).slice(0, 3).map(c => c.key + " (" + pct(c.follow, c.stu.length) + "%)").join("، ");
+  const plan = [`متابعة الطلاب ذوي الأولوية (${prio.length}) من المرشد الأكاديمي بخطط فردية خلال أسبوعين.`, worst ? `الشعب الأعلى نسبةً في المتابعة: ${worst} — اجتماع مع معلميها.` : "مراجعة الشعب الأعلى نسبة في المتابعة.",
+    tB ? `خطة سلوكية عامة لمعالجة: «${clip(impStmt(tB.c), 70)}» (${tB.p}% من الطلاب).` : "خطة سلوكية عامة.", tA ? `دعم أكاديمي لمعالجة: «${clip(impStmt(tA.c), 70)}» (${tA.p}% من الطلاب).` : "دعم أكاديمي عام.", "إعادة تقييم الطلاب المتابَعين بعد 4 أسابيع وقياس التغيّر."];
+  return `<section class="page cpage">${crHdr(R, "تقرير حالة المدرسة")}
+    <div class="crk"><div><b>${n}</b><small>طالباً</small></div><div><b>${kc(av(all.map(s => s.behScore).filter(x => x != null)))}</b><small>التقييم السلوكي /10</small></div><div><b>${kc(av(all.map(s => s.acaScore).filter(x => x != null)))}</b><small>التقييم الأكاديمي /10</small></div><div><b>${pct(fol, n)}%</b><small>يُنصح بمتابعتهم (${fol})</small></div><div><b>${prio.length}</b><small>ذوو أولوية</small></div></div>
+    ${crDist(all)}
+    <table class="rt ict" style="margin-top:6px;width:100%;align-self:stretch"><colgroup><col style="width:20%"><col style="width:13%"><col style="width:15%"><col style="width:16%"><col style="width:21%"><col style="width:15%"></colgroup><thead><tr><th>الصف</th><th class="gc">الطلاب</th><th class="gc">السلوكي /10</th><th class="gc">الأكاديمي /10</th><th class="gc">يُنصح بمتابعتهم</th><th class="gc">ذوو أولوية</th></tr></thead><tbody>${gRows}</tbody></table>
+    <div class="ctwo"><div><div class="rs">أبرز الملاحظات السلوكية</div>${crIssues(all, "B", 3)}</div><div><div class="rs">أبرز الصعوبات الأكاديمية</div>${crIssues(all, "A", 3)}</div></div>
+    <div class="rs">الطلاب ذوو الأولوية حسب الشعبة (${prio.length})</div><div class="plist">${lines || '<p class="rpara">لا يوجد.</p>'}</div>
+    ${planBox(plan)}
+    <div style="flex:1"></div>${crFoot(all.reduce((m, s) => m.concat(s.resp), []), R, "المدرسة")}</section>`;
+}
+function vCReport() {
+  if (!CRPT || !A.recs.length) return empty();
+  const R = repCfg(), keys = Object.keys(A.classes).sort(ckSort);
+  let pages = "";
+  if (CRPT.k === "school") pages = schoolPage(R);
+  else if (CRPT.k === "class") pages = A.classes[CRPT.key] ? classPage(A.classes[CRPT.key], R) : "";
+  else if (CRPT.k === "grade") pages = keys.filter(k => k.split("/")[0] === CRPT.key).map(k => classPage(A.classes[k], R)).join("");
+  else pages = schoolPage(R) + keys.map(k => classPage(A.classes[k], R)).join("");
+  return `<div class="tb no-print"><button class="btn ghost" data-crback="1">→ رجوع</button><button class="btn" id="btnPrintCR">🖨️ طباعة</button><span class="hint">${(pages.match(/class="page /g) || []).length} صفحة A4</span></div><div class="rwrap" id="reports" dir="rtl">${pages}</div>`;
+}
 function vParent() {
   if (!A.recs.length) return empty();
   const S = Array.from(A.students.values()).sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
@@ -1749,7 +1820,7 @@ function vParent() {
   <div class="rwrap" id="reports" dir="rtl">${targets.map(x => parentReport(x, R)).join("")}</div>`;
 }
 
-const VIEWS = { overview: ["📊", vOverview], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], impact: ["📈", vImpact], import: ["📂", vImport] };
+const VIEWS = { overview: ["📊", vOverview], creport: ["🖨️", vCReport], students: ["👥", vStudents], student: ["🧾", vStudent], parent: ["🖨️", vParent], impact: ["📈", vImpact], import: ["📂", vImport] };
 
 function render() {
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === "ar" ? "rtl" : "ltr";
@@ -1757,7 +1828,7 @@ function render() {
   $("#bTitle").textContent = t("title"); $("#bDesc").textContent = t("desc"); $("#bSchool").textContent = CFG.SCHOOL[LANG === "ar" ? 0 : 1];
   $("#langBtn").textContent = t("lang");
   const has = A && A.recs.length;
-  $("#nav").innerHTML = Object.keys(VIEWS).map(k => `<button data-view="${k}" class="${VIEW === k ? "on" : ""}" ${(!has && k !== "import") ? "disabled" : ""}><span class="ic">${VIEWS[k][0]}</span>${esc(t("v_" + k))}</button>`).join("");
+  $("#nav").innerHTML = Object.keys(VIEWS).filter(k => k !== "creport").map(k => `<button data-view="${k}" class="${VIEW === k ? "on" : ""}" ${(!has && k !== "import") ? "disabled" : ""}><span class="ic">${VIEWS[k][0]}</span>${esc(t("v_" + k))}</button>`).join("");
   $("#main").innerHTML = VIEWS[VIEW][1]();
   bindView();
 }
@@ -1785,12 +1856,13 @@ function bindView() {
     const p = $("#pickStu"); if (p) p.onchange = () => { CUR = p.value === "" ? null : SK[Number(p.value)]; STUPREV = false; render(); };
     const pr = $("#btnPrint"); if (pr) pr.onclick = () => window.print();
   }
+  if (VIEW === "creport") { const pr = $("#btnPrintCR"); if (pr) pr.onclick = () => window.print(); }
   if (VIEW === "impact") { const pr = $("#btnPrintImp"); if (pr) pr.onclick = () => window.print(); }
 }
 
 /* أحداث عامة بالتفويض */
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-coll],[data-imp],[data-impback],[data-impdtreset],[data-impfill],[data-impf],[data-trb],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
+  const el = e.target.closest("[data-coll],[data-crprint],[data-crgrade],[data-crback],[data-imp],[data-impback],[data-impdtreset],[data-impfill],[data-impf],[data-trb],[data-trmode],[data-trall],[data-prev],[data-prevback],[data-planfill],[data-cscope],[data-cgrp],[data-rmode],[data-prmode],[data-view],[data-sort],[data-more],[data-student],[data-item],[data-class],[data-csv],[data-gradefilter],[data-clearitem],#md-close");
   if (!el) return;
   if (el.id === "md-close") { closeModal(); return; }
   if (el.dataset.coll) { const k = el.dataset.coll, box = el.closest(".cl"); COLL[k] = !COLL[k]; box.classList.toggle("closed", !!COLL[k]); return; }
@@ -1798,6 +1870,9 @@ document.addEventListener("click", e => {
   if (el.dataset.prevback) { STUPREV = false; render(); return; }
   if (el.dataset.planfill) { const a = actOf(CUR), st = A.students.get(CUR); a.plan = suggestPlan(st); actSave(); render(); return; }
   if (el.dataset.imp !== undefined) { IMPCUR = el.dataset.imp; render(); window.scrollTo({ top: 0 }); return; }
+  if (el.dataset.crprint) { const v = el.dataset.crprint; CRPT = (v === "school" || v === "all") ? { k: v } : { k: "class", key: v }; go("creport"); window.scrollTo({ top: 0 }); return; }
+  if (el.dataset.crgrade) { CRPT = { k: "grade", key: el.dataset.crgrade }; go("creport"); window.scrollTo({ top: 0 }); return; }
+  if (el.dataset.crback) { go("overview"); return; }
   if (el.dataset.impdtreset) { const en = IMP.find(x => x.key === IMPCUR); delete SNAPD["orig|" + IMPCUR]; delete SNAPD["upd|" + IMPCUR]; snapSave(); analyze(); render(); return; }
   if (el.dataset.impback) { IMPCUR = null; render(); return; }
   if (el.dataset.impf) { IMPF = el.dataset.impf; render(); return; }
