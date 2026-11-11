@@ -62,10 +62,10 @@
      السبورة على الحائط الأمامي (أعلى). المعلم يواجه الطلاب ⇒ يمينه = يسار الورقة:
      الباب خط على الحائط الجانبي الأيسر قرب المقدمة، وطاولة المعلم يمين المقدمة. */
   .room{ position:relative; border:4px solid #3A3A3A; border-radius:4px; padding:0 18px 12px; background:#fff; }
-  .board{ width:52%; margin:0 auto 10px; background:#1F3B2D; color:#E8F5EC; font-family:'El Messiri',sans-serif; font-weight:600;
+  .front{ direction:ltr; display:grid; grid-template-columns:1fr 2.4fr 1fr; gap:14px; align-items:start; margin-bottom:14px; }
+  .board{ direction:rtl; background:#1F3B2D; color:#E8F5EC; font-family:'El Messiri',sans-serif; font-weight:600;
     font-size:13px; text-align:center; padding:5px 8px; border-radius:0 0 6px 6px; letter-spacing:.5px; }
-  .front{ direction:ltr; display:flex; justify-content:flex-end; margin-bottom:14px; }
-  .tdesk{ direction:rtl; width:112px; height:58px; background:#F3E3C3; border:2px solid #B9935A; color:#5E4220; border-radius:6px;
+  .tdesk{ justify-self:end; margin-top:6px; direction:rtl; width:112px; height:58px; background:#F3E3C3; border:2px solid #B9935A; color:#5E4220; border-radius:6px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:600; font-size:12px; line-height:1.3; text-align:center; }
   .tdesk .ic{ font-size:18px; }
   .door{ position:absolute; left:-4px; top:34px; width:4px; height:88px; background:#fff; }        /* فتحة في الحائط */
@@ -100,43 +100,60 @@
   .legend i{ display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:middle; margin-inline-end:4px; border:1px solid #BFD0F5; background:#F3F7FF; }
 
 
-  /* ===================== التصميم الملون (لوحة تُعلّق في الصف) ===================== */
-  .color-head, .color-foot{ display:none; }
-  .stu .av{ display:none; }
-  .theme-color .print-head{ display:none !important; }
-  .theme-color .color-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; padding:14px 20px; border-radius:16px;
-    background:linear-gradient(110deg,#6366F1 0%,#EC4899 55%,#F59E0B 100%); color:#fff; position:relative; overflow:hidden; }
-  .theme-color .color-head::after{ content:''; position:absolute; inset:0; background:radial-gradient(circle at 12% 120%,rgba(255,255,255,.25) 0 60px,transparent 61px),radial-gradient(circle at 92% -30%,rgba(255,255,255,.2) 0 70px,transparent 71px); pointer-events:none; }
-  .ch-title{ font-family:'El Messiri',sans-serif; font-weight:700; font-size:26px; line-height:1.15; }
-  .ch-sub{ font-size:13px; opacity:.95; }
-  .ch-badge{ background:#fff; color:#BE185D; font-family:'El Messiri',sans-serif; font-weight:700; font-size:30px; border-radius:14px; padding:4px 18px; line-height:1.3;
-    box-shadow:0 4px 0 rgba(0,0,0,.15); text-align:center; z-index:1; }
-  .ch-badge small{ display:block; font-size:11px; color:#6B7280; font-family:'IBM Plex Sans Arabic',sans-serif; font-weight:600; }
-  .theme-color .room{ border:5px solid #312E81; border-radius:18px; background:#FFFDF5;
-    background-image:radial-gradient(#F3E8C8 1.2px,transparent 1.2px); background-size:16px 16px; padding:0 20px 14px; }
-  .theme-color .board{ background:linear-gradient(#1F5135,#163D28); border:4px solid #A16207; border-top:none; border-radius:0 0 10px 10px; font-size:14px; }
-  .theme-color .tdesk{ background:linear-gradient(#E9C891,#D4A55F); border-color:#8B5A24; color:#4A2E0E; border-radius:10px; box-shadow:0 3px 0 #8B5A24; }
-  .theme-color .door{ left:-5px; width:5px; }
-  .theme-color .door::before{ background:repeating-linear-gradient(#EA580C 0 8px,#FDBA74 8px 12px); width:12px; left:-4px; }
-  .theme-color .door span{ color:#C2410C; }
-  .theme-color .seat{ --h:210; background:hsl(var(--h) 95% 93%); border:2px solid hsl(var(--h) 70% 58%); border-radius:14px; box-shadow:0 3px 0 hsl(var(--h) 60% 75%); }
-  .theme-color .pairs .seat.pl{ border-radius:0 14px 14px 0; }
-  .theme-color .pairs .seat.pr{ border-radius:14px 0 0 14px; border-inline-start:2px dashed hsl(var(--h) 70% 70%); }
-  .theme-color .seat.empty{ background:transparent; box-shadow:none; border:2px dashed hsl(var(--h) 40% 80%); }
-  .theme-color .seat.mid:not(.empty){ background:#FFF7D6; border:2px solid #EAB308; box-shadow:0 3px 0 #FACC15; }
-  .theme-color .stu{ flex-direction:row; gap:8px; justify-content:flex-start; padding:5px 8px; }
-  .theme-color .stu .av{ display:flex; flex:0 0 auto; width:32px; height:32px; border-radius:50%; align-items:center; justify-content:center;
-    background:hsl(var(--h) 70% 55%); color:#fff; font-family:'El Messiri',sans-serif; font-weight:700; font-size:16px; }
-  .theme-color .seat.mid .stu .av{ background:#CA8A04; }
-  .theme-color .stu .nm{ display:flex; flex-direction:column; align-items:flex-start; text-align:right; min-width:0; }
-  .theme-color .stu .n1{ font-family:'El Messiri',sans-serif; font-weight:700; font-size:14px; color:hsl(var(--h) 55% 25%); }
-  .theme-color .stu .n2{ color:hsl(var(--h) 35% 35%); font-weight:600; }
-  .theme-color .row-no{ font-weight:700; color:#6366F1; }
-  .theme-color .back-label{ border-top:none; color:#6B7280; }
-  .theme-color .color-foot{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; font-size:12.5px; }
-  .cf-chips{ display:flex; gap:8px; flex-wrap:wrap; }
-  .cf-chip{ border-radius:999px; padding:4px 14px; font-weight:700; color:#fff; }
-  .cf-meta{ color:#374151; }
+  /* ===================== التصميم المرسوم (رسم أنيق لمخطط الصف — لوحة تُعلّق) ===================== */
+  .drawn-head, .drawn-foot, .chair, .swing, .stu .av{ display:none; }
+  .theme-drawn{ background:#FBF8F1; border:1px solid #D8C9AC; outline:1px solid #D8C9AC; outline-offset:-7px; padding:22px 26px 18px; border-radius:4px; }
+  .theme-drawn .print-head{ display:none !important; }
+  .theme-drawn .drawn-head{ display:block; text-align:center; margin-bottom:14px; color:#1E2A44; }
+  .orn{ display:flex; align-items:center; justify-content:center; gap:10px; color:#B08D57; font-size:12px; letter-spacing:3px; }
+  .orn::before, .orn::after{ content:''; height:1px; width:min(160px,22%); background:linear-gradient(90deg,transparent,#B08D57,transparent); }
+  .dh-title{ font-family:'El Messiri',sans-serif; font-weight:700; font-size:27px; line-height:1.25; margin:4px 0 2px; }
+  .dh-title .cls{ display:inline-block; color:#fff; background:#1E2A44; border:2px solid #B08D57; outline:1px solid #1E2A44; border-radius:50px; padding:0 16px; margin-inline-start:8px; font-size:24px; }
+  .dh-sub{ font-size:12.5px; color:#6E6250; letter-spacing:.5px; }
+
+  .theme-drawn .room{ z-index:0; border:none; margin:12px 10px 8px; padding:0 22px 14px; border-radius:1px;
+    box-shadow:0 0 0 7px #3B4256, 0 0 0 9px #FBF8F1, 0 0 0 10px #3B4256;
+    background-color:#F3E9D8;
+    background-image:repeating-linear-gradient(0deg, rgba(140,105,60,.10) 0 1px, transparent 1px 26px),
+                     repeating-linear-gradient(90deg, rgba(140,105,60,.06) 0 1px, transparent 1px 90px); }
+  /* السبورة: لوح أخضر بإطار خشبي ومجرى طباشير */
+  .theme-drawn .board{ position:relative; margin:0; padding:9px 8px 8px; border:7px solid #8B6B43; border-top:none; border-radius:0 0 3px 3px;
+    background:radial-gradient(ellipse at 30% 30%,#3D5C49,#2B4636); color:#F4F1E6; font-size:15px; letter-spacing:2px;
+    text-shadow:0 0 1px rgba(255,255,255,.6); box-shadow:inset 0 0 16px rgba(0,0,0,.35); }
+  .theme-drawn .board::after{ content:''; position:absolute; left:-7px; right:-7px; bottom:-14px; height:7px; background:#A9865A; border-radius:0 0 3px 3px; box-shadow:0 2px 0 #7A5D39; }
+  /* طاولة المعلم: خشب + كرسي خلفها (جهة السبورة) */
+  .theme-drawn .front{ margin-bottom:22px; }
+  .theme-drawn .tdesk{ margin-top:18px; }
+  .theme-drawn .tdesk{ position:relative; width:104px; height:60px; border-radius:3px; border:1px solid #6E5233; color:#FBF3E2; font-family:'El Messiri',sans-serif; font-size:12.5px;
+    background:linear-gradient(135deg,#B98A55,#9C6F3F); box-shadow:0 3px 0 #6E5233, inset 0 1px 0 rgba(255,255,255,.25); }
+  .theme-drawn .tdesk .ic{ display:none; }
+  .theme-drawn .tdesk::before{ content:''; position:absolute; top:-15px; left:50%; transform:translateX(-50%); width:40px; height:13px; background:#3B4256; border-radius:10px 10px 2px 2px; z-index:-1; }
+  /* الباب: فتحة في الحائط + ضلفة + قوس الفتح (رمز معماري) */
+  .theme-drawn .door{ left:-7px; top:8px; width:7px; height:60px; background:#F3E9D8; }
+  .theme-drawn .door::before{ display:none; }
+  .theme-drawn .door .swing{ display:block; position:absolute; left:7px; top:0; width:60px; height:60px; overflow:visible; }
+  .theme-drawn .door span{ left:16px; top:20px; transform:none; color:#6E5233; font-family:'El Messiri',sans-serif; font-size:12px; }
+  /* مقاعد الطلاب: طاولة خشبية + بطاقة اسم + كرسي خلفها */
+  .theme-drawn .grid{ row-gap:24px; }
+  .theme-drawn .seat{ overflow:visible; border:1px solid #A7834F; border-radius:3px; background:linear-gradient(160deg,#E6CFA2,#D3B07A);
+    box-shadow:0 2px 0 #9C7A48, inset 0 1px 0 rgba(255,255,255,.45); }
+  .theme-drawn .seat .chair{ display:block; position:absolute; z-index:-1; bottom:-13px; left:50%; transform:translateX(-50%); width:44%; height:13px;
+    background:#4A5268; border-radius:2px 2px 10px 10px; box-shadow:inset 0 -3px 0 rgba(0,0,0,.18); }
+  .theme-drawn .pairs .seat.pl{ border-radius:0 3px 3px 0; }
+  .theme-drawn .pairs .seat.pr{ border-radius:3px 0 0 3px; border-inline-start:1px dashed rgba(110,82,51,.45); }
+  .theme-drawn .seat.empty{ border-style:solid; background:linear-gradient(160deg,#EBDDC2,#E1CCA6); opacity:.6; }
+  .theme-drawn .seat.empty::after{ content:''; }
+  .theme-drawn .seat.mid:not(.empty){ background:linear-gradient(160deg,#C79B68,#A97A49); border-color:#7C5530; }
+  .theme-drawn .stu{ margin:6px 7px; padding:3px 6px; background:#FFFDF7; border:1px solid #E3D4B6; border-radius:2px; box-shadow:0 1px 2px rgba(60,40,10,.15); }
+  .theme-drawn .stu .n1{ font-family:'El Messiri',sans-serif; color:#1E2A44; font-weight:700; font-size:13.5px; }
+  .theme-drawn .stu .n2{ color:#7A6A50; }
+  .theme-drawn .row-no{ color:#B08D57; font-family:'El Messiri',sans-serif; font-weight:600; }
+  .theme-drawn .back-label{ border-top:none; color:#8C7B5E; font-family:'El Messiri',sans-serif; margin-top:18px; }
+  .theme-drawn .legend{ color:#6E6250; }
+  .theme-drawn .legend i{ background:#B98A55; border-color:#7C5530; }
+  .theme-drawn .drawn-foot{ display:block; text-align:center; margin-top:10px; color:#1E2A44; }
+  .df-quote{ font-family:'El Messiri',sans-serif; font-size:15px; margin:4px 0 2px; }
+  .df-meta{ font-size:12px; color:#6E6250; }
 
   .empty-state{ text-align:center; padding:60px 20px; color:var(--ink-soft); }
   .empty-state h2{ font-family:'El Messiri',sans-serif; color:var(--ink); margin-bottom:10px; font-size:20px; }
@@ -157,7 +174,8 @@
     .print-head .ph-school{ font-size:10pt; color:#333; }
     .print-head .ph-meta{ font-size:10pt; text-align:left; line-height:1.6; }
     .room{ border-width:1.2mm; padding:0 4mm 2.5mm; }
-    .board{ font-size:10pt; padding:1mm; margin-bottom:2mm; }
+    .board{ font-size:10pt; padding:1mm; }
+    .tdesk{ margin-top:1.5mm; }
     .front{ margin-bottom:3mm; }
     .tdesk{ width:28mm; height:13mm; font-size:9pt; }
     .tdesk .ic{ font-size:11pt; }
@@ -173,17 +191,30 @@
     .stu.sel{ background:none; outline:none; }
     .back-label{ margin-top:3mm; padding-top:1.5mm; font-size:8.5pt; }
     .legend{ font-size:8.5pt; }
-    .theme-color .color-head{ padding:3mm 6mm; margin-bottom:3mm; border-radius:4mm; }
-    .theme-color .ch-title{ font-size:20pt; }
-    .theme-color .ch-sub{ font-size:9.5pt; }
-    .theme-color .ch-badge{ font-size:22pt; padding:1mm 5mm; }
-    .theme-color .room{ border-width:1.4mm; border-radius:4mm; padding:0 4mm 2.5mm; }
-    .theme-color .seat{ border-width:.5mm; box-shadow:0 .7mm 0 hsl(var(--h) 60% 75%); }
-    .theme-color .seat.mid:not(.empty){ background:#FFF7D6; }
-    .theme-color .stu .av{ width:8mm; height:8mm; font-size:12pt; }
-    .theme-color .stu .n1{ font-size:11pt; }
-    .theme-color .stu .n2{ font-size:9.5pt; }
-    .theme-color .color-foot{ margin-top:2mm; font-size:9.5pt; }
+    .theme-drawn{ padding:4mm 6mm 3mm; border:none; outline:.3mm solid #B08D57; outline-offset:-2mm; }
+    .theme-drawn .drawn-head{ margin-bottom:2mm; }
+    .theme-drawn .dh-title{ font-size:19pt; margin:1mm 0 0; }
+    .theme-drawn .dh-title .cls{ font-size:16pt; }
+    .theme-drawn .dh-sub{ font-size:9pt; }
+    .theme-drawn .room{ margin:3mm 3mm 2mm; padding:0 5mm 2mm; }
+    .theme-drawn .board{ font-size:11pt; padding:1.2mm; border-width:1.6mm; }
+    .theme-drawn .tdesk{ margin-top:4mm; }
+    .theme-drawn .front{ margin-bottom:4.5mm; }
+    .theme-drawn .tdesk{ width:26mm; height:12mm; font-size:9pt; }
+    .theme-drawn .grid{ row-gap:4.6mm; }
+    .theme-drawn .seat .chair{ height:3.2mm; bottom:-3.2mm; }
+    .theme-drawn .door{ top:1.5mm; height:14mm; }
+    .theme-drawn .door .swing{ width:14mm; height:14mm; }
+    .theme-drawn .door span{ left:3.5mm; top:4.5mm; font-size:8.5pt; }
+    .theme-drawn .stu{ margin:1mm 1.5mm; padding:.2mm 1mm; line-height:1.2; }
+    .theme-drawn .stu .n1{ font-size:10.5pt; }
+    .theme-drawn .stu .n2{ font-size:9pt; }
+    .theme-drawn .back-label{ margin-top:4mm; }
+    .theme-drawn .drawn-foot{ margin-top:1.5mm; }
+    .theme-drawn .drawn-foot .orn{ display:none; }
+    .theme-drawn .df-quote{ font-size:11pt; margin:0; display:inline; }
+    .theme-drawn .df-meta{ display:inline; margin-inline-start:4mm; }
+    .theme-drawn .df-meta{ font-size:9pt; }
   }
 </style>
 </head>
@@ -234,7 +265,7 @@
           <label>التصميم</label>
           <div class="seg" id="themeSeg">
             <button data-t="simple" onclick="setTheme('simple')">البسيط</button>
-            <button data-t="color" onclick="setTheme('color')">🎨 الملون</button>
+            <button data-t="drawn" onclick="setTheme('drawn')">✏️ المرسوم</button>
           </div>
         </div>
         <div class="field">
@@ -264,29 +295,22 @@
           </div>
           <div class="ph-meta" id="phMeta"></div>
         </div>
-        <div class="color-head">
-          <div style="z-index:1">
-            <div class="ch-title">✨ خريطة جلوس صفّنا</div>
-            <div class="ch-sub">مدرسة الرازي للبنين - الحلقة الثانية · 🎯 مكاني الصحيح = تركيز أعلى</div>
-          </div>
-          <div class="ch-badge"><small>الصف</small><span id="chClass"></span></div>
+        <div class="drawn-head">
+          <div class="orn">❖</div>
+          <div class="dh-title">خريطة جلوس الصف <span class="cls" id="chClass"></span></div>
+          <div class="dh-sub">مدرسة الرازي للبنين — الحلقة الثانية</div>
         </div>
         <div class="room">
-          <div class="door"><span>🚪 الباب</span></div>
-          <div class="board">السبورة</div>
-          <div class="front"><div class="tdesk"><span class="ic">🧑‍🏫</span>طاولة المعلم</div></div>
+          <div class="door"><svg class="swing" viewBox="0 0 64 64" preserveAspectRatio="none"><line x1="0" y1="1" x2="62" y2="1" stroke="#6E5233" stroke-width="3" stroke-linecap="round"/><path d="M62 1 A61 61 0 0 1 1 62" fill="none" stroke="#8B6B43" stroke-width="1.2" stroke-dasharray="4 3"/></svg><span>🚪 الباب</span></div>
+          <div class="front"><div></div><div class="board">السبورة</div><div class="tdesk"><span class="ic">🧑‍🏫</span>طاولة المعلم</div></div>
           <div class="grid" id="grid"></div>
           <div class="back-label">مؤخرة الصف</div>
         </div>
         <div class="legend" id="legend"></div>
-        <div class="color-foot">
-          <div class="cf-chips">
-            <span class="cf-chip" style="background:#6366F1">👂 أنصت جيداً</span>
-            <span class="cf-chip" style="background:#EC4899">✋ أرفع يدي</span>
-            <span class="cf-chip" style="background:#F59E0B">🤝 أحترم زملائي</span>
-            <span class="cf-chip" style="background:#10B981">🪑 أحافظ على مكاني</span>
-          </div>
-          <div class="cf-meta" id="cfMeta"></div>
+        <div class="drawn-foot">
+          <div class="orn">❖</div>
+          <div class="df-quote">« مكانُك المناسب… بدايةُ تركيزك »</div>
+          <div class="df-meta" id="cfMeta"></div>
         </div>
       </div>
     </div>
@@ -343,7 +367,7 @@ function useData(rows){
   document.getElementById('app').style.display = 'block';
   orient = lsGet('raziSeat_orient') || 'landscape';
   setOrient(orient, true);
-  setTheme(lsGet('raziSeat_theme') || 'simple');
+  setTheme(lsGet('raziSeat_theme') === 'drawn' ? 'drawn' : 'simple');
   const last = lsGet('raziSeat_last');
   const start = (last && classes[last]) ? last : keys[0];
   sel.value = start;
@@ -505,14 +529,12 @@ function render(){
   document.getElementById('chClass').textContent = cur;
   renderPrintMeta();
 }
-const ROW_HUES = [350, 22, 42, 140, 172, 200, 232, 268, 300];
 function seatHTML(slot, cls){
   const n = st.assign[slot];
-  const sty = ' style="--h:' + ROW_HUES[parseInt(slot, 10) % ROW_HUES.length] + '"';
-  if(!n) return '<div class="seat empty ' + cls + '" data-slot="' + slot + '"' + sty + '></div>';
+  if(!n) return '<div class="seat empty ' + cls + '" data-slot="' + slot + '"><span class="chair"></span></div>';
   const s = shortName(n);
   const letter = s.l1.replace(/^الشيخ\s+/, '').charAt(0);
-  return '<div class="seat ' + cls + '" data-slot="' + slot + '"' + sty + '><div class="stu' + (selected === slot ? ' sel' : '') + '" title="' + esc(n) + '">' +
+  return '<div class="seat ' + cls + '" data-slot="' + slot + '"><span class="chair"></span><div class="stu' + (selected === slot ? ' sel' : '') + '" title="' + esc(n) + '">' +
          '<span class="av">' + esc(letter) + '</span><span class="nm"><span class="n1">' + esc(s.l1) + '</span>' + (s.l2 ? '<span class="n2">' + esc(s.l2) + '</span>' : '') + '</span></div></div>';
 }
 let theme = 'simple';
@@ -601,8 +623,9 @@ function autoScroll(y){
 function fitPrint(){
   // ارتفاع المقعد حسب اتجاه الورقة وعدد الصفوف حتى تخرج الخريطة في ورقة A4 واحدة
   const usable = orient === 'landscape' ? 192 : 279;          // ارتفاع A4 بعد الهوامش (مم)
-  const fixed = theme === 'color' ? 96 : 72;                                            // الترويسة + السبورة + التذييل (تقريباً)
-  const per = (usable - fixed) / layout.rows - 2.4;
+  const fixed = theme === 'drawn' ? 84 : 64;                   // الترويسة + السبورة والطاولة + التذييل (مقاسة)
+  const gap = theme === 'drawn' ? 4.6 : 2.2;                    // المسافة بين صفوف المقاعد (مم)
+  const per = (usable - fixed - (layout.rows - 1) * gap) / layout.rows;
   const h = Math.max(11, Math.min(orient === 'landscape' ? 22 : 27, per));
   document.documentElement.style.setProperty('--print-seat-h', h.toFixed(1) + 'mm');
 }
