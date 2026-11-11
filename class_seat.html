@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التخطيط الصفي — بوابة الرازي الذكية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- ملف السحب السريع المُصدَّر من بوابة الرازي (الصف، الاسم، رقم الواتساب) -->
+<script src="./students-data.js"></script>
+<style id="pageStyle">@page{ size:A4 landscape; margin:9mm; }</style>
+<style>
+  :root{
+    --bg:#F2F2F0; --bg-alt:#E6E6E3; --card:#FFFFFF; --ink:#1A1A1A; --ink-soft:#6B6B6B;
+    --primary:#2563EB; --primary-ink:#FFFFFF; --accent:#2563EB; --accent-ink:#FFFFFF;
+    --line:#DDDDDA; --danger:#DC2626; --glow:rgba(37,99,235,.35);
+    --seat-h:58px; --print-seat-h:17mm;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:'IBM Plex Sans Arabic',sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; min-height:100vh; padding-bottom:50px; }
+
+  header{ padding:14px clamp(16px,5vw,50px); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:40; }
+  .h-right{ display:flex; align-items:center; gap:14px; }
+  .brand-icon{ width:46px; height:46px; border-radius:8px; background:var(--bg-alt); display:flex; align-items:center; justify-content:center; font-size:24px; }
+  h1{ font-family:'El Messiri',sans-serif; font-size:20px; font-weight:600; line-height:1.3; }
+  .sub{ font-size:12.5px; color:var(--ink-soft); }
+  .back-home-btn{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:#fff; background:var(--primary);
+    border:1px solid var(--primary); text-decoration:none; padding:9px 18px; border-radius:999px; box-shadow:0 3px 10px rgba(37,99,235,.25); transition:transform .15s; }
+  .back-home-btn:hover{ transform:translateY(-1px); }
+
+  .btn{ font-family:inherit; font-size:13px; padding:9px 16px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; transition:.2s; white-space:nowrap; }
+  .btn:hover{ border-color:var(--primary); color:var(--primary); }
+  .btn-primary{ background:var(--primary); color:var(--primary-ink); border-color:var(--primary); }
+  .btn-primary:hover{ color:#fff; filter:brightness(1.07); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  input[type=file]{ display:none; }
+
+  main{ padding:20px clamp(12px,4vw,50px) 40px; max-width:1200px; margin:0 auto; }
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .controls{ display:flex; flex-wrap:wrap; gap:12px 16px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; color:var(--ink-soft); }
+  .field input, .field select{ font-family:inherit; padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:#fff; font-size:14px; color:var(--ink); min-width:130px; }
+  .field select:focus, .field input:focus{ outline:none; border-color:var(--primary); }
+  .seg{ display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .seg button{ font-family:inherit; font-size:13px; padding:8px 14px; border:none; background:#fff; color:var(--ink-soft); cursor:pointer; }
+  .seg button + button{ border-inline-start:1px solid var(--line); }
+  .seg button.on{ background:var(--primary); color:#fff; font-weight:600; }
+  .actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); }
+  .stats{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .stat{ background:var(--bg-alt); border-radius:7px; padding:5px 12px; font-size:12.5px; }
+  .stat b{ font-family:'El Messiri',sans-serif; font-size:15px; margin-inline-end:4px; }
+  .hint{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
+
+  /* ===== خريطة الصف ===== */
+  .map-wrap{ overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .sheet{ min-width:620px; }
+  .print-head{ display:none; }
+  /* المقدمة: تُرسم كما لو كانت السبورة في الأعلى؛ المعلم واقف يواجه الطلاب ⇒ يمينه = يسار الشاشة */
+  .front{ direction:ltr; display:grid; grid-template-columns:1fr 2.2fr 1fr; gap:12px; align-items:stretch; margin-bottom:16px; }
+  .front > div{ border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:600; font-size:13px; padding:8px; text-align:center; direction:rtl; }
+  .door{ border:2px dashed #9A6B2F; color:#7A4F1C; background:#FBF3E6; }
+  .board{ background:#1F3B2D; color:#E8F5EC; font-family:'El Messiri',sans-serif; letter-spacing:.5px; }
+  .tdesk{ background:#F3E3C3; border:1.5px solid #B9935A; color:#5E4220; }
+  .front-note{ font-size:11px; color:var(--ink-soft); text-align:center; margin:-8px 0 12px; }
+
+  .grid{ display:grid; row-gap:10px; align-items:stretch; }
+  .seat{ min-height:var(--seat-h); border:1.5px solid var(--line); background:#FAFAF8; border-radius:9px; position:relative;
+    display:flex; align-items:stretch; justify-content:stretch; transition:background .15s, border-color .15s; }
+  .seat.empty{ border-style:dashed; background:transparent; }
+  .seat.empty::after{ content:'مقعد فارغ'; margin:auto; font-size:11px; color:#B5B5B0; }
+  .seat.mid{ background:#F3F7FF; border-color:#BFD0F5; }
+  .seat.mid.empty{ background:transparent; }
+  .seat.over{ border-color:var(--primary); background:rgba(37,99,235,.10); box-shadow:0 0 0 3px var(--glow); }
+  /* ثنائيات: مقعدان ملتصقان كطاولة واحدة */
+  .pairs .seat.pl{ border-radius:0 9px 9px 0; }  /* المقعد الأيمن من الطاولة */
+  .pairs .seat.pr{ border-radius:9px 0 0 9px; border-inline-start-width:0; } /* المقعد الأيسر */
+  .aisle{ }
+  .row-no{ font-size:10.5px; color:#A3A3A0; display:flex; align-items:center; justify-content:center; }
+
+  .stu{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:5px 6px;
+    cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; border-radius:8px; line-height:1.35; }
+  .stu .n1{ font-weight:600; font-size:13px; }
+  .stu .n2{ font-size:12px; color:#444; }
+  .stu.sel{ background:rgba(37,99,235,.14); outline:2px solid var(--primary); }
+  .ghost{ position:fixed; z-index:9999; pointer-events:none; background:#fff; border:2px solid var(--primary); border-radius:9px; padding:6px 12px;
+    box-shadow:0 12px 26px rgba(0,0,0,.22); text-align:center; font-size:13px; line-height:1.35; transform:translate(-50%,-60%) rotate(-2deg); opacity:.95; }
+  .back-label{ text-align:center; font-size:11px; color:var(--ink-soft); margin-top:12px; border-top:1px dashed var(--line); padding-top:6px; }
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; font-size:11px; color:var(--ink-soft); margin-top:6px; }
+  .legend i{ display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:middle; margin-inline-end:4px; border:1px solid #BFD0F5; background:#F3F7FF; }
+
+  .empty-state{ text-align:center; padding:60px 20px; color:var(--ink-soft); }
+  .empty-state h2{ font-family:'El Messiri',sans-serif; color:var(--ink); margin-bottom:10px; font-size:20px; }
+  .toast{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#1A1A1A; color:#fff; padding:9px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none; }
+  .toast.show{ opacity:.92; }
+
+  @media (max-width:640px){ :root{ --seat-h:54px; } .stu .n1{ font-size:12px; } .stu .n2{ font-size:11px; } }
+
+  /* ===== طباعة A4 ===== */
+  @media print{
+    body{ background:#fff; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    header, .no-print, .toast, .front-note{ display:none !important; }
+    main{ padding:0; max-width:none; }
+    .map-wrap{ border:none; padding:0; overflow:visible; border-radius:0; }
+    .sheet{ min-width:0; width:100%; }
+    .print-head{ display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #1A1A1A; padding-bottom:3mm; margin-bottom:4mm; }
+    .print-head .ph-title{ font-family:'El Messiri',sans-serif; font-size:17pt; font-weight:700; line-height:1.2; }
+    .print-head .ph-school{ font-size:10pt; color:#333; }
+    .print-head .ph-meta{ font-size:10pt; text-align:left; line-height:1.6; }
+    .front{ margin-bottom:4mm; gap:4mm; }
+    .front > div{ font-size:10pt; padding:2mm; }
+    .grid{ row-gap:2.2mm; }
+    .seat{ min-height:var(--print-seat-h); height:var(--print-seat-h); border-color:#777; background:#fff; }
+    .seat.mid{ background:#EEF3FF; border-color:#6C8BD6; }
+    .seat.empty{ border-color:#BBB; }
+    .stu{ padding:1mm; }
+    .stu .n1{ font-size:10pt; }
+    .stu .n2{ font-size:9pt; color:#222; }
+    .stu.sel{ background:none; outline:none; }
+    .back-label{ margin-top:3mm; padding-top:1.5mm; font-size:8.5pt; }
+    .legend{ font-size:8.5pt; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-right">
+    <div class="brand-icon">🪑</div>
+    <div>
+      <h1>التخطيط الصفي</h1>
+      <div class="sub">ترتيب مقاعد الطلاب لبيئة محفزة</div>
+    </div>
+  </div>
+  <a href="./index.html" class="back-home-btn">→ الرئيسية</a>
+</header>
+
+<main>
+  <div id="noData" class="panel empty-state" style="display:none;">
+    <h2>لم يتم العثور على ملف بيانات الطلاب</h2>
+    <p style="margin-bottom:16px;">ضع ملف <b>students-data.js</b> (المُصدَّر من بوابة الرازي ← إدارة البيانات ← الطلاب ← ⚡ تصدير ملف السحب السريع) في نفس مجلد هذه الصفحة، أو اختره يدوياً الآن.</p>
+    <button class="btn btn-primary" onclick="document.getElementById('dataFile').click()">📂 اختيار ملف students-data.js</button>
+    <input type="file" id="dataFile" accept=".js,.json,text/javascript" onchange="loadDataFile(event)">
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="panel no-print">
+      <div class="controls">
+        <div class="field">
+          <label>الشعبة</label>
+          <select id="classSel" onchange="selectClass(this.value)"></select>
+        </div>
+        <div class="field">
+          <label>نظام الجلوس</label>
+          <div class="seg" id="modeSeg">
+            <button data-mode="pairs" onclick="setMode('pairs')">👥 ثنائيات</button>
+            <button data-mode="single" onclick="setMode('single')">👤 فردي</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>اسم المعلم</label>
+          <input id="teacherIn" placeholder="اختياري" oninput="saveMeta()">
+        </div>
+        <div class="field">
+          <label>المادة</label>
+          <input id="subjectIn" placeholder="اختياري" oninput="saveMeta()">
+        </div>
+        <div class="field">
+          <label>اتجاه ورقة الطباعة</label>
+          <div class="seg" id="orientSeg">
+            <button data-o="landscape" onclick="setOrient('landscape')">أفقي</button>
+            <button data-o="portrait" onclick="setOrient('portrait')">عمودي</button>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="randomize()">🔀 ترتيب عشوائي</button>
+        <button class="btn" onclick="alphaOrder()">🔤 ترتيب أبجدي</button>
+        <button class="btn" id="undoBtn" onclick="undo()" disabled>↶ تراجع</button>
+        <button class="btn btn-primary" onclick="doPrint()">🖨️ طباعة A4</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="hint">اسحب اسم الطالب وأفلته على مقعد آخر لتبديل المكانين (أو على مقعد فارغ لنقله). على الجوال: اضغط على طالب ثم اضغط على المقعد المطلوب. يُحفظ ترتيب كل شعبة تلقائياً على هذا الجهاز.</div>
+    </div>
+
+    <div class="map-wrap">
+      <div class="sheet" id="sheet">
+        <div class="print-head">
+          <div>
+            <div class="ph-title">خريطة الجلوس — الصف <span id="phClass"></span></div>
+            <div class="ph-school">مدرسة الرازي للبنين - الحلقة الثانية</div>
+          </div>
+          <div class="ph-meta" id="phMeta"></div>
+        </div>
+        <div class="front">
+          <div class="door">🚪 الباب</div>
+          <div class="board">السبورة — مقدمة الصف</div>
+          <div class="tdesk">🧑‍🏫 طاولة المعلم</div>
+        </div>
+        <div class="front-note">المخطط من منظور السبورة: المعلم واقف يواجه الطلاب ⇐ الباب على يمينه وطاولته على يساره</div>
+        <div class="grid" id="grid"></div>
+        <div class="back-label">مؤخرة الصف</div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= البيانات ================= */
+const BASE_COLS = 4, BASE_ROWS = 7, BASE_CAP = BASE_COLS * BASE_ROWS; // 28
+const LS_PREFIX = 'raziSeat_v1_';
+let DATA = [];            // [[الصف, الاسم, الهاتف], ...]
+let classes = {};         // { '5/1': [names...] }
+let cur = null;           // الشعبة الحالية
+let st = null;            // { mode, assign:{slot:name}, teacher, subject }
+let layout = null;        // { rows, mid, slots:[keys in fill order] }
+let undoStack = [];
+let selected = null;
+let orient = 'landscape';
+
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+
+function init(){
+  let rows = Array.isArray(window.RAZI_QUICK_STUDENTS) ? window.RAZI_QUICK_STUDENTS : null;
+  if(!rows || !rows.length){ rows = lsGet('raziSeat_data'); }
+  if(!rows || !rows.length){ document.getElementById('noData').style.display = 'block'; return; }
+  useData(rows);
+}
+
+function useData(rows){
+  DATA = rows;
+  classes = {};
+  rows.forEach(r => {
+    const c = String(r[0] || '').trim(), n = String(r[1] || '').replace(/\s+/g,' ').trim();
+    if(!c || !n) return;
+    (classes[c] = classes[c] || []);
+    if(!classes[c].includes(n)) classes[c].push(n);
+  });
+  const keys = Object.keys(classes).sort((a,b) => {
+    const [ga,sa] = a.split('/').map(Number), [gb,sb] = b.split('/').map(Number);
+    return (ga-gb) || (sa-sb) || a.localeCompare(b,'ar');
+  });
+  const sel = document.getElementById('classSel');
+  sel.innerHTML = '';
+  let lastG = null, og = null;
+  keys.forEach(k => {
+    const g = k.split('/')[0];
+    if(g !== lastG){ og = document.createElement('optgroup'); og.label = 'الصف ' + g; sel.appendChild(og); lastG = g; }
+    const o = document.createElement('option'); o.value = k; o.textContent = k + '  (' + classes[k].length + ' طالب)'; og.appendChild(o);
+  });
+  document.getElementById('noData').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  orient = lsGet('raziSeat_orient') || 'landscape';
+  setOrient(orient, true);
+  const last = lsGet('raziSeat_last');
+  const start = (last && classes[last]) ? last : keys[0];
+  sel.value = start;
+  selectClass(start);
+}
+
+function loadDataFile(ev){
+  const f = ev.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try{
+      const txt = String(rd.result);
+      const m = txt.match(/\[[\s\S]*\]/);
+      const rows = JSON.parse(m ? m[0] : txt);
+      if(!Array.isArray(rows) || !rows.length) throw 0;
+      lsSet('raziSeat_data', rows);
+      useData(rows);
+      toast('✅ تم تحميل ' + rows.length + ' طالب');
+    }catch(e){ toast('❌ تعذّرت قراءة الملف — تأكد أنه students-data.js'); }
+  };
+  rd.readAsText(f, 'utf-8');
+  ev.target.value = '';
+}
+
+/* ================= تقصير الاسم: الأول + الثاني + الأخير (بدون "بن") ================= */
+function shortName(full){
+  let t = String(full).replace(/[ً-ْـ]/g,'').replace(/\s+/g,' ').trim().split(' ');
+  let title = '';
+  if(t.length > 1 && t[0] === 'الشيخ'){ title = 'الشيخ'; t = t.slice(1); }
+  t = t.filter(w => !['بن','بنت','ابن','إبن'].includes(w));
+  const out = [];
+  for(let i=0; i<t.length; i++){
+    let w = t[i];
+    if(['عبد','ابو','أبو','آل','ال'].includes(w) && i+1 < t.length){ w = w + ' ' + t[++i]; }
+    else if(['الله','الدين','الرحمن'].includes(w) && out.length){ out[out.length-1] += ' ' + w; continue; }
+    out.push(w);
+  }
+  let first = out[0] || '', second = out.length > 2 ? out[1] : '', last = out.length > 1 ? out[out.length-1] : '';
+  if(title) first = title + ' ' + first;
+  return { l1: (first + (second ? ' ' + second : '')).trim(), l2: last };
+}
+
+/* ================= تخطيط المقاعد =================
+   ≤28: أربعة أعمدة × 7 صفوف، والتفريغ يبدأ من الصف الأخير.
+   >28: الزيادة تُوضع فرادى في عامود أوسط (العامود رقم 3) من الأمام للخلف. */
+function computeLayout(n){
+  let rows = BASE_ROWS, mid = 0;
+  if(n > BASE_CAP){
+    const extra = n - BASE_CAP;
+    if(extra <= BASE_ROWS) mid = extra;
+    else { mid = BASE_ROWS; rows = BASE_ROWS + Math.ceil((extra - BASE_ROWS) / BASE_COLS); }
+  }
+  const slots = [];
+  for(let r=0; r<rows; r++){
+    slots.push(r+'-0', r+'-1');
+    if(r < mid) slots.push(r+'-m');
+    slots.push(r+'-2', r+'-3');
+  }
+  return { rows, mid, slots };
+}
+
+function defaultAssign(names){
+  const a = {};
+  names.forEach((n,i) => { a[layout.slots[i]] = n; });
+  return a;
+}
+
+/* ================= اختيار الشعبة ================= */
+function selectClass(c){
+  cur = c; selected = null; undoStack = [];
+  lsSet('raziSeat_last', c);
+  const names = classes[c] || [];
+  layout = computeLayout(names.length);
+  const saved = lsGet(LS_PREFIX + c);
+  st = { mode:'pairs', assign:null, teacher:'', subject:'' };
+  if(saved){ Object.assign(st, { mode: saved.mode || 'pairs', teacher: saved.teacher || '', subject: saved.subject || '' }); }
+  // دمج الترتيب المحفوظ مع القائمة الحالية (طلاب جدد ← أول مقعد فارغ، طلاب محذوفون ← يُزالون)
+  const assign = {}, placed = new Set();
+  if(saved && saved.assign){
+    for(const [slot, n] of Object.entries(saved.assign)){
+      if(layout.slots.includes(slot) && names.includes(n) && !placed.has(n)){ assign[slot] = n; placed.add(n); }
+    }
+  }
+  if(placed.size === 0) st.assign = defaultAssign(names);
+  else {
+    const free = layout.slots.filter(s => !assign[s]);
+    names.filter(n => !placed.has(n)).forEach(n => { assign[free.shift()] = n; });
+    st.assign = assign;
+  }
+  document.getElementById('teacherIn').value = st.teacher;
+  document.getElementById('subjectIn').value = st.subject;
+  updateUndo();
+  render(); save();
+}
+
+function save(){ if(cur) lsSet(LS_PREFIX + cur, st); }
+function saveMeta(){
+  st.teacher = document.getElementById('teacherIn').value.trim();
+  st.subject = document.getElementById('subjectIn').value.trim();
+  save(); renderPrintMeta();
+}
+function pushHistory(){ undoStack.push(JSON.stringify(st.assign)); if(undoStack.length > 40) undoStack.shift(); updateUndo(); }
+function undo(){ if(!undoStack.length) return; st.assign = JSON.parse(undoStack.pop()); selected = null; updateUndo(); render(); save(); }
+function updateUndo(){ document.getElementById('undoBtn').disabled = !undoStack.length; }
+
+function setMode(m){ st.mode = m; render(); save(); }
+function setOrient(o, silent){
+  orient = o; lsSet('raziSeat_orient', o);
+  document.getElementById('pageStyle').textContent = '@page{ size:A4 ' + o + '; margin:9mm; }';
+  document.querySelectorAll('#orientSeg button').forEach(b => b.classList.toggle('on', b.dataset.o === o));
+}
+
+/* ================= الترتيب العشوائي / الأبجدي ================= */
+function randomize(){
+  const names = (classes[cur] || []).slice();
+  for(let i = names.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [names[i], names[j]] = [names[j], names[i]]; }
+  pushHistory(); selected = null;
+  st.assign = defaultAssign(names); render(); save();
+  toast('🔀 تم توزيع الطلاب عشوائياً');
+}
+function alphaOrder(){
+  pushHistory(); selected = null;
+  st.assign = defaultAssign((classes[cur] || []).slice().sort((a,b) => a.localeCompare(b,'ar')));
+  render(); save();
+}
+
+/* ================= الرسم ================= */
+function render(){
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === st.mode));
+  const grid = document.getElementById('grid');
+  const pairs = st.mode === 'pairs', hasMid = layout.mid > 0;
+  grid.className = 'grid ' + (pairs ? 'pairs' : 'single');
+  // الأعمدة (RTL: الأول من اليمين): [رقم الصف] 1 2 | ممر | (3 الأوسط) | ممر | 4 5
+  const gap = pairs ? '0px' : 'minmax(8px,14px)';
+  const aisle = 'minmax(16px,36px)';
+  let cols = ['22px', '1fr', gap, '1fr', aisle];
+  if(hasMid) cols.push('1fr', aisle);
+  cols.push('1fr', gap, '1fr');
+  grid.style.gridTemplateColumns = cols.join(' ');
+
+  let html = '';
+  for(let r=0; r<layout.rows; r++){
+    html += '<div class="row-no">' + (r+1) + '</div>';
+    html += seatHTML(r+'-0', pairs ? 'pl' : '') + '<div></div>' + seatHTML(r+'-1', pairs ? 'pr' : '') + '<div class="aisle"></div>';
+    if(hasMid) html += (r < layout.mid ? seatHTML(r+'-m', 'mid') : '<div></div>') + '<div class="aisle"></div>';
+    html += seatHTML(r+'-2', pairs ? 'pl' : '') + '<div></div>' + seatHTML(r+'-3', pairs ? 'pr' : '');
+  }
+  grid.innerHTML = html;
+  document.getElementById('legend').innerHTML = hasMid ? '<span><i></i>مقاعد فردية إضافية في العامود الأوسط</span>' : '';
+
+  const n = (classes[cur] || []).length, total = layout.slots.length;
+  document.getElementById('stats').innerHTML =
+    '<span class="stat"><b>' + n + '</b>طالب</span>' +
+    '<span class="stat"><b>' + total + '</b>مقعد</span>' +
+    '<span class="stat"><b>' + (total - n) + '</b>مقعد فارغ</span>' +
+    (hasMid ? '<span class="stat"><b>' + layout.mid + '</b>في العامود الأوسط</span>' : '') +
+    '<span class="stat">' + (pairs ? '👥 جلوس ثنائي' : '👤 جلوس فردي') + '</span>';
+  document.getElementById('phClass').textContent = cur;
+  renderPrintMeta();
+}
+function seatHTML(slot, cls){
+  const n = st.assign[slot];
+  if(!n) return '<div class="seat empty ' + cls + '" data-slot="' + slot + '"></div>';
+  const s = shortName(n);
+  return '<div class="seat ' + cls + '" data-slot="' + slot + '"><div class="stu' + (selected === slot ? ' sel' : '') + '" title="' + esc(n) + '">' +
+         '<span class="n1">' + esc(s.l1) + '</span>' + (s.l2 ? '<span class="n2">' + esc(s.l2) + '</span>' : '') + '</div></div>';
+}
+function renderPrintMeta(){
+  const d = new Date().toLocaleDateString('ar-AE', { year:'numeric', month:'long', day:'numeric' });
+  let m = '';
+  if(st.teacher) m += 'المعلم: <b>' + esc(st.teacher) + '</b><br>';
+  if(st.subject) m += 'المادة: <b>' + esc(st.subject) + '</b><br>';
+  m += 'عدد الطلاب: ' + (classes[cur] || []).length + ' — ' + d;
+  document.getElementById('phMeta').innerHTML = m;
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= السحب والإفلات (فأرة + لمس) ================= */
+function moveStudent(from, to){
+  if(!from || !to || from === to) return;
+  pushHistory();
+  const a = st.assign[from], b = st.assign[to];
+  if(b) st.assign[from] = b; else delete st.assign[from];
+  st.assign[to] = a;
+  selected = null; render(); save();
+}
+
+let drag = null;
+const gridEl = document.getElementById('grid');
+gridEl.addEventListener('pointerdown', e => {
+  const chip = e.target.closest('.stu'); if(!chip || e.button > 0) return;
+  drag = { slot: chip.parentElement.dataset.slot, x: e.clientX, y: e.clientY, moved: false, ghost: null, over: null, chip };
+  try{ chip.setPointerCapture(e.pointerId); }catch(_){}
+});
+gridEl.addEventListener('pointermove', e => {
+  if(!drag) return;
+  if(!drag.moved){
+    if(Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+    drag.moved = true;
+    drag.ghost = document.createElement('div');
+    drag.ghost.className = 'ghost';
+    drag.ghost.innerHTML = drag.chip.innerHTML;
+    document.body.appendChild(drag.ghost);
+    drag.chip.style.opacity = '.35';
+  }
+  e.preventDefault();
+  drag.ghost.style.left = e.clientX + 'px';
+  drag.ghost.style.top = e.clientY + 'px';
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const seat = el && el.closest ? el.closest('.seat') : null;
+  if(drag.over && drag.over !== seat) drag.over.classList.remove('over');
+  if(seat && seat.dataset.slot !== drag.slot){ seat.classList.add('over'); drag.over = seat; } else drag.over = null;
+  autoScroll(e.clientY);
+});
+function endDrag(e, cancel){
+  if(!drag) return;
+  const d = drag; drag = null;
+  if(d.ghost) d.ghost.remove();
+  d.chip.style.opacity = '';
+  if(d.over) d.over.classList.remove('over');
+  if(cancel) return;
+  if(d.moved){ if(d.over) moveStudent(d.slot, d.over.dataset.slot); }
+  else tapSeat(d.slot);
+}
+gridEl.addEventListener('pointerup', e => endDrag(e, false));
+gridEl.addEventListener('pointercancel', e => endDrag(e, true));
+// النقر على مقعد فارغ بعد اختيار طالب
+gridEl.addEventListener('click', e => {
+  const seat = e.target.closest('.seat.empty');
+  if(seat && selected) moveStudent(selected, seat.dataset.slot);
+});
+function tapSeat(slot){
+  if(!selected){ selected = slot; render(); toast('اختر المقعد الذي تريد نقل الطالب إليه'); }
+  else if(selected === slot){ selected = null; render(); }
+  else moveStudent(selected, slot);
+}
+function autoScroll(y){
+  const m = 60;
+  if(y < m) window.scrollBy(0, -12); else if(y > window.innerHeight - m) window.scrollBy(0, 12);
+}
+
+/* ================= الطباعة ================= */
+function fitPrint(){
+  // ارتفاع المقعد حسب اتجاه الورقة وعدد الصفوف حتى تخرج الخريطة في ورقة A4 واحدة
+  const usable = orient === 'landscape' ? 192 : 279;          // ارتفاع A4 بعد الهوامش (مم)
+  const fixed = 56;                                             // الترويسة + السبورة + التذييل (تقريباً)
+  const per = (usable - fixed) / layout.rows - 2.4;
+  const h = Math.max(11, Math.min(orient === 'landscape' ? 22 : 30, per));
+  document.documentElement.style.setProperty('--print-seat-h', h.toFixed(1) + 'mm');
+}
+function doPrint(){ selected = null; render(); fitPrint(); setTimeout(() => window.print(), 50); }
+window.addEventListener('beforeprint', () => { if(layout) fitPrint(); });
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+init();
+</script>
+</body>
+</html>
