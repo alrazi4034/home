@@ -467,7 +467,7 @@
       <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة + سجل الحضور + سجل المخالفات + ملف التقويم (دفعة واحدة، اختر عدة ملفات معاً)" onclick="onLinkBtnClick()">🔗</button>
       <button class="link-btn" id="unlinkBtn" title="فك الربط التلقائي" onclick="onUnlinkBtnClick()" style="display:none;">✖</button>
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
-      <button class="btn btn-primary" id="saveToLinkBtn" title="حفظ التعديلات في الملف المرتبط" onclick="saveToLinkedFile()" style="display:none;">💾 حفظ</button>
+      <button class="btn btn-primary" id="saveToLinkBtn" title="حفظ التعديلات في الملف المرتبط" onclick="saveToLinkedFile(true)" style="display:none;">💾 حفظ</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
       <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
     </div>
@@ -1119,6 +1119,8 @@ function readSheetHeaders(ws){
 
 function loadWorkbookFromArrayBuffer(buf, fileName){
   lastLinkedFileHash = bufHash(buf);
+  if(typeof hasUnsavedChanges !== 'undefined'){ hasUnsavedChanges = false; lastSavedSnapshot = null; }
+  try{ linkedBaseNorm = normalizeXlsxBuf(buf); }catch(e){ linkedBaseNorm = null; }
   const wb = XLSX.read(buf, {type:'array', cellDates:true});
   state.fileName = fileName;
 
@@ -1396,7 +1398,7 @@ function renderTermTable(ti){
     html += `<tr>
       <td><input value="${w.week}" oninput="state.terms[${ti}].weeks[${i}].week=this.value"></td>
       <td><input type="date" value="${fmtDate(w.date)}" oninput="state.terms[${ti}].weeks[${i}].date=this.value"></td>
-      <td><button class="btn btn-danger" onclick="state.terms[${ti}].weeks.splice(${i},1);renderTermTable(${ti})">حذف</button></td>
+      <td><button class="btn btn-danger" onclick="state.terms[${ti}].weeks.splice(${i},1);renderTermTable(${ti});commitChange()">حذف</button></td>
     </tr>`;
   });
   t.innerHTML = html + '</tbody>';
@@ -2458,7 +2460,7 @@ function renderAdmins(){
         <h3><span class="tname">${a['اسم الموظف'] || 'موظف جديد'}</span> <span style="font-size:12px;color:var(--ink-soft);font-weight:400">${a['الوظيفة'] ? '— ' + a['الوظيفة'] : ''}</span></h3>
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="btn" title="تعديل" onclick="toggleAdminEdit(${i})">${a._editing ? '👁 عرض' : '✏️ تعديل'}</button>
-          <button class="btn btn-danger" onclick="state.admins.splice(${i},1);renderAdmins()">حذف</button>
+          <button class="btn btn-danger" onclick="if(!confirm('حذف هذا الموظف؟'))return;state.admins.splice(${i},1);renderAdmins();commitChange()">حذف</button>
         </div>
       </div>`;
     let bodyHtml = '';
@@ -2700,7 +2702,7 @@ function renderTeachers(){
         <h3><span class="tname">${t['اسم المعلم'] || 'معلم جديد'}</span> <span class="tsubject" style="font-size:12px;color:var(--ink-soft);font-weight:400">${t['مادة التدريس'] ? '— ' + t['مادة التدريس'] : ''}</span> <span style="font-size:11px;color:var(--primary);font-weight:700;background:rgba(37,99,235,.08);border-radius:8px;padding:2px 8px;margin-right:6px">نصاب: ${teacherLoad(t)} حصة</span></h3>
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="btn" title="تعديل" onclick="event.stopPropagation();toggleTeacherEdit(${ti})">${t._editing ? '👁 عرض' : '✏️ تعديل'}</button>
-          <button class="btn btn-danger" onclick="event.stopPropagation();state.teachers.splice(${ti},1);renderTeachers()">حذف</button>
+          <button class="btn btn-danger" onclick="event.stopPropagation();if(!confirm('حذف هذا المعلم؟'))return;state.teachers.splice(${ti},1);renderTeachers();commitChange()">حذف</button>
           <span style="font-size:14px;color:var(--ink-soft)">${t._collapsed ? '▸' : '▾'}</span>
         </div>
       </div>
@@ -3185,12 +3187,14 @@ function exportWorkbook(){
 
 /* ---------- الربط التلقائي (File System Access API عبر datalink.js) ---------- */
 let linkedHandle = null;
-const AUTO_REFRESH_MINUTES = 2;
+const AUTO_REFRESH_MINUTES = 1;
 let autoRefreshTimer = null;
 let pendingUpdateBuf = null, pendingUpdateFileName = '';
 
 function afterWorkbookLoaded(fileName, handle, buf){
   linkedHandle = handle || null;
+  try{ lastSavedSnapshot = handle ? workbookSnapshot(buildWorkbook()) : null; }catch(e){ lastSavedSnapshot = null; }
+  hasUnsavedChanges = false;
   const label = handle
     ? '🔗 متصل تلقائياً بملف: <b>' + fileName + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>'
     : '✅ تم تحميل الملف: <b>' + fileName + '</b> — عدد الطلاب: <b>' + state.students.length + '</b>، المعلمون: <b>' + state.teachers.length + '</b>، الإداريون: <b>' + state.admins.length + '</b>';
@@ -3226,15 +3230,19 @@ function stopAutoRefreshTimer(){
    لو كان داخل "إدارة البيانات" (يحتمل يكون وسط تعديل غير محفوظ)، نعرض شريط تنبيه بدل الاستبدال
    الصامت، حفاظاً على أي تعديل ما زال ما انحفظ بالملف. */
 async function silentRefreshFromLinkedFile(){
-  if(!linkedHandle) return;
+  if(!linkedHandle || isSavingToLinked) return;
+  // لو فيه تعديلات لم تُحفظ (مثلاً فشل الحفظ لأن الملف مفتوح في Excel) نحاول حفظها أولاً بدل قراءة القرص
+  if(hasUnsavedChanges){ saveToLinkedFile(false); return; }
   try{
     const perm = await linkedHandle.queryPermission({mode:'readwrite'});
     if(perm !== 'granted') return; // لا نطلب صلاحية بدون نقرة مستخدم أثناء الفحص الدوري التلقائي
     const file = await linkedHandle.getFile();
     const buf = await file.arrayBuffer();
     if(bufHash(buf) === lastLinkedFileHash) return; // لا يوجد تغيير فعلي — لا داعي لأي تنبيه
-    const inManagementView = document.getElementById('managementView').style.display === 'block';
-    if(inManagementView){
+    if(isSavingToLinked) return; // لا نقرأ أثناء الكتابة
+    const anyModalOpen = !!document.querySelector('.modal-overlay.open');
+    const someoneEditing = (state.admins||[]).some(a => a._editing) || (state.teachers||[]).some(t => t._editing) || state._infoEditMode;
+    if(anyModalOpen || someoneEditing){
       pendingUpdateBuf = buf; pendingUpdateFileName = file.name;
       const banner = document.getElementById('updateBanner');
       banner.style.display = 'flex';
@@ -3242,6 +3250,7 @@ async function silentRefreshFromLinkedFile(){
     } else {
       loadWorkbookFromArrayBuffer(buf, file.name);
       afterWorkbookLoaded(file.name, linkedHandle, buf);
+      setStatus('🔄 تم جلب آخر التعديلات من الملف المشترك (ربما من موظف آخر) — ' + new Date().toLocaleTimeString('ar-AE',{hour:'2-digit',minute:'2-digit'}));
     }
   }catch(err){
     console.warn('تعذّر التحديث الدوري التلقائي', err);
@@ -3261,6 +3270,7 @@ function hideUpdateBanner(){
 /* زر "تحديث الآن" اليدوي — يطبّق فوراً بغض النظر عن الصفحة الحالية (طلب صريح من المستخدم) */
 async function manualRefreshNow(){
   if(!linkedHandle){ setStatus('❌ لا يوجد ملف مرتبط حالياً.'); return; }
+  if(hasUnsavedChanges && !confirm('لديك تعديلات لم تُحفظ في الملف بعد، وستُفقد إذا حمّلت نسخة القرص. هل تريد المتابعة؟')) return;
   setStatus('جاري التحقق من تحديثات بالملف المرتبط...');
   try{
     let perm = await linkedHandle.queryPermission({mode:'readwrite'});
@@ -3493,6 +3503,11 @@ async function onLinkBtnClick(){
         idxSetLinkBtn('🔄', 'مرتبط — اضغط للتحديث (بيانات المدرسة + الحضور + المخالفات + التقويم)');
         startAutoRefreshTimer();
       }
+      if(hasUnsavedChanges){
+        // حفظ التعديلات المعلّقة أولاً بدل استبدالها بنسخة القرص
+        const ok = await saveToLinkedFile(true);
+        if(!ok) return;
+      }
       await readHandleAndLoad(linkedHandle);
       await cmpRefreshAllLinked();
       setStatus('✅ تم تحديث كل الملفات المرتبطة.');
@@ -3564,26 +3579,397 @@ async function onUnlinkBtnClick(){
   setStatus('تم فك ربط كل الملفات. اختر ملفات من جديد للمتابعة.');
 }
 
-async function saveToLinkedFile(){
-  if(document.body.classList.contains('role-teacher')){ setStatus('❌ لا تملك صلاحية الحفظ (وضع القراءة فقط).'); return; }
-  if(!linkedHandle){ setStatus('❌ لا يوجد ملف مرتبط حالياً.'); return; }
+/* ===================== حماية العمل المشترك (أكثر من موظف على نفس الملف) =====================
+   الفكرة: كل جهاز يحتفظ بـ"نسخة الأساس" = آخر نسخة قرأها أو حفظها من الملف.
+   قبل أي حفظ: نقرأ الملف من القرص؛ إن تغيّر عن نسخة الأساس فهذا يعني أن موظفاً آخر حفظ تعديلات.
+   عندها لا نكتب فوقه، بل ندمج (دمج ثلاثي: الأساس / نسخة الموظف الآخر / نسختي) على مستوى كل
+   طالب/موظف/معلم وكل حقل:
+     - حقل عدّله الآخر فقط ← يُؤخذ تعديله.   - حقل عدّلته أنا فقط ← يُؤخذ تعديلي.
+     - عدّلناه نحن الاثنين بقيم مختلفة ← "تعارض" يُعرض عليك لتختار.
+     - سجل أضافه أي طرف ← يُضاف.   - سجل حذفه طرف ولم يعدّله الآخر ← يُحذف. */
+let linkedBaseNorm = null; // نسخة الأساس بعد التطبيع
+
+function normCell(v){
+  if(v instanceof Date) return localDateStr(v);
+  if(v === null || v === undefined) return '';
+  return String(v).trim();
+}
+function normalizeXlsxBuf(buf){
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+  const sheets = {};
+  wb.SheetNames.forEach(n => {
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:'', raw:true});
+    // إزالة الصفوف والخلايا الفارغة في النهاية
+    const rows = aoa.map(r => { r = r.slice(); while(r.length && normCell(r[r.length-1]) === '') r.pop(); return r; });
+    while(rows.length && rows[rows.length-1].length === 0) rows.pop();
+    sheets[n] = rows;
+  });
+  return {names: wb.SheetNames.slice(), sheets};
+}
+
+const MERGE_TABLES = {
+  'جميع الطلاب':       { keys:['رقم الطالب','LMS EMAIL','اسم الطالب','NAME IN ARABIC','NAME IN ENGLISH'], label:['اسم الطالب','NAME IN ARABIC','NAME IN ENGLISH'], what:'طالب', ignore:['م'] },
+  'الاداريين':          { keys:['رقم الاوراكل','اسم الموظف'], label:['اسم الموظف'], what:'موظف', ignore:[] },
+  'المعلمين والجداول':  { keys:['رقم الاوراكل','اسم المعلم'], label:['اسم المعلم'], what:'معلم', ignore:[] },
+};
+
+function tableToRecords(aoa, cfg){
+  const headers = (aoa[0] || []).map(h => normCell(h));
+  const map = new Map(), order = [], seen = {};
+  (aoa.slice(1)).forEach(row => {
+    if(!row || row.every(c => normCell(c) === '')) return;
+    const rec = {};
+    headers.forEach((h, i) => { if(h) rec[h] = row[i] === undefined ? '' : row[i]; });
+    let key = null;
+    for(const k of cfg.keys){ if(headers.includes(k) && normCell(rec[k]) !== ''){ key = k + ':' + normCell(rec[k]); break; } }
+    if(!key) key = 'row:' + headers.map(h => normCell(rec[h])).join('|');
+    seen[key] = (seen[key] || 0) + 1;
+    if(seen[key] > 1) key += '#' + seen[key];
+    map.set(key, rec); order.push(key);
+  });
+  return {headers: headers.filter(Boolean), map, order};
+}
+function recEqual(a, b, headers, ignore){
+  return headers.every(h => ignore.includes(h) || normCell(a[h]) === normCell(b[h]));
+}
+function recLabel(rec, cfg){
+  for(const l of cfg.label){ if(normCell(rec[l])) return normCell(rec[l]); }
+  return '(بدون اسم)';
+}
+
+function mergeTable(name, cfg, Baoa, Taoa, Maoa, ctx){
+  const B = tableToRecords(Baoa || [], cfg), T = tableToRecords(Taoa || [], cfg), M = tableToRecords(Maoa || [], cfg);
+  const H = [...M.headers];
+  T.headers.forEach(h => { if(!H.includes(h)) H.push(h); });
+  const allKeys = [...M.order];
+  T.order.forEach(k => { if(!M.map.has(k)) allKeys.push(k); });
+  B.order.forEach(k => { if(!allKeys.includes(k)) allKeys.push(k); });
+  const out = [];
+  allKeys.forEach(k => {
+    const b = B.map.get(k), t = T.map.get(k), m = M.map.get(k);
+    if(b && !t && !m) return;                                     // حذفه الاثنان
+    if(b && !t && m){                                             // حذفه الآخر
+      if(recEqual(m, b, H, cfg.ignore)){ ctx.stats.deletedByOther++; return; }
+      out.push(m); ctx.notes.push(`أبقيت ${cfg.what} "${recLabel(m,cfg)}" لأنك عدّلته بينما حذفه الموظف الآخر.`); return;
+    }
+    if(b && t && !m){                                             // حذفته أنا
+      if(recEqual(t, b, H, cfg.ignore)) return;
+      out.push(t); ctx.notes.push(`أُعيد ${cfg.what} "${recLabel(t,cfg)}" لأن الموظف الآخر عدّله بينما حذفته أنت.`); return;
+    }
+    if(!b && !t && m){ out.push(m); return; }                      // أضفته أنا
+    if(!b && t && !m){ out.push(t); ctx.stats.addedByOther++; return; } // أضافه الآخر
+    // موجود عند الطرفين: دمج حقل بحقل
+    const base = b || {};
+    const rec = {};
+    let changedByOther = false;
+    H.forEach(h => {
+      const bv = normCell(base[h]), tv = normCell(t[h]), mv = normCell(m[h]);
+      if(cfg.ignore.includes(h)){ rec[h] = m[h] !== undefined ? m[h] : t[h]; return; }
+      if(mv === tv){ rec[h] = m[h] !== undefined ? m[h] : t[h]; return; }
+      if(mv === bv){ rec[h] = t[h]; changedByOther = true; return; }
+      if(tv === bv){ rec[h] = m[h]; return; }
+      rec[h] = m[h]; // افتراضياً نسختي، ويختار المستخدم
+      ctx.conflicts.push({ where: cfg.what + ': ' + recLabel(m, cfg), field: h, theirs: t[h], mine: m[h],
+                           apply: choice => { rec[h] = choice === 'theirs' ? t[h] : m[h]; } });
+    });
+    if(changedByOther) ctx.stats.editedByOther++;
+    out.push(rec);
+  });
+  return () => [H, ...out.map(r => H.map(h => r[h] === undefined ? '' : r[h]))];
+}
+
+/* دمج خلية بخلية (لورقة "التقويم المدرسي" وأي ورقة غير جدولية) */
+function mergeCells(name, Baoa, Taoa, Maoa, ctx){
+  Baoa = Baoa || []; Taoa = Taoa || []; Maoa = Maoa || [];
+  const R = Math.max(Baoa.length, Taoa.length, Maoa.length);
+  const out = [];
+  let changedByOther = false;
+  for(let r = 0; r < R; r++){
+    const C = Math.max((Baoa[r]||[]).length, (Taoa[r]||[]).length, (Maoa[r]||[]).length);
+    const row = [];
+    for(let c = 0; c < C; c++){
+      const braw = (Baoa[r]||[])[c], traw = (Taoa[r]||[])[c], mraw = (Maoa[r]||[])[c];
+      const bv = normCell(braw), tv = normCell(traw), mv = normCell(mraw);
+      if(mv === tv){ row[c] = mraw === undefined ? '' : mraw; continue; }
+      if(mv === bv){ row[c] = traw === undefined ? '' : traw; changedByOther = true; continue; }
+      if(tv === bv){ row[c] = mraw === undefined ? '' : mraw; continue; }
+      row[c] = mraw;
+      const hdr = normCell((Maoa[r-1]||[])[c]) || normCell((Taoa[r-1]||[])[c]);
+      ctx.conflicts.push({ where: name, field: hdr && r > 0 ? hdr : `صف ${r+1}، عمود ${c+1}`, theirs: traw, mine: mraw,
+                           apply: choice => { row[c] = choice === 'theirs' ? (traw ?? '') : (mraw ?? ''); } });
+    }
+    out.push(row);
+  }
+  if(changedByOther) ctx.stats.otherCellsChanged = true;
+  return () => out;
+}
+
+function mergeWorkbooks(base, theirs, mine){
+  const ctx = { conflicts: [], notes: [], stats: {addedByOther:0, editedByOther:0, deletedByOther:0, otherCellsChanged:false} };
+  const names = [...mine.names];
+  theirs.names.forEach(n => { if(!names.includes(n)) names.push(n); });
+  const builders = names.map(n => {
+    const cfg = MERGE_TABLES[n];
+    const B = base.sheets[n], T = theirs.sheets[n], M = mine.sheets[n];
+    if(cfg) return [n, mergeTable(n, cfg, B, T, M, ctx)];
+    return [n, mergeCells(n, B, T, M, ctx)];
+  });
+  ctx.build = () => {
+    const wb = XLSX.utils.book_new();
+    builders.forEach(([n, f]) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(f()), n));
+    return wb;
+  };
+  return ctx;
+}
+
+function fmtConflictVal(v){
+  const s = normCell(v);
+  return s === '' ? '<i style="opacity:.6">(فارغ)</i>' : s.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+}
+/* نافذة اختيار عند التعارض — ترجع true إن اعتمد المستخدم، false إن ألغى */
+function resolveConflictsModal(conflicts){
+  return new Promise(resolve => {
+    let ov = document.getElementById('mergeConflictModal');
+    if(ov) ov.remove();
+    ov = document.createElement('div');
+    ov.className = 'modal-overlay open';
+    ov.id = 'mergeConflictModal';
+    ov.innerHTML = `
+      <div class="modal" style="max-width:900px;width:95vw;">
+        <div class="modal-head"><h3>⚠️ موظف آخر عدّل نفس البيانات</h3></div>
+        <p style="font-size:13px;margin:0 0 10px;line-height:1.8">
+          حفظ موظف آخر تعديلات على الملف بعد آخر مرة قرأته. دُمجت كل تعديلاته وتعديلاتك تلقائياً،
+          ما عدا <b>${conflicts.length}</b> حقل عدّلتماه أنتما الاثنان بقيم مختلفة. اختر القيمة المعتمدة لكل حقل:
+        </p>
+        <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" data-all="mine">اعتماد نسختي للكل</button>
+          <button class="btn" data-all="theirs">اعتماد نسخة الموظف الآخر للكل</button>
+        </div>
+        <div style="max-height:55vh;overflow:auto;border:1px solid var(--line,#ddd);border-radius:8px;">
+          <table class="grid-table" style="width:100%;font-size:13px;">
+            <thead><tr><th>السجل</th><th>الحقل</th><th>نسخة الموظف الآخر (في الملف)</th><th>نسختي</th></tr></thead>
+            <tbody>${conflicts.map((c, i) => `
+              <tr>
+                <td>${fmtConflictVal(c.where)}</td><td><b>${fmtConflictVal(c.field)}</b></td>
+                <td><label style="cursor:pointer"><input type="radio" name="mc${i}" value="theirs"> ${fmtConflictVal(c.theirs)}</label></td>
+                <td><label style="cursor:pointer"><input type="radio" name="mc${i}" value="mine" checked> ${fmtConflictVal(c.mine)}</label></td>
+              </tr>`).join('')}</tbody>
+          </table>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" data-act="cancel">إلغاء الحفظ الآن</button>
+          <button class="btn btn-primary" data-act="ok">✅ اعتماد وحفظ</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelectorAll('[data-all]').forEach(b => b.onclick = () => {
+      ov.querySelectorAll(`input[type=radio][value="${b.dataset.all}"]`).forEach(r => r.checked = true);
+    });
+    ov.querySelector('[data-act=cancel]').onclick = () => { ov.remove(); resolve(false); };
+    ov.querySelector('[data-act=ok]').onclick = () => {
+      conflicts.forEach((c, i) => {
+        const sel = ov.querySelector(`input[name="mc${i}"]:checked`);
+        c.apply(sel ? sel.value : 'mine');
+      });
+      ov.remove(); resolve(true);
+    };
+  });
+}
+
+/* ===================== الحفظ في الملف المرتبط (موحّد لكل أزرار الحفظ) =====================
+   - كل أزرار الحفظ/التطبيق/الحذف داخل "إدارة البيانات" تكتب مباشرة في الملف المرتبط.
+   - طابور حفظ: لا تتداخل عمليتا كتابة أبداً؛ أي طلب أثناء الحفظ يُنفَّذ بعده مباشرة.
+   - علم "تعديلات غير محفوظة": يمنع التحديث الدوري من استبدال تعديلاتك بنسخة القرص.
+   - تحقّق بعد الكتابة: يعيد قراءة الملف من القرص ويقارن، فلا تظهر رسالة نجاح كاذبة.
+   - إن فشل الحفظ (غالباً لأن الملف مفتوح في Excel) تبقى التعديلات معلّمة ويُعاد المحاولة تلقائياً. */
+let hasUnsavedChanges = false;
+let isSavingToLinked = false;
+let saveQueued = false;
+let lastSavedSnapshot = null;
+let saveRetryTimer = null;
+
+function markDirty(){
+  if(document.body.classList.contains('role-teacher')) return;
+  hasUnsavedChanges = true;
+  updateSaveBtnIndicator();
+}
+function updateSaveBtnIndicator(){
+  const btn = document.getElementById('saveToLinkBtn');
+  if(!btn) return;
+  if(isSavingToLinked){ btn.textContent = '⏳ جاري الحفظ...'; return; }
+  btn.textContent = hasUnsavedChanges ? '💾 حفظ ●' : '💾 حفظ';
+  btn.title = hasUnsavedChanges ? 'توجد تعديلات لم تُحفظ بعد في الملف المرتبط' : 'كل التعديلات محفوظة في الملف المرتبط';
+}
+/* بصمة لمحتوى البيانات (وليس ملف xlsx نفسه، لأن xlsx يتغيّر بايتياً في كل كتابة) */
+function workbookSnapshot(wb){
+  return JSON.stringify(wb.SheetNames.map(n => XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:''})));
+}
+function describeSaveError(err){
+  const name = err && err.name;
+  if(name === 'NoModificationAllowedError' || name === 'InvalidStateError' || name === 'NotReadableError')
+    return 'الملف مقفل غالباً لأنه مفتوح في Excel أو قيد المزامنة (OneDrive). أغلق الملف في Excel وسيُعاد الحفظ تلقائياً.';
+  if(name === 'NotFoundError') return 'الملف المرتبط لم يعد موجوداً في مكانه (نُقل أو أُعيدت تسميته). أعد ربطه من زر 🔗.';
+  if(name === 'NotAllowedError' || name === 'SecurityError') return 'لم تُمنح صلاحية الكتابة على الملف. اضغط "💾 حفظ" ثم اختر "Allow".';
+  if(name === 'QuotaExceededError') return 'لا توجد مساحة كافية على القرص.';
+  return (err && err.message) ? err.message : String(err);
+}
+
+/* manual=true عند الضغط على زر الحفظ الرئيسي (يحفظ حتى لو لم يتغيّر شيء، ويطلب الصلاحية) */
+async function saveToLinkedFile(manual){
+  manual = manual !== false;
+  if(document.body.classList.contains('role-teacher')){ if(manual) setStatus('❌ لا تملك صلاحية الحفظ (وضع القراءة فقط).'); return false; }
+  if(!linkedHandle){
+    if(manual) setStatus('❌ لا يوجد ملف مرتبط حالياً — اربط الملف من زر 🔗 أو استخدم "⬇ تنزيل نسخة محدثة".');
+    else if(hasUnsavedChanges) setStatus('⚠️ تم التعديل في المتصفح فقط — لا يوجد ملف مرتبط. اربط الملف من زر 🔗 أو نزّل نسخة محدثة.');
+    return false;
+  }
+  if(isSavingToLinked){ saveQueued = true; return false; }
+  isSavingToLinked = true;
+  updateSaveBtnIndicator();
   try{
-    setStatus('جاري الحفظ في الملف المرتبط...');
-    const wb = buildWorkbook();
-    const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-    const perm = await linkedHandle.queryPermission({mode:'readwrite'}) === 'granted'
-      ? 'granted' : await linkedHandle.requestPermission({mode:'readwrite'});
-    if(perm !== 'granted'){ setStatus('⚠️ لم تُمنح صلاحية الكتابة.'); return; }
-    const writable = await linkedHandle.createWritable();
-    await writable.write(buf);
-    await writable.close();
+    // الصلاحية أولاً (قبل أي عمل ثقيل) حتى تبقى ضمن "نقرة المستخدم" المطلوبة لـ requestPermission
+    let perm = await linkedHandle.queryPermission({mode:'readwrite'});
+    if(perm !== 'granted'){
+      try{ perm = await linkedHandle.requestPermission({mode:'readwrite'}); }catch(e){ perm = 'denied'; }
+    }
+    if(perm !== 'granted'){
+      setStatus('⚠️ لم يُحفظ في الملف: لم تُمنح صلاحية الكتابة. اضغط "💾 حفظ" ثم اختر "Allow". (التعديلات ما زالت موجودة في الصفحة)');
+      return false;
+    }
+    let wb = buildWorkbook();
+    let snap = workbookSnapshot(wb);
+    let buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+
+    // ——— فحص: هل حفظ موظف آخر على الملف منذ آخر قراءة؟ ———
+    let merged = false, mergeInfo = null;
+    for(let attempt = 0; attempt < 3; attempt++){
+      const diskBuf = await (await linkedHandle.getFile()).arrayBuffer();
+      if(bufHash(diskBuf) === lastLinkedFileHash || !linkedBaseNorm) break; // لم يتغيّر — حفظ عادي
+      setStatus('🔀 الملف عُدّل من موظف آخر — جاري دمج تعديلاته مع تعديلاتك...');
+      const ctx = mergeWorkbooks(linkedBaseNorm, normalizeXlsxBuf(diskBuf), normalizeXlsxBuf(buf));
+      if(ctx.conflicts.length){
+        const ok = await resolveConflictsModal(ctx.conflicts);
+        if(!ok){
+          setStatus('⏸️ أُلغي الحفظ. تعديلاتك ما زالت في الصفحة، ولم يُمسّ ملف الموظف الآخر. اضغط "💾 حفظ" عندما تكون جاهزاً.');
+          hasUnsavedChanges = true;
+          if(saveRetryTimer){ clearTimeout(saveRetryTimer); saveRetryTimer = null; }
+          return false;
+        }
+      }
+      wb = ctx.build();
+      buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      // إن تغيّر الملف مرة أخرى أثناء اختيارك، نعيد الدمج على أحدث نسخة
+      const again = await (await linkedHandle.getFile()).arrayBuffer();
+      if(bufHash(again) !== bufHash(diskBuf)){ buf = XLSX.write(buildWorkbook(), {bookType:'xlsx', type:'array'}); continue; }
+      merged = true; mergeInfo = ctx; snap = null;
+      break;
+    }
+
+    if(!merged && !manual && snap === lastSavedSnapshot){ hasUnsavedChanges = false; return true; }
+    setStatus('⏳ جاري الحفظ في الملف المرتبط...');
+
+    const writable = await linkedHandle.createWritable({keepExistingData:false});
+    try{
+      await writable.write(buf);
+      await writable.close();   // هنا يُستبدل الملف فعلياً — يفشل إن كان مقفلاً من Excel
+    }catch(e){
+      try{ await writable.abort(); }catch(_){}
+      throw e;
+    }
+
+    // تحقّق: نعيد قراءة الملف من القرص ونتأكد أن ما كُتب هو ما أردناه
+    const check = await (await linkedHandle.getFile()).arrayBuffer();
+    if(bufHash(check) !== bufHash(buf)) throw Object.assign(new Error('تمت الكتابة لكن محتوى الملف على القرص لا يطابق — ربما استُبدل من برنامج آخر.'), {name:'VerifyError'});
+
+    if(merged){
+      // نحمّل النتيجة المدموجة في الصفحة حتى ترى تعديلات الموظف الآخر أيضاً
+      loadWorkbookFromArrayBuffer(buf, state.fileName || linkedHandle.name);
+      snap = workbookSnapshot(buildWorkbook());
+    }
     lastLinkedFileHash = bufHash(buf);
-    shareToOtherPrograms(buf, state.fileName || 'بيانات المدرسة.xlsx');
-    setStatus('✅ تم حفظ التحديثات مباشرة في الملف المرتبط، وتمت مشاركتها مع باقي البرامج.');
+    try{ linkedBaseNorm = normalizeXlsxBuf(buf); }catch(e){ linkedBaseNorm = null; }
+    lastSavedSnapshot = snap;
+    hasUnsavedChanges = false;
+    if(saveRetryTimer){ clearTimeout(saveRetryTimer); saveRetryTimer = null; }
+    shareToOtherPrograms(buf, state.fileName || linkedHandle.name || 'بيانات المدرسة.xlsx');
+    const t = new Date().toLocaleTimeString('ar-AE', {hour:'2-digit', minute:'2-digit'});
+    let mergeMsg = '';
+    if(merged && mergeInfo){
+      const st = mergeInfo.stats, parts = [];
+      if(st.addedByOther) parts.push('إضافة ' + st.addedByOther);
+      if(st.editedByOther) parts.push('تعديل ' + st.editedByOther);
+      if(st.deletedByOther) parts.push('حذف ' + st.deletedByOther);
+      if(st.otherCellsChanged) parts.push('تعديلات في بيانات المدرسة/التقويم');
+      mergeMsg = ' 🔀 دُمجت تعديلات موظف آخر' + (parts.length ? ' (' + parts.join('، ') + ')' : '') + ' مع تعديلاتك دون فقدان أي منها.'
+        + (mergeInfo.conflicts.length ? ' وحُسم ' + mergeInfo.conflicts.length + ' تعارض حسب اختيارك.' : '')
+        + (mergeInfo.notes.length ? '<br>' + mergeInfo.notes.slice(0,3).join('<br>') : '');
+    }
+    setStatus('✅ تم الحفظ في الملف المرتبط <b>' + (linkedHandle.name||'') + '</b> الساعة ' + t + ' وتمت مشاركته مع باقي البرامج.' + mergeMsg);
+    return true;
   }catch(err){
-    setStatus('❌ تعذّر الحفظ في الملف المرتبط: ' + err.message);
+    hasUnsavedChanges = true;
+    setStatus('❌ لم يُحفظ في الملف: ' + describeSaveError(err) + ' <b>(تعديلاتك ما زالت محفوظة في الصفحة — لا تغلقها)</b>');
+    console.warn('saveToLinkedFile failed', err);
+    // إعادة محاولة تلقائية بعد 20 ثانية (مفيدة عند إغلاق Excel)
+    if(saveRetryTimer) clearTimeout(saveRetryTimer);
+    saveRetryTimer = setTimeout(() => { saveRetryTimer = null; if(hasUnsavedChanges) saveToLinkedFile(false); }, 20000);
+    return false;
+  }finally{
+    isSavingToLinked = false;
+    updateSaveBtnIndicator();
+    if(saveQueued){ saveQueued = false; setTimeout(() => saveToLinkedFile(false), 50); }
   }
 }
+
+/* يُستدعى بعد أي زر حفظ/تطبيق/حذف: يعلّم التعديل ثم يحفظ فوراً في الملف المرتبط */
+function commitChange(){
+  markDirty();
+  if(linkedHandle) saveToLinkedFile(false);
+  else setStatus('⚠️ تم التعديل في المتصفح فقط — لا يوجد ملف مرتبط. اربط الملف من زر 🔗 أو نزّل نسخة محدثة.');
+}
+
+/* ربط كل أزرار الحفظ الفرعية بالحفظ في الملف (بدون تعديل كل دالة على حدة) */
+(function wireAllSaveButtons(){
+  const SAVE_FUNCS = [
+    'saveStudentModal','deleteStudentModal','saveTeacherClasses','saveClassManager',
+    'saveAdminEdit','saveTeacherEdit','generateTermWeeks','applyPasswordBulk',
+    'applyPhoneBulk','applyRosterUpdate','confirmAddTeacher'
+  ];
+  SAVE_FUNCS.forEach(name => {
+    const orig = window[name];
+    if(typeof orig !== 'function') return;
+    window[name] = function(...args){
+      const result = orig.apply(this, args);
+      commitChange();
+      return result;
+    };
+  });
+  // زر "تعديل/إنهاء التعديل" في بيانات المدرسة: نحفظ عند إنهاء التعديل
+  const origToggleInfo = window.toggleInfoEdit;
+  window.toggleInfoEdit = function(){
+    const wasEditing = !!state._infoEditMode;
+    origToggleInfo.apply(this, arguments);
+    if(wasEditing) commitChange();
+  };
+})();
+
+/* أي كتابة داخل حقول "إدارة البيانات" تُعلَّم كتعديل غير محفوظ (حتى لا يستبدلها التحديث الدوري) */
+document.addEventListener('DOMContentLoaded', () => {
+  const mv = document.getElementById('managementView');
+  if(mv){
+    mv.addEventListener('input', markDirty, true);
+    mv.addEventListener('change', markDirty, true);
+  }
+  ['studentModal','teacherClassesModal','addTeacherModal','classManagerModal'].forEach(id => {
+    const m = document.getElementById(id);
+    if(m){ m.addEventListener('input', markDirty, true); m.addEventListener('change', markDirty, true); }
+  });
+});
+
+/* تحذير قبل إغلاق الصفحة إن وُجدت تعديلات لم تصل للملف */
+window.addEventListener('beforeunload', e => {
+  if(hasUnsavedChanges && linkedHandle){ e.preventDefault(); e.returnValue = ''; }
+});
 
 /* يبني workbook من state الحالية (نفس منطق exportWorkbook لكن بدون تنزيل) */
 function buildWorkbook(){
