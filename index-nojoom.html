@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نجوم مدرستي v35</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="nojoom/style.css">
+</head>
+<body>
+
+<div id="lic-overlay">
+  <div class="lic-box">
+    <div class="lic-star">🌟</div>
+    <div class="lic-title">نجوم مدرستي</div>
+    <div class="lic-sub">أدخل كود التفعيل (6 أرقام)</div>
+    <input class="lic-input" id="lic-input" type="password"
+      placeholder="_ _ _ _ _ _"
+      maxlength="6"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+      onkeydown="if(event.key==='Enter') licCheck()" />
+    <button class="lic-btn" onclick="licCheck()">دخول ✓</button>
+    <div class="lic-msg" id="lic-msg"></div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-inner">
+    <!-- اليسار: اللوغو -->
+    <div class="logo">
+      <span class="logo-star" onclick="location.href='index.html'" title="الرجوع إلى الرئيسية" style="font-size:34px;filter:drop-shadow(0 0 8px rgba(247,201,72,0.6));cursor:pointer">🌟</span>
+      <div class="logo-text">
+        <!-- السطر الأول: العنوان فقط -->
+        <h1 style="font-size:28px;font-weight:900;background:linear-gradient(135deg,#ffd700 0%,#ffb347 40%,#ff8c00 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.3;margin:0 0 1px 0;padding-bottom:3px;letter-spacing:1px;font-family:'Tajawal',sans-serif;overflow:visible;display:inline-block">نجوم مدرستي</h1>
+        <!-- السطر الثاني: وصف مختصر -->
+        <p style="font-size:11px;color:#a090c8;margin:0 0 4px 0;letter-spacing:0.3px;font-weight:600">حضور · مشاركة · تقييم · تحفيز</p>
+        <!-- السطر الثالث: المادة | المعلم | المدرسة بتنسيق مميز -->
+        <div id="school-info-bar" style="display:flex;align-items:center;gap:0;flex-wrap:wrap;cursor:pointer" onclick="editSubjectInfo()" title="اضغط للتعديل">
+          <span id="subject-title" style="display:none"></span>
+          <span id="school-title" style="display:none"></span>
+          <div id="school-info-display" style="display:flex;align-items:center;gap:0;flex-wrap:wrap;font-size:11px"></div>
+          <button class="logo-edit-btn" onclick="event.stopPropagation();editSubjectInfo()" title="تعديل بيانات المدرسة" style="font-size:10px;opacity:0.5;margin-right:4px">✏️</button>
+        </div>
+      </div>
+    </div>
+    <!-- اليمين: شريط التنقل + زر التقييم -->
+    <div style="display:flex;flex-direction:column;align-items:stretch;gap:2px">
+      <div class="header-nav">
+        <button class="tab-btn active" onclick="showPage('attendance',this)" data-i18n="nav_attendance">📋 الحضور</button>
+        <button class="tab-btn" onclick="showPage('leaderboard',this)" data-i18n="nav_leaderboard">🏆 المتصدرون</button>
+        <button class="tab-btn" onclick="showPage('classes',this)" data-i18n="nav_classes">🏫 صفوفي</button>
+        <button class="tab-btn" onclick="showPage('report',this)" data-i18n="nav_report">📊 التقارير</button>
+        <button class="tab-btn" onclick="showPage('grades',this)">📝 التقييمات</button>
+        <button class="tab-btn" onclick="showPage('absence',this)" data-i18n="nav_absence">📅 سجل الغياب</button>
+        <button class="tab-btn" onclick="showPage('stats',this)">📈 الإحصائيات</button>
+        <button class="tab-btn" onclick="showPage('seating',this)">🪑 الجلوس</button>
+        <div style="width:1px;background:rgba(255,255,255,0.2);margin:0 4px"></div>
+        <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="استيراد / تصدير / تصفير البيانات">📁</button>
+        <input type="file" id="importFile" style="display:none" accept=".csv,.json" onchange="importFromExcel(event)">
+        <button onclick="openSetup()" id="btnSetup" class="btn btn-ghost btn-sm" title="الربط والإعداد: الملف المركزي + ملف بياناتي على OneDrive">🔗</button>
+        <!-- زرّا الحالة القديمان: مخفيان، يُستخدمان داخلياً لمعرفة حالة كل ربط -->
+        <button onclick="onLinkJsonBtnClick()" id="btnLinkJson" class="btn btn-ghost btn-sm" style="display:none">🔗</button>
+        <button onclick="onRosterBtnClick()" id="btnRoster" class="btn btn-ghost btn-sm" style="display:none">👥</button>
+        <button onclick="toggleTheme()" class="btn btn-ghost btn-sm" id="theme-btn">🌓</button>
+        <button onclick="startTour()" id="btnTour" class="btn btn-ghost btn-sm" title="جولة تعريفية">❓</button>
+        <button onclick="showAboutModal()" class="btn btn-ghost btn-sm" title="حول البرنامج">ℹ️</button>
+      </div>
+      <span id="linkJsonStatus" style="font-size:10px;color:var(--text-muted);text-align:left;white-space:normal;min-height:12px"></span>
+    </div>
+  </div>
+</div>
+
+
+<div class="container">
+
+<!-- ========== ATTENDANCE PAGE ========== -->
+<div id="page-attendance" class="page active">
+  <div class="date-header">
+    <div>
+      <div class="date-text">📅 اليوم: <span id="today-date"></span></div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:3px">
+          <button onclick="resetSessionToToday()" title="العودة لتاريخ اليوم" class="date-nav-btn today">اليوم</button>
+          <button onclick="shiftSessionDate(-1)" title="اليوم السابق" class="date-nav-btn">▶</button>
+          <span id="session-date-display" style="color:var(--accent);font-weight:700;min-width:130px;text-align:center;display:inline-block;font-size:12px"></span>
+          <button onclick="shiftSessionDate(1)" title="اليوم التالي" class="date-nav-btn">◀</button>
+          <button onclick="changeSessionDate()" class="date-nav-btn edit">✏️ تغيير</button>
+      </div>
+      <div class="text-muted mt-1" id="session-summary">لم يتم تسجيل الحضور بعد</div>
+    </div>
+    <div class="flex gap-2" style="flex-wrap:wrap">
+      <button class="btn btn-chip btn-ghost" onclick="markAllPresent()">✅ حضور الكل</button>
+      <button class="btn btn-chip btn-ghost" onclick="markAllAbsent()" style="color:var(--absent);border-color:rgba(255,107,107,0.4)">❌ غياب الكل</button>
+      <button class="btn btn-chip btn-ghost" id="btnRandom" onclick="openRandomPicker()" title="اختيار طالب عشوائي">🎲 عشوائي</button>
+      <button class="btn btn-primary btn-chip" id="btnSaveSession" onclick="saveSession()">💾 حفظ الحصة</button>
+    </div>
+  </div>
+  <div id="today-bar" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px"></div>
+  <div id="class-tabs-container" class="class-tabs"></div>
+  <div id="period-chips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;padding:2px"></div>
+  <div id="student-letter-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center"></div>
+  <div id="student-list-container"></div>
+</div>
+
+<!-- ========== LEADERBOARD PAGE ========== -->
+<div id="page-leaderboard" class="page">
+  <div class="grid-3 mb-4">
+    <div class="stat-card yellow"><div class="stat-icon">👑</div><div class="stat-value" id="stat-top" style="color:var(--accent)">-</div><div class="stat-label">أعلى نقاط</div></div>
+    <div class="stat-card teal"><div class="stat-icon">📊</div><div class="stat-value" id="stat-avg" style="color:var(--present)">0</div><div class="stat-label">متوسط النقاط</div></div>
+    <div class="stat-card red"><div class="stat-icon">👤</div><div class="stat-value" id="stat-count" style="color:var(--absent)">0</div><div class="stat-label">إجمالي الطلاب</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🏆 لوحة المتصدرين</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button onclick="openStarsLists()" class="btn btn-primary btn-sm" title="نجوم اليوم / الأسبوع / الفصل — طباعة و Excel">🌟 قوائم النجوم</button>
+        <button onclick="openPointsToGrades()" class="btn btn-ghost btn-sm" title="تحويل النقاط إلى درجات من 100 بشروط">📝 النقاط ← درجات</button>
+        <button onclick="toggleLbFilterPanel()" class="btn btn-ghost btn-sm" id="lb-filter-btn">🔽 تصفية الصفوف</button>
+        <span id="lb-filter-summary" style="font-size:12px;color:var(--text-muted)">جميع الصفوف</span>
+      </div>
+    </div>
+    <div id="lb-filter-panel" style="display:none;padding:12px 16px;border-bottom:1px solid var(--border-color);flex-wrap:wrap;gap:8px"></div>
+    <!-- فلتر الأسابيع -->
+    <div id="lb-week-bar" style="padding:10px 16px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:42px">
+      <span style="font-size:12px;color:var(--text-muted);font-weight:600;flex-shrink:0">📅 الأسابيع:</span>
+      <div id="lb-week-buttons" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+      <button id="lb-multi-btn" onclick="toggleLbMultiWeek()"
+        style="font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--text-muted);cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;flex-shrink:0">
+        تحديد متعدد
+      </button>
+    </div>
+    <div id="leaderboard-list"></div>
+  </div>
+</div>
+
+<!-- ========== CLASSES PAGE ========== -->
+<div id="page-classes" class="page">
+  <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:10px">
+    <div class="card-title" style="font-size:19px">🏫 صفوفي وطلابي</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-import btn-sm" onclick="showImportExportMenu()" title="استيراد وتصدير بيانات الطلاب">
+        📂 استيراد / تصدير
+      </button>
+      <input type="file" id="importStudentsFile" style="display:none" accept=".csv,.json" onchange="importStudentsFile(event)">
+      <input type="file" id="importAccountsJSONFile" style="display:none" accept=".json" onchange="importAccountsJSONFile(event)">
+      <button class="btn btn-ghost btn-sm" onclick="showQuickUpdateModal()" title="لصق قائمة إيميلات وكلمات مرور لتحديثها دفعة واحدة">
+        ⚡ تحديث سريع
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="showPrintCardsModal()" title="طباعة بطاقات دخول للطلاب">
+        🖨️ بطاقات الطباعة
+      </button>
+      <button class="btn btn-primary" onclick="showAddClassModal()">➕ إضافة صف</button>
+    </div>
+  </div>
+  <div id="classes-stats-bar" class="grid-3" style="margin-bottom:16px"></div>
+  <div id="classes-container"></div>
+</div>
+
+<!-- ========== REPORT PAGE ========== -->
+<div id="page-report" class="page">
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-title">📊 تقارير الطلاب</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div id="report-class-filter" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+
+      </div>
+    </div>
+  </div>
+  <!-- فلتر الأسابيع في التقارير -->
+  <div id="rep-week-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;min-height:34px">
+    <span style="font-size:12px;color:var(--text-muted);font-weight:600;flex-shrink:0">📅</span>
+    <div id="rep-week-buttons" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+    <button id="rep-multi-btn" onclick="toggleRepMultiWeek()"
+      style="font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--text-muted);cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;flex-shrink:0">
+      تحديد متعدد
+    </button>
+  </div>
+  <div id="report-letter-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center"></div>
+  <div id="report-students-list" style="margin-bottom:18px"></div>
+  <div id="report-detail-box"></div>
+</div>
+
+<!-- ========== GRADES PAGE ========== -->
+<div id="page-grades" class="page">
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-title">📝 التقييمات</div>
+      <button class="btn btn-primary btn-sm" onclick="showAddAssessmentModal()">➕ إضافة تقييم</button>
+    </div>
+  </div>
+  <div id="grades-assessments-tabs" class="class-tabs" style="margin-bottom:12px"></div>
+  <div id="grades-content"></div>
+</div>
+
+<!-- ========== ABSENCE PAGE ========== -->
+<div id="page-absence" class="page">
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-title">📅 سجل الحضور والغياب اليومي</div>
+    </div>
+    <div style="padding:16px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <label class="form-label">الصف</label>
+        <div id="absence-class-filter" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px"></div>
+      </div>
+    </div>
+    <div style="padding:0 16px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <!-- فلتر التاريخ بنفس تنسيق صفحة الحضور -->
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <button onclick="goToToday()" class="date-nav-btn today">اليوم</button>
+          <button onclick="goToPrevDay()" class="date-nav-btn">▶</button>
+          <span id="absence-date-display" style="color:var(--accent);font-weight:700;min-width:130px;text-align:center;font-size:12px;display:inline-block"></span>
+          <button onclick="goToNextDay()" class="date-nav-btn">◀</button>
+          <input type="date" id="absence-date-picker" onchange="onAbsenceDatePicked()" style="opacity:0;width:0;height:0;position:absolute;pointer-events:none"/>
+          <button onclick="document.getElementById('absence-date-picker').showPicker?document.getElementById('absence-date-picker').showPicker():document.getElementById('absence-date-picker').click()" class="date-nav-btn edit">✏️ تغيير</button>
+      </div>
+
+    </div>
+  </div>
+  <!-- Timeline view toggle + فلتر الحالة في نفس الصف -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+    <button onclick="setAbsView('day')" id="absv-day" class="flt-btn flt-btn-on">📅 عرض يومي</button>
+    <button onclick="setAbsView('timeline')" id="absv-timeline" class="flt-btn">📊 الخط الزمني</button>
+    <div id="timeline-filter-wrap" style="display:none;gap:6px;align-items:center">
+      <span style="font-size:11px;color:var(--text-muted);margin-right:4px">فلترة:</span>
+      <button onclick="setTimelineFilter('all')" id="tlf-all" class="flt-btn flt-btn-on">الكل</button>
+      <button onclick="setTimelineFilter('absent')" id="tlf-absent" class="flt-btn">غياب فقط</button>
+    </div>
+    <!-- فلتر الحالة -->
+    <div id="abs-status-filter" style="display:flex;gap:6px;margin-right:auto">
+      <button onclick="setAbsFilter('all')" id="abf-all" class="flt-btn flt-btn-on">الكل</button>
+      <button onclick="setAbsFilter('absent')" id="abf-absent" class="flt-btn">غائبون</button>
+      <button onclick="setAbsFilter('present')" id="abf-present" class="flt-btn">حاضرون</button>
+    </div>
+  </div><!-- end absence page -->
+  <div id="absence-page-content"></div>
+</div><!-- end page-absence -->
+
+<!-- ========== STATS PAGE ========== -->
+<div id="page-stats" class="page">
+  <div style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="card-title" style="font-size:20px;margin-bottom:4px">📈 لوحة الإحصائيات العامة</div>
+      <div style="font-size:13px;color:var(--text-muted)">ملخص أداء الصفوف — الحضور والمشاركات والتقييمات والملاحظات</div>
+    </div>
+  </div>
+  <!-- فلاتر الإحصائيات -->
+  <div class="card mb-4" style="padding:14px 16px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- فلتر الصفوف -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px">🏫 الصفوف</div>
+        <div id="stats-class-filter" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      </div>
+      <!-- فلتر الأسابيع -->
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:6px">📅 الأسابيع</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div id="stats-week-buttons" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+          <button id="stats-multi-btn" onclick="toggleStatsMultiWeek()"
+            style="font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--text-muted);cursor:pointer;font-family:Tajawal,sans-serif;font-weight:700;flex-shrink:0">
+            تحديد متعدد
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="stats-dashboard"></div>
+</div>
+
+<!-- ========== SEATING PAGE ========== -->
+<div id="page-seating" class="page">
+  <div class="sx-panel" id="sx-controls"></div>
+  <div class="sx-stage-wrap" id="sx-stage-wrap">
+    <div class="sx-print-title" id="sx-print-title"></div>
+    <div class="sx-stage" id="sx-stage"></div>
+  </div>
+  <div class="sx-panel" id="sx-pool" style="margin-top:14px"></div>
+</div>
+
+</div><!-- end container -->
+
+<div class="site-footer">
+  <span id="site-footer-cr"></span>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content"></div>
+</div>
+<div class="toast" id="toast"><span id="toast-icon">✅</span><span id="toast-msg"></span></div>
+
+
+<!-- ترتيب ملفات السكربت مهم: 01 أولاً و 17-main آخراً -->
+<script src="nojoom/js/01-data.js"></script>
+<script src="nojoom/js/02-core.js"></script>
+<script src="nojoom/js/03-classes.js"></script>
+<script src="nojoom/js/04-quick-tools.js"></script>
+<script src="nojoom/js/05-attendance.js"></script>
+<script src="nojoom/js/06-leaderboard-report.js"></script>
+<script src="nojoom/js/06b-student-progress.js"></script>
+<script src="nojoom/js/06c-points-to-grades.js"></script>
+<script src="nojoom/shared/stars-lists.js"></script>
+<script src="nojoom/js/07-notes.js"></script>
+<script src="nojoom/js/08-absence-grades.js"></script>
+<script src="nojoom/js/09-import-export.js"></script>
+<script src="nojoom/js/10-stats.js"></script>
+<script src="nojoom/js/11-certificate.js"></script>
+<script src="nojoom/js/12-extras.js"></script>
+<script src="nojoom/js/13-linked-file.js"></script>
+<script src="nojoom/js/14-roster.js"></script>
+<script src="nojoom/js/14b-session-tools.js"></script>
+<script src="nojoom/js/14c-tour.js"></script>
+<script src="nojoom/js/15-seating.js"></script>
+<script src="nojoom/js/16-qr-zoom.js"></script>
+<script src="nojoom/js/17-main.js"></script>
+<button id="undoBtn" onclick="undoLast()" style="display:none">↩️ تراجع</button>
+</body>
+</html>

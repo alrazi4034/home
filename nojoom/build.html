@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دمج نجوم مدرستي في ملف واحد</title>
+<style>
+  body{font-family:Tahoma,Arial,sans-serif;background:#0f0c1a;color:#eee;display:flex;justify-content:center;padding:40px 16px;margin:0}
+  .card{background:#1b1730;border:1px solid #2e2850;border-radius:16px;padding:28px;max-width:560px;width:100%}
+  h1{font-size:22px;margin:0 0 6px}
+  p{color:#b9b3d6;line-height:1.8;font-size:14px}
+  label.pick{display:block;border:2px dashed #6c5ce7;border-radius:12px;padding:22px;text-align:center;cursor:pointer;margin:18px 0;font-weight:bold}
+  label.pick:hover{background:#231d40}
+  input[type=file]{display:none}
+  button{background:#6c5ce7;color:#fff;border:0;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:bold;cursor:pointer;width:100%}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  #log{font-size:13px;margin-top:16px;white-space:pre-line;color:#9fe3b0}
+  .err{color:#ff8a8a!important}
+  code{background:#2a2448;padding:1px 6px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>⭐ دمج البرنامج في ملف HTML واحد</h1>
+  <p>اختر المجلد الذي فيه <code>index-nojoom.html</code> ومجلد <code>nojoom</code> (مجلد البوابة)، ثم اضغط «دمج وتنزيل» للحصول على ملف واحد جاهز للتوزيع على المعلمين.</p>
+  <label class="pick" for="dir">📁 اختيار مجلد البوابة</label>
+  <input type="file" id="dir" webkitdirectory directory multiple>
+  <select id="entry" style="width:100%;padding:10px;border-radius:10px;margin-bottom:12px;font-size:14px">
+    <option value="index-nojoom.html">⭐ نجوم مدرستي (index-nojoom.html)</option>
+    <option value="index-nojoom-dashboard.html">📊 لوحة التحكم (index-nojoom-dashboard.html)</option>
+  </select>
+  <button id="go" disabled>⬇️ دمج وتنزيل</button>
+  <div id="log"></div>
+</div>
+<script>
+let files = {};
+const log = document.getElementById('log');
+const go = document.getElementById('go');
+const ENTRIES = ['index-nojoom.html', 'index-nojoom-dashboard.html'];
+let ENTRY = ENTRIES[0];
+
+function rel(f){ // remove the top folder name from the path
+  const p = (f.webkitRelativePath || f.name).split('/');
+  return p.length > 1 ? p.slice(1).join('/') : p[0];
+}
+
+document.getElementById('dir').addEventListener('change', e => {
+  files = {};
+  for (const f of e.target.files) files[rel(f)] = f;
+  ENTRY = document.getElementById('entry').value;
+  if (!files[ENTRY]) {
+    log.className = 'err'; log.textContent = '❌ لم أجد ' + ENTRY + ' داخل المجلد المختار.';
+    go.disabled = true; return;
+  }
+  log.className = ''; log.textContent = '✅ تم اختيار المجلد (' + Object.keys(files).length + ' ملف).';
+  go.disabled = false;
+});
+
+go.addEventListener('click', async () => {
+  try {
+    ENTRY = document.getElementById('entry').value;
+    if (!files[ENTRY]) throw new Error('لم أجد ' + ENTRY + ' داخل المجلد المختار.');
+    let html = await files[ENTRY].text();
+    const missing = [];
+    let count = 0;
+
+    // CSS
+    const cssRe = /<link rel="stylesheet" href="(nojoom\/[^"]+\.css)">/g;
+    for (const m of [...html.matchAll(cssRe)]) {
+      const f = files[m[1]];
+      if (!f) { missing.push(m[1]); continue; }
+      const css = await f.text();
+      html = html.replace(m[0], () => '<style>\n' + css + '</style>');
+      count++;
+    }
+    // JS
+    const jsRe = /<script src="(nojoom\/[^"]+\.js)"><\/script>/g;
+    for (const m of [...html.matchAll(jsRe)]) {
+      const f = files[m[1]];
+      if (!f) { missing.push(m[1]); continue; }
+      const js = (await f.text()).replace(/<\/script/gi, '<\\/script');
+      html = html.replace(m[0], () => '<script>\n' + js + '<\/script>');
+      count++;
+    }
+    if (missing.length) throw new Error('ملفات ناقصة: ' + missing.join('، '));
+
+    const name = ENTRY;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], {type: 'text/html'}));
+    a.download = name;
+    a.click();
+    log.className = ''; log.textContent = '✅ تم دمج ' + count + ' ملف في: ' + name;
+  } catch (err) {
+    log.className = 'err'; log.textContent = '❌ ' + err.message;
+  }
+});
+</script>
+</body>
+</html>

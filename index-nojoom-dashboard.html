@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم — نجوم مدرستي والغياب</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="nojoom/dashboard/dashboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="index.html" class="home" title="بوابة الرازي">⭐</a>
+  <div class="titles">
+    <h1>لوحة التحكم</h1>
+    <div class="sub" id="schoolLine">نجوم مدرستي + نماذج الغياب — للقراءة فقط</div>
+  </div>
+  <div class="top-actions">
+    <button class="btn ghost" onclick="toggleTheme()" title="الوضع الفاتح/الداكن">🌓</button>
+    <button class="btn ghost" onclick="window.print()" title="طباعة">🖨️</button>
+    <button class="btn" onclick="openMarsadExport()" title="تحويل الملاحظات السلوكية إلى ملفات برنامج مرصاد">🧭 مرصاد</button>
+    <button class="btn success" onclick="exportExcel()" title="تصدير التقارير إلى Excel">📤 Excel</button>
+    <button class="btn primary" onclick="refreshAll(true)" title="إعادة قراءة كل المصادر">🔄 تحديث</button>
+  </div>
+</header>
+
+<!-- مصادر البيانات -->
+<section class="sources" id="sources">
+  <div class="src-card" id="src-central">
+    <div class="src-icon">🏫</div>
+    <div class="src-body">
+      <div class="src-title">الملف المركزي (بيانات المدرسة)</div>
+      <div class="src-status" id="st-central">غير مرتبط</div>
+    </div>
+    <button class="btn sm" onclick="linkSource('central')">🔗 ربط</button>
+  </div>
+  <div class="src-card" id="src-form">
+    <div class="src-icon">📝</div>
+    <div class="src-body">
+      <div class="src-title">ملف نموذج الغياب (Forms)</div>
+      <div class="src-status" id="st-form">غير مرتبط</div>
+    </div>
+    <button class="btn sm" onclick="linkSource('form')">🔗 ربط</button>
+  </div>
+  <div class="src-card" id="src-folder">
+    <div class="src-icon">⭐</div>
+    <div class="src-body">
+      <div class="src-title">مجلد ملفات المعلمين (نجوم مدرستي)</div>
+      <div class="src-status" id="st-folder">غير مرتبط</div>
+    </div>
+    <button class="btn sm" onclick="linkSource('folder')">🔗 ربط</button>
+  </div>
+  <input type="file" id="fb-central" accept=".xlsx,.xls" hidden onchange="fallbackPicked('central', this)">
+  <input type="file" id="fb-form" accept=".xlsx,.xls,.csv" hidden onchange="fallbackPicked('form', this)">
+  <input type="file" id="fb-folder" webkitdirectory directory multiple hidden onchange="fallbackPicked('folder', this)">
+</section>
+
+<!-- الفلاتر -->
+<section class="filters" id="filters">
+  <label>من <input type="date" id="f-from" onchange="onFilterChange()"></label>
+  <label>إلى <input type="date" id="f-to" onchange="onFilterChange()"></label>
+  <span class="chips" id="termChips"></span>
+  <label>الصف <select id="f-class" onchange="onFilterChange()"><option value="">كل الصفوف</option></select></label>
+  <button class="btn ghost sm" onclick="openSettings()">⚙️ الإعدادات</button>
+</section>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-tab="missing" onclick="showTab('missing')">❗ نواقص الغياب</button>
+  <button class="tab" data-tab="absence" onclick="showTab('absence')">📅 غياب الطلاب</button>
+  <button class="tab" data-tab="teachers" onclick="showTab('teachers')">👩‍🏫 المعلمون</button>
+  <button class="tab" data-tab="stars" onclick="showTab('stars')">⭐ نجوم مدرستي</button>
+  <button class="tab" data-tab="quality" onclick="showTab('quality')">🧹 جودة البيانات <span class="badge" id="qBadge"></span></button>
+</nav>
+
+<main>
+  <section class="page active" id="page-missing"></section>
+  <section class="page" id="page-absence"></section>
+  <section class="page" id="page-teachers"></section>
+  <section class="page" id="page-stars"></section>
+  <section class="page" id="page-quality"></section>
+  <div class="empty" id="emptyState">
+    <div style="font-size:42px">🔗</div>
+    <div>اربط الملف المركزي وملف نموذج الغياب (ومجلد ملفات المعلمين إن وُجد) لعرض التقارير.</div>
+  </div>
+</main>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- ترتيب الملفات مهم -->
+<script src="nojoom/dashboard/js/01-sources.js"></script>
+<script src="nojoom/dashboard/js/02-model.js"></script>
+<script src="nojoom/dashboard/js/03-analysis.js"></script>
+<script src="nojoom/dashboard/js/04-views.js"></script>
+<script src="nojoom/dashboard/js/06-marsad.js"></script>
+<script src="nojoom/dashboard/js/07-remind.js"></script>
+<script src="nojoom/shared/stars-lists.js"></script>
+<script src="nojoom/dashboard/js/05-main.js"></script>
+</body>
+</html>
