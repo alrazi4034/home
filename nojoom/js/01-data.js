@@ -115,6 +115,7 @@ function load() {
         if (ss.pointsLog)    st.pointsLog    = ss.pointsLog;
         if (ss._dailyPart)   st._dailyPart   = ss._dailyPart;
         if (ss._dailyDeduct) st._dailyDeduct = ss._dailyDeduct;
+        if (ss.deductReasons) st.deductReasons = ss.deductReasons;     // أسباب الخصم (لمرصاد)
         if (ss.sid) st.sid = ss.sid;
         if (ss.phoneVerified !== undefined) st.phoneVerified = ss.phoneVerified;
       });
@@ -125,6 +126,7 @@ function load() {
     state.archivedStudents = saved.archivedStudents || [];   // طلاب حُذفوا من القائمة المركزية (مع كامل بياناتهم)
     state.archivedClasses = saved.archivedClasses || [];     // صفوف لم تعد مُسندة للمعلم (مع كامل بياناتها)
     state.rosterMeta = saved.rosterMeta || null;             // معلومات آخر مزامنة مع القائمة المركزية
+    state.marsadReview = saved.marsadReview || {};           // مراجعة المعلم لبنود مرصاد
     state.activeClass = saved.activeClass || state.classes[0]?.id;
     // restore header info
     // استعادة schoolInfo — دعم البيانات القديمة والجديدة

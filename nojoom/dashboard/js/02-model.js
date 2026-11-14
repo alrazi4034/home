@@ -236,7 +236,7 @@ function parseTeacherFiles(files, central) {
     const key = ct ? ct.key : (email || normName(tname) || 'file:' + f.path);
     if (!ct) out.issues.noIdentity.push(f.path + (tname ? ' (' + tname + ')' : ''));
     const t = {
-      key, file: f.path, modified: f.modified, exportDate: d.exportDate || '',
+      key, file: f.path, modified: f.modified, exportDate: d.exportDate || '', raw: d,
       name: ct ? ct.name : (tname || f.path), subject: si.subject || d.subject || (ct ? ct.subjects.join('، ') : ''),
       classes: d.classes.map(c => ({
         name: c.name, savedDates: c._savedDates || [], savedPeriods: c._savedPeriods || {},

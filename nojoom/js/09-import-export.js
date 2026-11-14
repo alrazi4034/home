@@ -304,14 +304,16 @@ function buildBackupData() {
         phoneVerified: s.phoneVerified||false,
         pointsLog: s.pointsLog||[],
         _dailyPart:   s._dailyPart   || {},
-        _dailyDeduct: s._dailyDeduct || {}
+        _dailyDeduct: s._dailyDeduct || {},
+        deductReasons: s.deductReasons || []
       }))
     })),
     sessions: state.sessions||[],
     seating: state.seating||{},
     archivedStudents: state.archivedStudents||[],
     archivedClasses: state.archivedClasses||[],
-    rosterMeta: state.rosterMeta||null
+    rosterMeta: state.rosterMeta||null,
+    marsadReview: state.marsadReview||{}
   };
 }
 
@@ -811,6 +813,9 @@ function importFromJSON(text) {
       }
       if (ss.phoneVerified !== undefined) st.phoneVerified = ss.phoneVerified;
       if (ss.pointsLog) st.pointsLog = ss.pointsLog;
+      if (ss._dailyPart) st._dailyPart = ss._dailyPart;
+      if (ss._dailyDeduct) st._dailyDeduct = ss._dailyDeduct;
+      if (Array.isArray(ss.deductReasons)) st.deductReasons = ss.deductReasons;
       updated++;
     });
     const existingNames = new Set(cls.students.map(s => s.name));
@@ -834,6 +839,7 @@ function importFromJSON(text) {
   if (Array.isArray(data.archivedStudents) && data.archivedStudents.length) state.archivedStudents = data.archivedStudents;
   if (Array.isArray(data.archivedClasses) && data.archivedClasses.length) state.archivedClasses = data.archivedClasses;
   if (data.rosterMeta && !state.rosterMeta) state.rosterMeta = data.rosterMeta;
+  if (data.marsadReview && typeof data.marsadReview === 'object') state.marsadReview = data.marsadReview;
   // استعادة schoolInfo في state (يدعم v7 و v6 القديم)
   if (data.schoolInfo) {
     state.schoolInfo = data.schoolInfo;
