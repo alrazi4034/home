@@ -14,7 +14,7 @@
   <a href="index.html" class="home" title="بوابة الرازي">⭐</a>
   <div class="titles">
     <h1>لوحة التحكم</h1>
-    <div class="sub" id="schoolLine">نجوم مدرستي + نماذج الغياب — للقراءة فقط</div>
+    <div class="sub" id="schoolLine">نجوم مدرستي — للقراءة فقط (الغياب ونواقصه في برنامج متابعة الغياب)</div>
   </div>
   <div class="top-actions">
     <button class="btn ghost" onclick="toggleTheme()" title="الوضع الفاتح/الداكن">🌓</button>
@@ -66,17 +66,16 @@
 </section>
 
 <nav class="tabs" id="tabs">
-  <button class="tab active" data-tab="missing" onclick="showTab('missing')">❗ نواقص الغياب</button>
-  <button class="tab" data-tab="absence" onclick="showTab('absence')">📅 غياب الطلاب</button>
-  <button class="tab" data-tab="teachers" onclick="showTab('teachers')">👩‍🏫 المعلمون</button>
+  <button class="tab active" data-tab="teachers" onclick="showTab('teachers')">👩‍🏫 المعلمون</button>
   <button class="tab" data-tab="stars" onclick="showTab('stars')">⭐ نجوم مدرستي</button>
   <button class="tab" data-tab="quality" onclick="showTab('quality')">🧹 جودة البيانات <span class="badge" id="qBadge"></span></button>
+  <a class="tab tab-link" href="attendance.html" title="متابعة الغياب ونواقص الإدخال — يقرأ الفورم وملفات نجوم مدرستي وسجل الغياب">📋 برنامج متابعة الغياب ↗</a>
 </nav>
 
 <main>
-  <section class="page active" id="page-missing"></section>
-  <section class="page" id="page-absence"></section>
-  <section class="page" id="page-teachers"></section>
+  <section class="page" id="page-missing" hidden></section>
+  <section class="page" id="page-absence" hidden></section>
+  <section class="page active" id="page-teachers"></section>
   <section class="page" id="page-stars"></section>
   <section class="page" id="page-quality"></section>
   <div class="empty" id="emptyState">

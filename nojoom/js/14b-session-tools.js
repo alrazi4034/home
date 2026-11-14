@@ -208,19 +208,22 @@ function bellForDate(date) {
   return list && list.length ? list : null;
 }
 // حصصي في يوم ما: من جدول المعلم في الملف المركزي، وإلا ما تعلّمه البرنامج من آخر يوم مماثل
+/* جدول حصصي ليوم معيّن — الأولوية: ما حُفظ لهذا اليوم ← الأسبوع السابق (نفس اليوم) ← جدول الملف المركزي.
+   إذا وُجد أي تسجيل للأسبوع السابق في هذا اليوم يُعتمد كاملاً (حتى لا تعود حصص قديمة من الجدول بعد تغييره). */
 function myScheduleFor(date) {
   const wd = new Date(date + 'T12:00:00').getDay();
   const tt = state.rosterMeta && state.rosterMeta.timetable;
-  const out = [];
-  if (tt && tt[wd]) {
+  const learned = [];
+  state.classes.forEach(c => {
+    const sp = c._savedPeriods || {};
+    if (sp[date] && sp[date].length) { sp[date].forEach(p => learned.push({ p, cls: c, src: 'saved' })); return; }
+    const prev = Object.keys(sp).filter(d => d < date && sp[d] && sp[d].length && new Date(d + 'T12:00:00').getDay() === wd).sort().pop();
+    if (prev) sp[prev].forEach(p => learned.push({ p, cls: c, src: 'learned' }));
+  });
+  let out = learned;
+  if (!learned.length && tt && tt[wd]) {
+    out = [];
     Object.entries(tt[wd]).forEach(([p, name]) => { const c = state.classes.find(x => x.name === name); if (c) out.push({ p: +p, cls: c, src: 'tt' }); });
-  } else {
-    state.classes.forEach(c => {
-      const sp = c._savedPeriods || {};
-      if (sp[date] && sp[date].length) { sp[date].forEach(p => out.push({ p, cls: c, src: 'saved' })); return; }
-      const prev = Object.keys(sp).filter(d => d < date && sp[d] && sp[d].length && new Date(d + 'T12:00:00').getDay() === wd).sort().pop();
-      if (prev) sp[prev].forEach(p => out.push({ p, cls: c, src: 'learned' }));
-    });
   }
   const seen = new Set();
   return out.filter(x => { const k = x.p + '|' + x.cls.id; if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => a.p - b.p);

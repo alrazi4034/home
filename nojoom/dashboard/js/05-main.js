@@ -1,7 +1,7 @@
 /* 05-main.js — تشغيل لوحة التحكم: الفلاتر، التبويبات، الإعدادات، التصدير */
 
 let LAST = { miss: null, abs: null, teachers: null, stars: null, quality: [] };
-let ACTIVE_TAB = 'missing';
+let ACTIVE_TAB = 'teachers';
 let RANGE_TOUCHED = false;   // المستخدم غيّر المدى بنفسه
 
 function toast(msg) {
@@ -155,16 +155,9 @@ function exportExcel() {
   if (!LAST.miss) return toast('لا توجد بيانات للتصدير');
   const wb = XLSX.utils.book_new();
   const add = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows.length ? rows : [{ '': 'لا توجد بيانات' }]), name);
-  add('الحصص الناقصة', LAST.miss.missing.map(m => ({ 'التاريخ': m.date, 'اليوم': DAY_NAMES[m.wd], 'الحصة': m.period, 'الصف': m.cls,
-    'المعلم حسب الجدول': m.teachers.map(teacherName).join('، ') })));
-  add('ملخص الصفوف', Object.values(LAST.miss.byClass).map(c => ({ 'الصف': c.cls, 'الحصص المتوقعة': c.expected, 'النموذج': c.form,
-    'نجوم مدرستي': c.nojoom + c.unplaced, 'ناقص': c.missing, 'النسبة %': c.expected ? Math.round((1 - c.missing / c.expected) * 100) : 0 })));
   add('المعلمون', LAST.teachers.map(r => ({ 'المعلم': r.t.name, 'المادة': (r.t.subjects || []).join('، '), 'الصفوف': (r.t.classes || []).join('، '),
     'تسجيلات النموذج': r.form, 'تسجيلات نجوم': r.nojoom, 'آخر تسجيل': r.last, 'جدول حصص': r.t.hasTimetable ? 'نعم' : 'لا',
     'حصص ناقصة': r.t.hasTimetable ? r.missing : '', 'ملف نجوم': r.file ? r.file.file : '' })));
-  add('غياب الطلاب', LAST.abs.students.map(s => ({ 'الطالب': s.name, 'رقم الطالب': s.sid, 'الصف': s.cls, 'أيام الغياب': s.dayCount, 'حصص الغياب': s.periods,
-    'التواريخ': [...s.days].sort().join('، ') })));
-  add('الغياب اليومي', LAST.abs.daily.map(d => ({ 'التاريخ': d.date, 'اليوم': DAY_NAMES[weekday(d.date)], 'عدد الغائبين': d.count, 'النسبة %': Math.round(d.rate * 1000) / 10 })));
   if (LAST.stars.list.length) add('نجوم مدرستي', LAST.stars.list.map((s, i) => ({ '#': i + 1, 'الطالب': s.name, 'الصف': s.cls, 'النقاط': s.points, 'الملاحظات': s.notes })));
   wb.Workbook = { Views: [{ RTL: true }] };
   XLSX.writeFile(wb, `تقرير_لوحة_التحكم_${LAST.from}_${LAST.to}.xlsx`);

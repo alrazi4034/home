@@ -25,15 +25,19 @@ function periodsCount(date) {
 }
 function defaultPeriods(cls, date) {
   const sp = cls._savedPeriods || {};
-  if (sp[date] && sp[date].length) return sp[date];
-  // من جدول المعلم في الملف المركزي (أو ما تعلّمه البرنامج) لهذا اليوم
+  if (sp[date] && sp[date].length) return sp[date];            // ما حُفظ لهذا اليوم يبقى كما هو
+  // 1) حسب التوقيت: الحصة الجارية الآن (اليوم فقط، ويتطلب توقيت الحصص في الملف المركزي)
+  if (typeof currentPeriod === 'function') { const now = currentPeriod(date); if (now) return [now]; }
+  // 2) حسب الأسبوع السابق: آخر ما حُفظ لهذه الشعبة في نفس اليوم من الأسبوع
+  const wd = new Date(date + 'T12:00:00').getDay();
+  const prev = Object.keys(sp).filter(d => d < date && sp[d] && sp[d].length && new Date(d + 'T12:00:00').getDay() === wd).sort().pop();
+  if (prev) return sp[prev];
+  // 3) حسب جدول المعلم في الملف المركزي
   if (typeof myScheduleFor === 'function') {
     const mine = myScheduleFor(date).filter(x => x.cls.id === cls.id).map(x => x.p);
     if (mine.length) return mine;
   }
-  const wd = new Date(date + 'T12:00:00').getDay();
-  const prev = Object.keys(sp).filter(d => d < date && sp[d] && sp[d].length && new Date(d + 'T12:00:00').getDay() === wd).sort().pop();
-  return prev ? sp[prev] : [];
+  return [];
 }
 function renderPeriodChips() {
   const box = document.getElementById('period-chips');

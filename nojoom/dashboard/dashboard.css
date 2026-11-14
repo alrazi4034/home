@@ -128,3 +128,5 @@ td.num, th.num { text-align: center; }
 #qr-full-ov { position: fixed; inset: 0; z-index: 2147483000; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
 #qr-full-ov img { width: min(94vw, 94vh); height: min(94vw, 94vh); background: #fff; padding: 14px; border-radius: 18px; box-sizing: border-box; }
 .modal img[src*="api.qrserver.com"] { cursor: zoom-in; }
+
+.tab-link{text-decoration:none;margin-inline-start:auto;border:1px dashed currentColor;}
