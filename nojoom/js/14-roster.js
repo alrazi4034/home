@@ -127,20 +127,24 @@ function parseTeacherSheet(wb) {
   const cE = col(['بريد', 'email', 'ايميل', 'إيميل']);
   const cN = col(['اسم']);
   const cS = col(['ماد', 'subject']);
-  const cC = col(['الصفوف', 'صفوف', 'الشعب', 'شعب', 'الصف', 'class']);
+  const cR = col(['رائد', 'homeroom']);                     // الصف/الصفوف التي المعلم رائدها (مثل 51 أو 51-52)
+  const cC = H.find(h => h !== cR && ['الصفوف', 'صفوف', 'الشعب', 'شعب', 'الصف', 'class'].some(k => h.toLowerCase().includes(k)));
   const map = new Map();
   rows.forEach(r => {
     const email = String(cE ? r[cE] : '').trim().toLowerCase();
     const name = String(cN ? r[cN] : '').trim();
     const key = email || rsNormName(name);
     if (!key) return;
-    const t = map.get(key) || { key, email, name, subjects: [], classes: [] };
+    const t = map.get(key) || { key, email, name, subjects: [], classes: [], homeroom: [] };
     if (!t.name) t.name = name;
     const sub = String(cS ? r[cS] : '').trim();
     if (sub && !t.subjects.includes(sub)) t.subjects.push(sub);
     String(cC ? r[cC] : '').replace(/\s*\/\s*/g, '/').split(/[-,،;؛\s]+/)
       .map(rsClassDisplay).filter(Boolean)
       .forEach(c => { if (!t.classes.includes(c)) t.classes.push(c); });
+    if (cR) String(r[cR] || '').replace(/\s*\/\s*/g, '/').split(/[-,،;؛\s]+/)
+      .map(rsClassDisplay).filter(c => c && /\d\/\d/.test(c))
+      .forEach(c => { if (!t.homeroom.includes(c)) t.homeroom.push(c); });
     // جدول الحصص (اختياري): أعمدة الأيام بقيم مثل "0-0-0-52-0-62-63-0"
     const dayCols = { 'الاثنين': 1, 'الثلاثاء': 2, 'الأربعاء': 3, 'الاربعاء': 3, 'الخميس': 4, 'الجمعة': 5 };
     t.timetable = t.timetable || {};
@@ -154,7 +158,16 @@ function parseTeacherSheet(wb) {
     });
     map.set(key, t);
   });
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  const list = [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  list.homeroomCol = !!cR;          // العمود موجود في الملف ⇐ تُطبَّق قاعدة «الرائد فقط يرى الحسابات»
+  return list;
+}
+
+/* حسابات الطلاب (الوزاري/ألف) تظهر فقط لرائد الصف — إذا كان عمود «رائد الصف» موجوداً في الملف المركزي */
+function rsHomeroomEnforced() { return !!(rosterManaged() && state.rosterMeta.homeroomEnforced); }
+function canSeeAccounts(clsName) {
+  if (!rsHomeroomEnforced()) return true;
+  return (state.rosterMeta.homeroom || []).includes(clsName);
 }
 
 // صفحة «توقيت الحصص» (اختيارية): الحصة | البداية | النهاية | بداية الجمعة | نهاية الجمعة
@@ -297,8 +310,16 @@ function rosterPlan(roster, teacherKey, myClasses) {
   }));
 
   const matched = new Set();
+  const enforceHR = !!(roster.teachers && roster.teachers.homeroomCol);
+  const hrSet = new Set(teacher && teacher.homeroom ? teacher.homeroom : []);
+  const acctAllowed = clsName => !enforceHR || hrSet.has(clsName);
+  rep.homeroom = [...hrSet];
   const applyRow = (s, r, clsName) => {
     let changed = false;
+    if (!acctAllowed(clsName)) {                  // ليس رائد هذا الصف: لا تُحفظ حسابات الطلاب عنده إطلاقاً
+      if (s.govAccount || s.alifAccount) { s.govAccount = null; s.alifAccount = null; }
+      r = Object.assign({}, r, { govAccount: null, alifAccount: null });
+    }
     if (r.sid && !s.sid) s.sid = r.sid;
     if (r.name && r.name !== s.name) { rep.renamed.push({ from: s.name, to: r.name, cls: clsName }); s.name = r.name; }
     // رقم التواصل واعتماده من الملف المركزي فقط
@@ -375,7 +396,7 @@ function rosterPlan(roster, teacherKey, myClasses) {
         points: 0, present: 0, absent: 0, participation: 0, absenceDates: [],
         _todayAtt: 'unmarked', _prevAtt: {}, parentPhone: r.phone || '',
         phoneVerified: !!(r.phone && r.approved), behaviorNotes: [], _manualBonus: 0,
-        govAccount: r.govAccount || null, alifAccount: r.alifAccount || null,
+        govAccount: acctAllowed(c.name) ? r.govAccount || null : null, alifAccount: acctAllowed(c.name) ? r.alifAccount || null : null,
         pointsLog: [], _dailyPart: {}, _dailyDeduct: {}
       });
       rep.added.push({ name: r.name, cls: c.name });
@@ -393,7 +414,13 @@ function rosterPlan(roster, teacherKey, myClasses) {
     Object.entries(perClass).some(([n, k]) => k > Math.max(2, Math.round(classSize(n) * 0.25)));
   rep.changes = rep.added.length + rep.renamed.length + rep.moved.length + rep.archived.length +
     rep.restored.length + rep.updated.length + rep.classesAdded.length + rep.classesArchived.length + rep.classesRestored.length;
-  return { work, rep, teacher, info: roster.info, bell: roster.bell };
+  if (enforceHR) {
+    // صفوف ليست من صفوفي المُدارة، والأرشيف: لا تبقى فيها حسابات لغير الرائد
+    work.classes.forEach(c => { if (!acctAllowed(c.name)) c.students.forEach(s => { s.govAccount = null; s.alifAccount = null; }); });
+    work.archived.forEach(a => { if (a.student && !hrSet.has(a.fromClass)) { a.student.govAccount = null; a.student.alifAccount = null; } });
+    work.archivedClasses.forEach(a => { if (a.cls && !hrSet.has(a.cls.name)) (a.cls.students || []).forEach(s => { s.govAccount = null; s.alifAccount = null; }); });
+  }
+  return { work, rep, teacher, info: roster.info, bell: roster.bell, homeroomEnforced: enforceHR };
 }
 
 function rosterCommit(plan, meta) {
@@ -433,6 +460,8 @@ function rosterCommit(plan, meta) {
     bell: plan.bell || null,                                  // توقيت الحصص من الملف المركزي
     timetable: teacher && teacher.timetable && Object.keys(teacher.timetable).length ? teacher.timetable : null,
     myClasses: Array.isArray(prev.myClasses) ? prev.myClasses : null,
+    homeroom: teacher && teacher.homeroom ? teacher.homeroom : [],      // الصفوف التي المعلم رائدها
+    homeroomEnforced: !!plan.homeroomEnforced,
     fileName: meta.fileName, source: meta.source, fileModified: meta.fileModified,
     lastSync: new Date().toISOString(), lastReport: rsSlimReport(rep)
   };

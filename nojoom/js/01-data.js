@@ -70,6 +70,7 @@ function normalizeAllStudentIds() {
 // ===== حفظ وتحميل =====
 function save() {
   normalizeAllStudentIds();
+  state._attDate = typeof sessionDate !== 'undefined' ? sessionDate : '';   // تاريخ حالة الحضور غير المحفوظة
   localStorage.setItem('nojomi_v4', JSON.stringify(state));
   syncToLinkedFileDebounced();
 }
@@ -92,9 +93,12 @@ function load() {
         st.absent = ss.absent || 0;
         st.participation = ss.participation || 0;
         st.absenceDates = ss.absenceDates || [];
-        st._todayAtt = ss._todayAtt || 'unmarked';
-        st.lateDates = ss.lateDates || []; st._todayLate = !!ss._todayLate;
+        st.lateDates = ss.lateDates || [];
         st._prevAtt = ss._prevAtt || {};
+        // حالة الحضور الحالية تُستعاد فقط إن كانت لنفس اليوم؛ وإلا تُؤخذ من المحفوظ لليوم أو «غير محدد» (لا حضور تلقائي من يوم سابق)
+        { const today = typeof _today === 'function' ? _today() : new Date().toISOString().slice(0, 10);
+          if (saved._attDate === today || (!saved._attDate && st._prevAtt[today])) { st._todayAtt = ss._todayAtt || 'unmarked'; st._todayLate = !!ss._todayLate; }
+          else { st._todayAtt = st._prevAtt[today] || 'unmarked'; st._todayLate = st._todayAtt === 'present' && st.lateDates.includes(today); } }
         st.parentPhone = ss.parentPhone || '';
         st.behaviorNotes = ss.behaviorNotes || [];
         st.govAccount = ss.govAccount || null;

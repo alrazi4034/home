@@ -380,16 +380,20 @@ function renderClassesStatsBar() {
   const el = document.getElementById('classes-stats-bar');
   if (!el) return;
   let total = 0, noPhone = 0, noAccounts = 0;
+  const hrOnly = typeof rsHomeroomEnforced === 'function' && rsHomeroomEnforced();
+  const hrList = hrOnly ? (state.rosterMeta.homeroom || []) : null;
   state.classes.forEach(cls => cls.students.forEach(s => {
     total++;
     if (!s.parentPhone) noPhone++;
+    if (hrOnly && !hrList.includes(cls.name)) return;      // الحسابات تخص صفوف الرائد فقط
     const hasFullAccounts = !!(s.govAccount?.user && s.govAccount?.pass && s.alifAccount?.user && s.alifAccount?.pass);
     if (!hasFullAccounts) noAccounts++;
   }));
   el.innerHTML = `
     <div class="stat-card yellow"><div class="stat-icon">👨‍🎓</div><div class="stat-value" style="color:var(--accent)">${total}</div><div class="stat-label">إجمالي طلاب المدرسة</div></div>
     <div class="stat-card red" style="cursor:pointer" onclick="showMissingDetail('phone')" title="اضغط لعرض الطلاب"><div class="stat-icon">📵</div><div class="stat-value" style="color:var(--absent)">${noPhone}</div><div class="stat-label">ينقصهم رقم هاتف ⓘ</div></div>
-    <div class="stat-card purple" style="cursor:pointer" onclick="showMissingDetail('accounts')" title="اضغط لعرض الطلاب"><div class="stat-icon">🔐</div><div class="stat-value" style="color:#a29bfe">${noAccounts}</div><div class="stat-label">ينقصهم بيانات حسابات ⓘ</div></div>
+    ${hrOnly && !hrList.length ? `<div class="stat-card purple" title="حسابات الطلاب تظهر لرائد الصف فقط"><div class="stat-icon">🔐</div><div class="stat-value" style="color:#a29bfe;font-size:15px">—</div><div class="stat-label">الحسابات لرائد الصف فقط</div></div>`
+      : `<div class="stat-card purple" style="cursor:pointer" onclick="showMissingDetail('accounts')" title="اضغط لعرض الطلاب"><div class="stat-icon">🔐</div><div class="stat-value" style="color:#a29bfe">${noAccounts}</div><div class="stat-label">ينقصهم بيانات حسابات${hrOnly ? ' (صفوف الريادة: ' + hrList.join('، ') + ')' : ''} ⓘ</div></div>`}
   `;
 }
 
@@ -397,6 +401,7 @@ function renderClassesStatsBar() {
 function showMissingDetail(kind) {
   const list = [];
   state.classes.forEach(cls => cls.students.forEach(s => {
+    if (kind !== 'phone' && typeof canSeeAccounts === 'function' && !canSeeAccounts(cls.name)) return;
     const missing = kind === 'phone'
       ? !s.parentPhone
       : !(s.govAccount?.user && s.govAccount?.pass && s.alifAccount?.user && s.alifAccount?.pass);
@@ -477,11 +482,11 @@ function renderClasses() {
                 <div class="student-name">${s.name}</div>
                 <div class="student-meta">⭐ ${s.points} | حاضر: ${s.present} | غائب: ${s.absent} | مشاركة: ${s.participation}${s.parentPhone?` | 📱 ${s.parentPhone}`:''}</div>
               </div>
-              <button onclick="showStudentAccountsModal(${cls.id},${s.id})" class="btn btn-ghost btn-sm ${hasAccounts ? 'contact-complete' : 'contact-missing'}"
+              ${(typeof canSeeAccounts !== 'function' || canSeeAccounts(cls.name)) ? `<button onclick="showStudentAccountsModal(${cls.id},${s.id})" class="btn btn-ghost btn-sm ${hasAccounts ? 'contact-complete' : 'contact-missing'}"
                 title="${hasAccounts ? 'حسابات الطالب' : 'حسابات غير مضافة — اضغط لإضافتها'}"
                 style="font-size:16px;padding:4px 9px;">
                 📧
-              </button>
+              </button>` : ''}
               <button onclick="editStudentWhatsApp(${cls.id},${s.id})"
                 class="btn btn-ghost btn-sm ${!s.parentPhone ? 'contact-nophone' : s.phoneVerified ? 'contact-verified' : 'contact-unverified'}"
                 title="${!s.parentPhone ? 'رقم ولي الأمر — اضغط لإضافته' : s.phoneVerified ? '✅ معتمد: '+s.parentPhone : '⚠️ غير معتمد: '+s.parentPhone}"
@@ -516,6 +521,7 @@ function showStudentAccountsModal(classId, studentId) {
   const cls = state.classes.find(c => c.id === classId);
   const s = cls?.students.find(st => st.id === studentId);
   if (!s) return;
+  if (typeof canSeeAccounts === 'function' && !canSeeAccounts(cls.name)) return toast('🔒 حسابات الطلاب تظهر لرائد الصف فقط', '🔐');
   const gov = s.govAccount || { user: '', pass: '' };
   const alif = s.alifAccount || { user: '', pass: '' };
 

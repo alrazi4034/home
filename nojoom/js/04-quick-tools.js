@@ -7,7 +7,8 @@
 // ----- أدوات مساعدة عامة -----
 function _acctAllStudents() {
   const out = [];
-  state.classes.forEach(cls => cls.students.forEach(s => out.push({ cls, s })));
+  // عند تطبيق قاعدة الريادة: صفوف الرائد فقط
+  state.classes.forEach(cls => { if (typeof canSeeAccounts === 'function' && !canSeeAccounts(cls.name)) return; cls.students.forEach(s => out.push({ cls, s })); });
   return out;
 }
 function _acctNormName(n) { return String(n || '').replace(/\s+/g, ' ').trim(); }
@@ -171,6 +172,7 @@ let _pcActiveClass = 'all';
 let _pcLayout = '4';
 
 function showPrintCardsModal() {
+  if (typeof canSeeAccounts === 'function' && !state.classes.some(c => canSeeAccounts(c.name))) return toast('🔒 بطاقات الحسابات لرائد الصف فقط', '🔐');
   _pcActiveClass = 'all';
   _pcLayout = '4';
   openModal(`
@@ -195,7 +197,7 @@ function showPrintCardsModal() {
 }
 function renderPcClassFilter() {
   const el = document.getElementById('pc-class-filter');
-  const chips = [{ id: 'all', name: 'كل الصفوف' }, ...state.classes];
+  const chips = [{ id: 'all', name: 'كل الصفوف' }, ...state.classes.filter(c => typeof canSeeAccounts !== 'function' || canSeeAccounts(c.name))];
   el.innerHTML = chips.map(c => `<button class="flt-btn" onclick="pcSetClass('${c.id}')" id="pc-cls-${c.id}">🏫 ${c.name}</button>`).join('');
   document.querySelectorAll('#pc-class-filter .flt-btn').forEach(b => b.classList.remove('flt-btn-on'));
   const active = document.getElementById('pc-cls-' + _pcActiveClass);
@@ -431,6 +433,7 @@ function buildAccountsMessage(s) {
 
 function sendAccountsViaWhatsApp(classId, studentId) {
   const cls = state.classes.find(c => c.id === classId);
+  if (cls && typeof canSeeAccounts === 'function' && !canSeeAccounts(cls.name)) return toast('🔒 حسابات الطلاب تظهر لرائد الصف فقط', '🔐');
   const s = cls?.students.find(st => st.id === studentId);
   if (!s || !s.parentPhone) return toast('لا يوجد رقم واتساب مسجل', '⚠️');
   const gov = s.govAccount; const alif = s.alifAccount;
@@ -444,6 +447,7 @@ function sendAccountsViaWhatsApp(classId, studentId) {
 
 function showAccountsQR(classId, studentId) {
   const cls = state.classes.find(c => c.id === classId);
+  if (cls && typeof canSeeAccounts === 'function' && !canSeeAccounts(cls.name)) return toast('🔒 حسابات الطلاب تظهر لرائد الصف فقط', '🔐');
   const s = cls?.students.find(st => st.id === studentId);
   if (!s || !s.parentPhone) return toast('لا يوجد رقم واتساب مسجل', '⚠️');
   const gov = s.govAccount; const alif = s.alifAccount;

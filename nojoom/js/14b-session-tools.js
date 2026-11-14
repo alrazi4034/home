@@ -9,10 +9,19 @@
    ===================================================================== */
 function sessionClass() { return state.classes.find(c => c.id === state.activeClass); }
 
-// هل في الحصة الحالية تغييرات لم تُحفظ؟ (حضور/تأخر/مشاركة/خصم)
+// التذكير يظهر فقط إذا غيّر المعلم فعلاً شيئاً في هذه الحصة (حضور/تأخر/مشاركة/خصم)
+// — مجرد فتح الصف أو التنقل بين الأيام لا يُعدّ تغييراً.
+const _touched = new Set();
+const _touchKey = cls => cls.id + '|' + sessionDate;
+function markSessionTouched() { const c = sessionClass(); if (c) _touched.add(_touchKey(c)); }
 function isSessionDirty(cls) {
   cls = cls || sessionClass();
   if (!cls) return false;
+  if (!_touched.has(_touchKey(cls))) return false;
+  if (!_sessionDiffers(cls)) { _touched.delete(_touchKey(cls)); return false; }
+  return true;
+}
+function _sessionDiffers(cls) {
   const saved = (cls._savedDates || []).includes(sessionDate);
   return cls.students.some(s => {
     const cur = s._todayAtt || 'unmarked';
@@ -72,6 +81,19 @@ function onAttendancePage() { return document.getElementById('page-attendance')?
   wrap('resetSessionToToday');
   wrap('changeSessionDate');
   wrap('showPage', page => page !== 'attendance' && onAttendancePage());
+})();
+// كل أمر يغيّر الحضور أو المشاركات يُعلِّم الحصة بأنها «تغيّرت»
+(function wrapTouches() {
+  const touch = name => {
+    const orig = window[name];
+    if (typeof orig !== 'function' || orig._touchWrapped) return;
+    const w = function (...args) { markSessionTouched(); return orig.apply(this, args); };
+    w._touchWrapped = true;
+    window[name] = w;
+  };
+  ['toggleAttendance', 'markAllPresent', 'markAllAbsent', 'addParticipation', 'subtractPoint'].forEach(touch);
+  // ملف الجلوس يُحمَّل بعد هذا الملف
+  document.addEventListener('DOMContentLoaded', () => touch('sxAtt'));
 })();
 window.addEventListener('beforeunload', e => {
   if (isSessionDirty()) { e.preventDefault(); e.returnValue = ''; }
