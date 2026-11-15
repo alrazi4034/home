@@ -1,4 +1,4 @@
-/* 14d-teacher-view.js — تبويب «👤 المعلم»: جدول المعلم مع إدخالات الحضور والمشاركات والملاحظات لكل حصة
+/* 14d-teacher-view.js — تبويب «📊 لوحة التحكم»: جدول المعلم مع إدخالات الحضور والمشاركات والملاحظات لكل حصة
    (بدون جدول: عدد إدخالات الحضور لكل صف مع المشاركات والملاحظات) */
 const TV = { week: null, scope: 'week' };
 function tvInit() { if (!TV.week) TV.week = TS.weekStart(_today()); tvRender(); }
@@ -29,7 +29,7 @@ function tvRender() {
         </div>
       </div>
       ${TS.kpis(r)}
-      ${r.hasTT || r.cells.some(c => c.p > 0) ? TS.gridHTML(r) : '<div style="font-size:12.5px;color:var(--text-muted);margin-top:4px">لا يوجد جدول حصص — يظهر أدناه عدد إدخالات الحضور لكل صف مع المشاركات والملاحظات.</div>'}
+      ${r.hasTT || r.cells.some(c => c.p > 0) ? TS.gridHTML(r, { compact: true, click: 'tvGo' }) : '<div style="font-size:12.5px;color:var(--text-muted);margin-top:4px">لا يوجد جدول حصص — يظهر أدناه عدد إدخالات الحضور لكل صف مع المشاركات والملاحظات.</div>'}
     </div>
     <div class="card" style="padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -40,4 +40,23 @@ function tvRender() {
       ${TV.scope === 'term' ? TS.kpis(rs) : ''}
       ${TS.tableHTML(rs)}
     </div>`;
+}
+
+// الضغط على حصة ⇐ صفحة الحضور بتاريخ الحصة وشعبتها ورقمها
+function tvGo(d, clsName, p) {
+  if (d > _today()) return toast('لا يمكن الانتقال لتاريخ مستقبلي', '⚠️');
+  if (typeof isSessionDirty === 'function' && isSessionDirty() && !confirm('لديك تغييرات غير محفوظة في الحصة الحالية. الانتقال دون حفظ؟')) return;
+  const cls = state.classes.find(c => c.name === clsName);
+  sessionDate = d;
+  if (typeof updateSessionDateDisplay === 'function') updateSessionDateDisplay();
+  state.classes.forEach(c => c.students.forEach(s => {
+    s._todayAtt = (s._prevAtt || {})[d] || 'unmarked';
+    s._todayLate = s._todayAtt === 'present' && (s.lateDates || []).includes(d);
+  }));
+  if (cls) { state.activeClass = cls.id; if (p > 0 && typeof selPeriods !== 'undefined') { selPeriodsCtx = cls.id + '|' + d; selPeriods = new Set([p]); } }
+  save();
+  showPage('attendance', document.querySelector('.tab-btn[onclick*="\'attendance\'"]'));
+  if (typeof showOldDateWarning === 'function') showOldDateWarning();
+  if (typeof renderPeriodChips === 'function') renderPeriodChips();
+  toast(`📅 ${d} — ${clsName}${p > 0 ? ' — الحصة ' + p : ''}`, '📋');
 }

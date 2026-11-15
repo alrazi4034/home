@@ -5017,6 +5017,45 @@ async function readExtraSources(interactive){
   renderExtraStatusLine();
 }
 
+/* ---------- الربط من بوابة الرازي: ملف الفورم وسجل الغياب المربوطان من زر 🔗 في البوابة ---------- */
+function portalCmpGet(key){
+  return new Promise(res => {
+    try{
+      const r = indexedDB.open('alrazi_companion_fs_db', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('handles');
+      r.onsuccess = () => { try{ const q = r.result.transaction('handles', 'readonly').objectStore('handles').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }catch(e){ res(null); } };
+      r.onerror = () => res(null);
+    }catch(e){ res(null); }
+  });
+}
+async function adoptPortalAttendanceFile(){
+  if(typeof fsApiSupported === 'undefined' || !fsApiSupported || !autoLinkBtn) return;
+  let own = null; try{ own = await loadHandleFromDB(); }catch(e){}
+  const ph = await portalCmpGet('attendance');
+  if(!ph) return;
+  if(own){ try{ if(await own.isSameEntry(ph)) return; }catch(e){} }
+  // ملف البوابة هو المعتمد (البوابة مصدر الربط لكل البرامج)
+  autoLinkedHandle = ph;
+  try{ await saveHandleToDBInternal(ph); }catch(e){}
+  autoLinkBtn.style.display = 'inline-flex';
+  let perm = 'prompt'; try{ perm = await ph.queryPermission({ mode: 'read' }); }catch(e){}
+  if(perm === 'granted'){
+    autoLinkBtn.textContent = '🔄'; autoLinkBtn.title = 'تحديث الآن';
+    await readAndProcessHandle(); startAutoRefreshTimer();
+  } else {
+    autoLinkBtn.textContent = '🔓'; autoLinkBtn.title = 'تفعيل القراءة (مرتبط من بوابة الرازي)';
+    setAutoLinkStatus('📁 الملف مرتبط من بوابة الرازي: ' + ph.name + ' — اضغط 🔓 مرة واحدة لتفعيل القراءة.');
+    // حتى الضغط: نسخة الملف التي شاركتها البوابة (إن لم تكن هناك بيانات محمّلة)
+    if(!APP.loaded){
+      try{
+        const u = localStorage.getItem('raziAttendanceRecordsXlsx');
+        if(u){ const b = atob(u.split(',')[1]), a = new Uint8Array(b.length); for(let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+          processWorkbookArrayBuffer(a.buffer, '📋 نسخة من البوابة: ' + (localStorage.getItem('raziAttendanceRecordsFilename') || '')); }
+      }catch(e){ console.warn(e); }
+    }
+  }
+}
+
 async function initExtraSources(){
   loadSharedTeachersFromPortal();
   await loadSharedFromFolders();
@@ -5024,6 +5063,8 @@ async function initExtraSources(){
     NJ_FOLDER = await njIdb('get', 'folder') || null;
     NJ_LOGS = await njIdb('get', 'attLogs') || [];
   }catch(e){ NJ_FOLDER = null; NJ_LOGS = []; }
+  // سجل الغياب المربوط في البوابة (إن لم يُربط هنا)
+  if(!NJ_LOGS.length){ const lh = await portalCmpGet('absenceLog'); if(lh) NJ_LOGS = [lh]; }
   const hasFL = typeof FL !== 'undefined' && (await FL.folders()).length;
   if(!NJ_FOLDER && !NJ_LOGS.length && !hasFL){ renderExtraStatusLine(); return; }
   await readExtraSources(false);
@@ -5335,7 +5376,7 @@ document.getElementById('btnExtraSources').addEventListener('click', openExtraSo
 document.getElementById('btnCloseExtraSrc').addEventListener('click', () => document.getElementById('extraSrcModal').style.display = 'none');
 document.getElementById('btnRefreshExtraSrc').addEventListener('click', () => njRefresh(true));
 document.getElementById('extraSrcModal').addEventListener('click', e => { if(e.target.id === 'extraSrcModal') e.currentTarget.style.display = 'none'; });
-initExtraSources();
+adoptPortalAttendanceFile().catch(e => console.warn('portal link', e)).finally(initExtraSources);
 
 if(APP.loaded){ try{ renderAll(); }catch(e){ console.error(e); } }
 </script>

@@ -29,6 +29,8 @@ const TS = (() => {
     classes.forEach(c => {
       const daily = {};       // date -> {part, pos, neg}
       (c.students || []).forEach(s => {
+        // المشاركات: المحفوظة مع الحصة (pointsLog «participation») + غير المحفوظة بعد (_dailyPart)
+        (s.pointsLog || []).forEach(e => { if (e.type === 'participation' && e.date >= from && e.date <= to) (daily[e.date] = daily[e.date] || { part: 0, pos: 0, neg: 0 }).part += (+e.pts || 0); });
         Object.entries(s._dailyPart || {}).forEach(([d, n]) => { if (d >= from && d <= to) (daily[d] = daily[d] || { part: 0, pos: 0, neg: 0 }).part += (+n || 0); });
         (s.behaviorNotes || []).forEach(n => { const d = noteISO(n); if (d && d >= from && d <= to) { const x = (daily[d] = daily[d] || { part: 0, pos: 0, neg: 0 }); if (n.type === 'positive') x.pos++; else x.neg++; } });
       });
@@ -92,6 +94,11 @@ const TS = (() => {
     .ts-t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}.ts-t th,.ts-t td{padding:5px 8px;border-bottom:1px solid rgba(128,128,128,.22);text-align:center}.ts-t td.n{text-align:right;font-weight:800}
     .ts-k{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}.ts-k span{border-radius:10px;padding:6px 12px;background:rgba(128,128,128,.12);font-size:12px}.ts-k b{font-size:16px;margin-inline-end:4px}
     .ts-leg{font-size:11px;opacity:.8;display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+    .ts-t tr.ts-tot td{font-weight:900;border-top:2px solid rgba(128,128,128,.5);background:rgba(128,128,128,.08)}
+    .ts-g.ts-cmp{border-spacing:3px}.ts-g.ts-cmp th{padding:1px 4px;font-size:11px}
+    .ts-cmp .ts-c{padding:2px 5px;min-width:84px;border-radius:7px;line-height:1.25}
+    .ts-cmp .ts-c b{display:inline;font-size:12.5px}.ts-cmp .ts-c .m{display:inline;margin:0 0 0 4px;font-size:10.5px}
+    .ts-click{cursor:pointer;transition:transform .1s}.ts-click:hover{transform:scale(1.05);box-shadow:0 0 0 2px rgba(247,201,72,.8)}
   </style>`;
 
   function kpis(r) {
@@ -101,7 +108,8 @@ const TS = (() => {
       <span><b>${t.entries}</b>إدخال حضور</span><span><b>${t.part}</b>✋ مشاركة</span><span><b>${t.pos + t.neg}</b>📝 ملاحظة <small>(🌟${t.pos} · ⚠️${t.neg})</small></span></div>`;
   }
   // شبكة أسبوع واحد (الأيام أعمدة × الحصص صفوف)
-  function gridHTML(r) {
+  function gridHTML(r, opts) {
+    opts = opts || {};
     if (!r.days.length) return '';
     const ps = [...new Set(r.cells.map(c => c.p))].filter(p => p > 0).sort((a, b) => a - b);
     const maxP = Math.max(r.hasTT ? 8 : 0, ...ps);
@@ -114,10 +122,11 @@ const TS = (() => {
         const st = x.hol ? '🏖️' : x.saved ? '✅' : x.future ? '⏳' : '❌';
         const m = x.part === null ? `<div class="m" title="أرقام اليوم لهذه الشعبة في الحصة ${x.withP}">↑ مع ح${x.withP}</div>`
           : `<div class="m">✋${x.part} · 📝${x.pos + x.neg}</div>`;
-        return `<div class="ts-c ${k}" title="${x.scheduled ? 'في الجدول' : 'خارج الجدول'}">${st} <b>${esc(x.cls)}</b>${m}</div>`;
+        const click = opts.click && !x.future ? ` ts-click" onclick="${opts.click}('${x.d}','${esc(x.cls)}',${x.p})` : '';
+        return `<div class="ts-c ${k}${click}" title="${x.scheduled ? 'في الجدول' : 'خارج الجدول'}${opts.click && !x.future ? ' — اضغط للانتقال إلى الحصة' : ''}">${st} <b>${esc(x.cls)}</b>${m}</div>`;
       }).join('') + '</td>';
     };
-    let h = `<div class="ts-wrap"><table class="ts-g"><tr><th>الحصة</th>${r.days.map(d => `<th>${DAY[d.wd]}<br><small>${d.d.slice(8)}/${d.d.slice(5, 7)}</small>${d.hol ? '<br>🏖️' : ''}</th>`).join('')}</tr>`;
+    let h = `<div class="ts-wrap"><table class="ts-g${opts.compact ? ' ts-cmp' : ''}"><tr><th>الحصة</th>${r.days.map(d => `<th>${DAY[d.wd]}${opts.compact ? ' ' : '<br>'}<small>${d.d.slice(8)}/${d.d.slice(5, 7)}</small>${d.hol ? ' 🏖️' : ''}</th>`).join('')}</tr>`;
     for (let p = 1; p <= maxP; p++) h += `<tr><th>${p}</th>${r.days.map(d => cell(d, p)).join('')}</tr>`;
     const noP = r.cells.filter(c => c.p === 0);
     if (noP.length) h += `<tr><th title="حصص محفوظة بدون رقم حصة">؟</th>${r.days.map(d => cell(d, 0)).join('')}</tr>`;
@@ -129,6 +138,8 @@ const TS = (() => {
     if (!r.rows.length) return '<div style="opacity:.7;padding:8px">لا توجد إدخالات في هذه الفترة.</div>';
     return `<table class="ts-t"><tr><th style="text-align:right">الشعبة</th><th>إدخالات الحضور</th><th>أيام</th>${r.hasTT ? '<th>حصص الجدول</th><th>بدون إدخال</th>' : ''}<th>✋ المشاركات</th><th>🌟 إيجابية</th><th>⚠️ سلبية</th></tr>
       ${r.rows.map(s => `<tr><td class="n">${esc(s.cls)}</td><td>${s.entries}</td><td>${s.dates.size}</td>${r.hasTT ? `<td>${s.scheduled}</td><td style="color:${s.missing ? '#ff6b6b' : 'inherit'};font-weight:${s.missing ? 800 : 400}">${s.missing}</td>` : ''}<td>${s.part}</td><td>${s.pos}</td><td>${s.neg}</td></tr>`).join('')}
+      ${(() => { const t = r.tot, days = new Set(); r.rows.forEach(s => s.dates.forEach(d => days.add(d)));
+        return `<tr class="ts-tot"><td class="n">المجموع</td><td>${t.entries}</td><td>${days.size}</td>${r.hasTT ? `<td>${t.scheduled}</td><td style="color:${t.missing ? '#ff6b6b' : 'inherit'}">${t.missing}</td>` : ''}<td>${t.part}</td><td>${t.pos}</td><td>${t.neg}</td></tr>`; })()}
     </table>`;
   }
   return { compute, gridHTML, tableHTML, kpis, CSS, weekStart, addDays, today, iso, DAY, noteISO, esc };

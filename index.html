@@ -4293,6 +4293,9 @@ const COMPANION_FILES = [
   { key:'calendar', label:'ملف التقويم المدرسي', desc:'ملف التقويم المشترك (JSON)',
     accept:{'application/json':['.json']}, kind:'json',
     lsData:'raziCalendarSharedJson', lsName:'raziCalendarSharedFilename', nameHints:['تقويم','calendar','agenda'] },
+  { key:'absenceLog', label:'سجل الغياب', desc:'سجل الغياب (Excel)',
+    accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx']}, kind:'xlsx',
+    lsData:'raziAbsenceLogXlsx', lsName:'raziAbsenceLogFilename', nameHints:['سجل الغياب','غياب','absence'] },
 ];
 const CMP_DB_NAME = 'alrazi_companion_fs_db';
 const CMP_STORE_NAME = 'handles';
@@ -4340,8 +4343,8 @@ async function cmpReadAndShare(cfg, handle){
   for(let i=0; i<bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk));
   const base64 = btoa(binary);
   const mime = Object.keys(cfg.accept)[0];
-  localStorage.setItem(cfg.lsData, 'data:'+mime+';base64,'+base64);
-  localStorage.setItem(cfg.lsName, file.name || '');
+  try{ localStorage.setItem(cfg.lsData, 'data:'+mime+';base64,'+base64); localStorage.setItem(cfg.lsName, file.name || ''); }
+  catch(e){ console.warn('ملف كبير — يُقرأ مباشرة من الملف المرتبط بدل النسخة المشتركة', cfg.key); try{ localStorage.removeItem(cfg.lsData); }catch(_){} }
 }
 async function cmpClearShared(cfg){
   localStorage.removeItem(cfg.lsData);

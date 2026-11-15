@@ -6,6 +6,231 @@
 <title>مِرْصاد | MARSAD – Results</title>
 <!-- ملف الطلاب والمعلمين: ضعه بجانب هذه الصفحة (يُستخدم لحساب نسب إنجاز الإدخال) -->
 <script src="student_teachers_data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* shared/folder-link.js — ربط مجلدات OneDrive (مشترك بين البوابة ونجوم مدرستي ولوحة التحكم وبرنامج الغياب)
+   ---------------------------------------------------------------------------------------------
+   هيكل المجلدات المقترح على OneDrive:
+     📁 بيانات المدرسة      ← مشترك مع كل المعلمين «عرض فقط» — فيه «بيانات المدرسة.xlsx»
+     📁 <اسم المعلم>         ← مشترك مع هذا المعلم وحده «تعديل» — فيه ملف نجوم مدرستي الخاص به
+     📁 <اسم معلم آخر> ...
+   - المعلم يربط مجلدين: «بيانات المدرسة» + مجلده.
+   - الإدارة تربط «بيانات المدرسة» + المجلد الذي يضم مجلدات المعلمين (أو مجلدات المعلمين نفسها).
+   البرامج كلها على نفس الموقع، فالربط يتم مرة واحدة ويُستخدم في كل البرامج. */
+
+const FL = (() => {
+  const DB = 'raziFolderLinks', ST = 'h';
+  function db() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(ST);
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+  }
+  async function idb(op, key, val) {
+    const m = window.__FL_MEM;                 // للاختبار فقط
+    if (m) return op === 'get' ? m[key] : op === 'put' ? (m[key] = val) : delete m[key];
+    const d = await db();
+    return new Promise((res, rej) => {
+      const tx = d.transaction(ST, op === 'get' ? 'readonly' : 'readwrite');
+      const s = tx.objectStore(ST);
+      const q = op === 'get' ? s.get(key) : op === 'put' ? s.put(val, key) : s.delete(key);
+      q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
+    });
+  }
+  const supported = () => typeof window.showDirectoryPicker === 'function';
+  const norm = t => String(t || '').replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+    .replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  const normEmail = e => String(e || '').trim().toLowerCase().replace(/^tid-/, '');
+  const safeName = n => String(n || '').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
+
+  /* ---------- المجلدات ---------- */
+  async function folders() { try { return (await idb('get', 'folders')) || []; } catch (e) { return []; } }
+  async function saveFolders(list) { await idb('put', 'folders', list); }
+  async function addHandle(h) {
+    const list = await folders();
+    for (const x of list) { try { if (await x.isSameEntry(h)) return list; } catch (e) {} }
+    list.push(h); await saveFolders(list); return list;
+  }
+  async function add() {                       // يفتح اختيار مجلد (يمكن تكراره لأكثر من مجلد)
+    const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+    return addHandle(h);
+  }
+  async function remove(i) { const list = await folders(); list.splice(i, 1); await saveFolders(list); return list; }
+  async function clear() { await saveFolders([]); }
+  async function perm(h, interactive, mode) {
+    mode = mode || 'read';
+    try {
+      let p = await h.queryPermission({ mode });
+      if (p !== 'granted' && interactive) p = await h.requestPermission({ mode });
+      return p === 'granted';
+    } catch (e) { return false; }
+  }
+  // حالة كل مجلد: granted / prompt
+  async function status(interactive) {
+    const list = await folders();
+    const out = [];
+    for (const h of list) out.push({ h, name: h.name, ok: await perm(h, interactive, 'read') });
+    return out;
+  }
+
+  /* ---------- البحث داخل المجلدات ---------- */
+  async function walk(dir, depth, prefix, cb) {
+    for await (const [name, h] of dir.entries()) {
+      if (h.kind === 'directory') { if (depth > 0) await walk(h, depth - 1, prefix + name + '/', cb); }
+      else await cb(name, h, prefix, dir);
+    }
+  }
+  // ملف بيانات المدرسة (xlsx) — الأولوية للاسم «بيانات المدرسة»
+  async function findCentral(interactive) {
+    const found = [];
+    for (const s of await status(interactive)) {
+      if (!s.ok) continue;
+      await walk(s.h, 1, s.name + '/', async (name, h, prefix) => {
+        if (!/\.xlsx$/i.test(name) || name.startsWith('~$')) return;
+        const f = await h.getFile();
+        const score = (/بيانات\s*المدرس/.test(name) ? 10 : /بيانات/.test(name) ? 5 : 0) - (/تجريب/.test(name) ? 20 : 0) - (prefix.split('/').length - 2);
+        found.push({ handle: h, name, path: prefix + name, modified: f.lastModified, score, folder: s.h, top: prefix === s.name + '/' });
+      });
+    }
+    found.sort((a, b) => b.score - a.score || b.modified - a.modified);
+    return found[0] || null;
+  }
+  // كل ملفات JSON (لوحة التحكم وبرنامج الغياب)
+  async function listJson(interactive, depth) {
+    const out = [];
+    for (const s of await status(interactive)) {
+      if (!s.ok) continue;
+      await walk(s.h, depth == null ? 3 : depth, s.name + '/', async (name, h, prefix, dir) => {
+        if (!/\.json$/i.test(name)) return;
+        out.push({ handle: h, name, path: prefix + name, dir });
+      });
+    }
+    return out;
+  }
+  async function readFiles(interactive, depth) {     // [{path, text, modified}]
+    const list = await listJson(interactive, depth), out = [];
+    for (const x of list) { try { const f = await x.handle.getFile(); out.push({ path: x.path, text: await f.text(), modified: f.lastModified }); } catch (e) {} }
+    return out;
+  }
+
+  /* ---------- «من أنا؟» ---------- */
+  async function me() { try { return (await idb('get', 'me')) || null; } catch (e) { return null; } }
+  async function setMe(t) { await idb('put', 'me', t ? { key: t.key || '', name: t.name || '', email: normEmail(t.email) } : null); }
+  // ملف نجوم مدرستي الخاص بالمعلم (يُحدَّد في بوابة الرازي، وتستخدمه نجوم مدرستي مباشرة)
+  async function teacherFile() { try { return (await idb('get', 'tfile')) || null; } catch (e) { return null; } }
+  async function setTeacherFile(h) { await idb('put', 'tfile', h || null); }
+  // مطابقة ملف بيانات بمعلم من قائمة بيانات المدرسة
+  function matchTeacher(d, teachers) {
+    const si = (d && d.schoolInfo) || {};
+    const em = normEmail(si.teacherEmail || d.teacherEmail || (d.rosterMeta && String(d.rosterMeta.teacherKey || '').includes('@') ? d.rosterMeta.teacherKey : ''));
+    const key = d.rosterMeta && d.rosterMeta.teacherKey;
+    const nm = norm(si.teacher || d.teacher);
+    return teachers.find(t => em && normEmail(t.email) === em) || teachers.find(t => key && t.key === key)
+      || teachers.find(t => nm && norm(t.name) === nm) || null;
+  }
+  // كل ملفات نجوم مدرستي في المجلدات المربوطة: [{handle, path, dir, d, teacher}]
+  async function scanTeacherFiles(teachers, interactive) {
+    const out = [];
+    for (const x of await listJson(interactive, 2)) {
+      try { const d = JSON.parse(await (await x.handle.getFile()).text()); if (d && Array.isArray(d.classes)) out.push(Object.assign({ d, teacher: matchTeacher(d, teachers || []) }, x)); } catch (e) {}
+    }
+    return out;
+  }
+
+  // ملف المعلم: بالبريد أو مفتاح المعلم داخل الملف، ثم باسم المجلد/الملف
+  async function findTeacherFile(t, interactive) {
+    const nm = norm(t.name), em = normEmail(t.email);
+    let best = null;
+    for (const x of await listJson(interactive, 2)) {
+      let score = 0;
+      const pathN = norm(x.path);
+      if (nm && pathN.includes(nm)) score += 5;
+      try {
+        const d = JSON.parse(await (await x.handle.getFile()).text());
+        if (!d || !Array.isArray(d.classes)) continue;
+        const si = d.schoolInfo || {};
+        if (em && normEmail(si.teacherEmail || d.teacherEmail) === em) score += 20;
+        if (t.key && d.rosterMeta && d.rosterMeta.teacherKey === t.key) score += 20;
+        if (nm && norm(si.teacher || d.teacher) === nm) score += 8;
+      } catch (e) { continue; }
+      if (score && (!best || score > best.score)) best = Object.assign({ score }, x);
+    }
+    return best;
+  }
+  // مجلد المعلم للكتابة: مجلد مربوط باسمه، أو مجلد فرعي باسمه، أو المجلد الوحيد الذي لا يحتوي بيانات المدرسة
+  async function teacherDir(t, create) {
+    const nm = norm(t.name);
+    const st = (await status(false)).filter(s => s.ok);
+    for (const s of st) if (norm(s.name) === nm) return s.h;
+    for (const s of st) {
+      for await (const [name, h] of s.h.entries()) if (h.kind === 'directory' && norm(name) === nm) return h;
+    }
+    const central = await findCentral(false);
+    const nonCentral = [];
+    // مجلد «بيانات المدرسة» نفسه لا يُكتب فيه؛ أما المجلد الأب الذي يضمه مع مجلدات المعلمين فيُسمح
+    for (const s of st) { if (!central || !central.top || !(await s.h.isSameEntry(central.folder))) nonCentral.push(s.h); }
+    if (nonCentral.length === 1 && !create) return nonCentral[0];
+    if (create && nonCentral.length) {
+      // الإدارة: إنشاء مجلد باسم المعلم داخل أول مجلد غير «بيانات المدرسة»
+      if (!(await perm(nonCentral[0], true, 'readwrite'))) return null;
+      return nonCentral[0].getDirectoryHandle(safeName(t.name), { create: true });
+    }
+    return nonCentral.length === 1 ? nonCentral[0] : null;
+  }
+  // اسم ملف المعلم من اسم المستخدم في بريده (أحرف إنجليزية لا تتشوه): nojoom_data_mahmoud.shehada.json
+  const fileNameFor = t => {
+    const u = normEmail(t.email).split('@')[0].replace(/[^a-z0-9._-]+/g, '');
+    return u ? 'nojoom_data_' + u + '.json' : 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  };
+
+  /* ---------- ملف بداية للمعلم (تملؤه نجوم مدرستي من بيانات المدرسة عند أول فتح) ---------- */
+  function starterData(t, info) {
+    info = info || {};
+    return {
+      version: 7, exportDate: new Date().toISOString(), starter: true,
+      schoolInfo: { teacher: t.name || '', teacherEmail: t.email || '', subject: (t.subjects || []).join('، '),
+        schoolName: info.schoolName || '', principal: info.principal || '' },
+      teacher: t.name || '', subject: (t.subjects || []).join('، '),
+      assessments: [], classes: [],
+      rosterMeta: { managed: true, teacherKey: t.key || '', myClasses: (t.classes || []).slice(), createdBy: 'portal' }
+    };
+  }
+  // قائمة المعلمين من ملف بيانات المدرسة — بنفس مفتاح نجوم مدرستي (البريد، أو الاسم المُوحَّد)
+  function teachersFromWorkbook(wb) {
+    const sn = wb.SheetNames.find(n => n.trim() === 'المعلمين والجداول') || wb.SheetNames.find(n => n.includes('المعلمين'));
+    if (!sn) return [];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: '' });
+    if (!rows.length) return [];
+    const H = Object.keys(rows[0]);
+    const col = kws => H.find(h => kws.some(k => h.toLowerCase().includes(k)));
+    const cE = col(['بريد', 'email', 'ايميل', 'إيميل']), cN = col(['اسم']), cS = col(['ماد', 'subject']), cR = col(['رائد', 'homeroom']);
+    const cC = H.find(h => h !== cR && ['الصفوف', 'صفوف', 'الشعب', 'شعب', 'الصف', 'class'].some(k => h.toLowerCase().includes(k)));
+    const nn = n => String(n || '').replace(/[\u064B-\u0652\u0640]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+    const disp = c => { c = String(c || '').replace(/\s+/g, ''); return !c ? '' : c.includes('/') ? c : c.length >= 2 ? c[0] + '/' + c.slice(1) : c; };
+    const map = new Map();
+    rows.forEach(r => {
+      const email = String(cE ? r[cE] : '').trim().toLowerCase(), name = String(cN ? r[cN] : '').trim();
+      const key = email || nn(name);
+      if (!key) return;
+      const t = map.get(key) || { key, email, name, subjects: [], classes: [] };
+      const sub = String(cS ? r[cS] : '').trim();
+      if (sub && !t.subjects.includes(sub)) t.subjects.push(sub);
+      String(cC ? r[cC] : '').replace(/\s*\/\s*/g, '/').split(/[-,،;؛\s]+/).map(disp).filter(c => c && /\d\/\d/.test(c))
+        .forEach(c => { if (!t.classes.includes(c)) t.classes.push(c); });
+      map.set(key, t);
+    });
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+  }
+  async function writeText(fileHandle, text) {
+    const w = await fileHandle.createWritable(); await w.write(text); await w.close();
+  }
+
+  return { supported, folders, addHandle, add, remove, clear, perm, status, findCentral, listJson, readFiles,
+           me, setMe, teacherFile, setTeacherFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
+})();
+
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1146,6 +1371,34 @@ function vImpact() {
 
 /* التقييم من 10: لكل بند نأخذ متوسط كل مادة (متوسط معلميها) ثم متوسط المواد؛ الأعباء = متوسط (المستوى/4) للبنود المرصودة؛
    التقييم = 10 × (1 − العبء) − 0.3 لكل بند بإجماع معلمَين فأكثر (بحد أقصى 1.5) */
+let SENS = 1; try { SENS = Math.min(10, Math.max(1, parseFloat(localStorage.getItem("marsad_sens")) || 1)); } catch (e) {}
+function sensRange() {
+  if (!A || !A.students || !A.students.size) return "";
+  const v = []; A.students.forEach(s => [s.behScore, s.acaScore].forEach(x => { if (x != null) v.push(x); }));
+  if (!v.length) return "";
+  const avg = v.reduce((a, b) => a + b, 0) / v.length;
+  return `نطاق التقييمات الآن: <b>${Math.min(...v).toFixed(1)}</b> – <b>${Math.max(...v).toFixed(1)}</b> · المتوسط <b>${avg.toFixed(1)}</b>`;
+}
+function sensSet(v, final) {
+  SENS = Math.min(10, Math.max(1, parseFloat(v) || 1));
+  try { localStorage.setItem("marsad_sens", String(SENS)); } catch (e) {}
+  const lb = document.getElementById("sensVal"); if (lb) lb.textContent = SENS.toFixed(1);
+  analyze();
+  if (typeof computeImpact === "function") try { computeImpact(); } catch (e) {}
+  const rg = document.getElementById("sensRange"); if (rg) rg.innerHTML = sensRange();
+  if (final) render();
+}
+function sensCard() {
+  return `<div class="card no-print" style="margin-top:12px"><h3 style="margin:0 0 6px">🎚️ حساسية الملاحظات</h3>
+    <p class="hint" style="margin:0 0 8px">ارفعها إذا كانت التقييمات متقاربة ومرتفعة (مثلاً كلها بين 8.5 و10)، فيزيد أثر كل ملاحظة سلبية على التقييم. الطالب الذي لا ملاحظات عليه يبقى 10 دائماً.</p>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>عادية</span>
+      <input type="range" id="sensSlider" min="1" max="6" step="0.25" value="${SENS}" style="flex:1;min-width:200px" oninput="sensSet(this.value)" onchange="sensSet(this.value, true)">
+      <span>عالية</span>
+      <b style="min-width:42px;text-align:center;font-size:18px" id="sensVal">${SENS.toFixed(1)}</b>
+    </div>
+    <div style="margin-top:6px;font-size:13px" id="sensRange">${sensRange()}</div></div>`;
+}
 function scoreOf(s, pre) {
   const ps = []; let pen = 0;
   CODES.filter(c => c[0] === pre).forEach(c => {
@@ -1155,7 +1408,9 @@ function scoreOf(s, pre) {
     { const nT = new Set(s.resp.filter(r => r.lv[c] >= CFG.FLAG_LEVEL).map(r => r.teacher)).size; if (nT >= 2) pen += CFG.PEN[Math.min(nT, 4)]; }
   });
   if (!ps.length) return null;
-  return Math.max(0, Math.round((10 * (1 - mean(ps)) - Math.min(CFG.PEN_CAP, pen)) * 10) / 10);
+  // الحساسية: 1 = الحساب الأصلي؛ أعلى = أثر أكبر للملاحظة الواحدة (العبء يُضخَّم: 1 − (1 − العبء)^الحساسية)
+  const B = mean(ps), Bs = SENS > 1 ? 1 - Math.pow(1 - B, SENS) : B;
+  return Math.max(0, Math.round((10 * (1 - Bs) - Math.min(CFG.PEN_CAP, pen * (SENS > 1 ? 1 + (SENS - 1) * 0.25 : 1))) * 10) / 10);
 }
 const scCol = v => { const h = Math.round(Math.max(0, Math.min(10, v)) * 12); return { b: `hsl(${h},62%,44%)`, bg: `hsl(${h},70%,90%)`, tx: `hsl(${h},70%,22%)` }; };
 const scPill = v => { if (v == null) return `<span class="scp none">—</span>`; const c = scCol(v); return `<span class="scp" style="background:${c.bg};color:${c.tx};border-color:${c.b}"><b>${v.toFixed(1)}</b><small>/10</small></span>`; };
@@ -1255,7 +1510,7 @@ function vImport() {
     <div class="row"><button class="btn" id="btnDir" ${supportsDir ? "" : "disabled"}>${esc(t("imp_btn"))}</button><button class="btn ghost" id="btnFiles">${esc(t("imp_files"))}</button></div>
     <p style="margin:12px 0 0;color:var(--muted)">${esc(t("imp_drop"))}</p>
     ${supportsDir ? "" : `<div class="note warn">${esc(t("imp_nofolder"))}</div>`}
-  </div><div class="note">${esc(t("imp_add"))}</div>`;
+  </div>${sensCard()}${flCard()}<div class="note">${esc(t("imp_add"))}</div>`;
   h += `<div class="card"><h3>${esc(t("ro_t"))}</h3>` + (ROSTER ? `<p class="ok">✔ ${esc(t("ro_ok"))}: ${Object.values(ROSTER.classes).reduce((a, b) => a + b.length, 0)} ${esc(t("s_students"))} — ${ROSTER.subjects.length} ${esc(t("s_subjects"))}</p>` : `<div class="note warn">${esc(t("ro_missing"))}</div>`) +
     `<input type="file" id="inRoster" accept=".js,text/javascript" hidden><button class="btn ghost sm" id="btnRoster">${esc(t("ro_pick"))}</button></div>`;
   if (LASTIMP) {
@@ -2035,15 +2290,101 @@ function openItem(c) {
 }
 function closeModal() { const m = $("#modal"); if (m) m.remove(); }
 
+/* ===== الربط من بوابة الرازي ===== */
+async function centralWorkbook() {
+  if (typeof XLSX === "undefined") return null;
+  try {
+    if (typeof FL !== "undefined" && FL.supported() && (await FL.folders()).length) {
+      const c = await FL.findCentral(false);
+      if (c) return XLSX.read(await (await c.handle.getFile()).arrayBuffer(), { type: "array" });
+    }
+  } catch (e) {}
+  try {
+    const u = localStorage.getItem("raziSchoolDataXlsx"); if (!u) return null;
+    const b = atob(u.split(",")[1]), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+    return XLSX.read(a, { type: "array" });
+  } catch (e) { return null; }
+}
+function rosterFromWorkbook(wb) {
+  const sn = wb.SheetNames.find(n => n.trim() === "جميع الطلاب") || wb.SheetNames.find(n => n.includes("الطلاب"));
+  if (!sn) return null;
+  const ck = v => { v = String(v || "").replace(/\s+/g, ""); if (v.includes("/")) return v.replace("/", "-"); return /^\d{2,3}$/.test(v) ? v[0] + "-" + v.slice(1) : ""; };
+  const classes = {};
+  XLSX.utils.sheet_to_json(wb.Sheets[sn], { defval: "" }).forEach(r => {
+    const H = Object.keys(r), g = k => { const h = H.find(h => k.some(x => h.includes(x))); return h ? String(r[h]).trim() : ""; };
+    const c = ck(g(["الصف"])), nm = g(["اسم الطالب", "الاسم"]).replace(/\s*\([^()]*\)\s*$/, ""), id = g(["رقم الطالب"]);
+    if (!c || !nm) return;
+    (classes[c] = classes[c] || []).push(id ? nm + " (" + id + ")" : nm);
+  });
+  const subjects = {};
+  const ts = wb.SheetNames.find(n => n.trim() === "المعلمين والجداول") || wb.SheetNames.find(n => n.includes("المعلمين"));
+  if (ts) XLSX.utils.sheet_to_json(wb.Sheets[ts], { defval: "" }).forEach(r => {
+    const H = Object.keys(r), g = k => { const h = H.find(h => k.some(x => h.includes(x))); return h ? String(r[h]).trim() : ""; };
+    const nm = g(["اسم المعلم", "الاسم"]), sb = g(["مادة", "المادة"]);
+    if (!nm || !sb) return;
+    const n = String(g(["الصفوف"]) || "").split(/[-,،;\s]+/).filter(x => /\d/.test(x)).length;
+    const L = subjects[sb] = subjects[sb] || []; const ex = L.find(x => x.name === nm);
+    if (ex) ex.sections += n; else L.push({ name: nm, sections: n });
+  });
+  return Object.keys(classes).length ? { classes, subjects } : null;
+}
+async function rosterFromPortal() {
+  if (window.PQ_CLASSES && window.PQ_SUBJECTS) return false;     // ملف المرجع student_teachers_data.js له الأولوية إن وُجد
+  const wb = await centralWorkbook(); if (!wb) return false;
+  const r = rosterFromWorkbook(wb); if (!r) return false;
+  setRoster(r.classes, r.subjects); idbSet("roster", r); ROSTER.fromPortal = true;
+  return true;
+}
+let FLSTAT = { n: 0, last: null, locked: false, folders: "" };
+function flSeen() { try { return JSON.parse(localStorage.getItem("marsad_flseen") || "{}"); } catch (e) { return {}; } }
+async function flAutoImport(interactive) {
+  if (typeof FL === "undefined" || !FL.supported()) return;
+  const fs = await FL.folders(); if (!fs.length) return;
+  const st = await FL.status(!!interactive);
+  FLSTAT.folders = st.map(x => x.name).join("، "); FLSTAT.locked = !st.some(x => x.ok);
+  if (FLSTAT.locked) { if (VIEW === "import") render(); return; }
+  const seen = interactive ? {} : flSeen(), nw = {}, files = [];
+  const walk = async (dir, depth, prefix) => {
+    for await (const [name, h] of dir.entries()) {
+      if (h.kind === "directory") { if (depth > 0) await walk(h, depth - 1, prefix + name + "/"); continue; }
+      if (!/\.(json|zip)$/i.test(name)) continue;
+      const f = await h.getFile(), sig = prefix + name + "|" + f.lastModified + "|" + f.size;
+      nw[sig] = 1;
+      if (seen[sig]) continue;
+      if (/\.json$/i.test(name)) {      // تخطّي ملفات نجوم مدرستي وغيرها
+        try { const j = JSON.parse((await f.text()).replace(/^﻿/, "")); if (!(j && (j.type === "reeval" || j.type === "classBatch" || String(j.app || "").toLowerCase() === "marsad" || j.behavioral))) continue; } catch (e) { continue; }
+      }
+      f._path = prefix + name; files.push(f);
+    }
+  };
+  for (const x of st) if (x.ok) await walk(x.h, 3, x.name + "/");
+  try { localStorage.setItem("marsad_flseen", JSON.stringify(Object.assign(flSeen(), nw))); } catch (e) {}
+  FLSTAT.n = files.length; FLSTAT.last = new Date();
+  if (files.length) { const v = VIEW; await handleFiles(files); if (!interactive) { VIEW = v; render(); } }
+  else if (VIEW === "import") render();
+}
+function flCard() {
+  if (typeof FL === "undefined" || !FL.supported()) return "";
+  return `<div class="card no-print" style="margin-top:12px"><h3 style="margin:0 0 6px">📁 الربط من بوابة الرازي</h3>
+    <p class="hint" style="margin:0 0 8px">ملفات مرصاد الموجودة في المجلدات المربوطة من زر «📁» في ترويسة البوابة تُستورد تلقائياً عند الفتح (الجديد والمعدّل فقط)، وقائمة الطلاب تُؤخذ من «بيانات المدرسة».</p>
+    <div style="font-size:13px;line-height:1.9">${FLSTAT.folders ? "المجلدات: <b>" + esc(FLSTAT.folders) + "</b>" : "لا توجد مجلدات مربوطة في البوابة."}
+      ${FLSTAT.last ? "<br>آخر فحص: " + FLSTAT.last.toLocaleTimeString("ar") + " — ملفات جديدة: <b>" + FLSTAT.n + "</b>" : ""}
+      ${ROSTER && ROSTER.fromPortal ? "<br>✔ قائمة الطلاب من «بيانات المدرسة»" : ""}</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${FLSTAT.folders ? `<button class="btn ${FLSTAT.locked ? "" : "ghost"} sm" onclick="flAutoImport(true)">${FLSTAT.locked ? "🔓 السماح بالقراءة" : "🔄 فحص المجلدات الآن"}</button>` : ""}
+      <button class="btn ghost sm" onclick="rosterFromPortal().then(ok=>{ analyze(); render(); })">👥 تحديث قائمة الطلاب</button></div></div>`;
+}
+
 /* التشغيل */
 (async function init() {
   if (window.PQ_CLASSES && window.PQ_SUBJECTS) setRoster(window.PQ_CLASSES, window.PQ_SUBJECTS);
   else { const r0 = await idbGet("roster"); if (r0 && r0.classes) setRoster(r0.classes, r0.subjects); }
   const saved = await idbGet("store");
   if (saved && saved.records) { STORE = saved.records; RESTORE = saved.re || {}; Object.assign(ITEMS, saved.items || {}); }
+  try { await rosterFromPortal(); } catch (e) {}
   analyze();
   VIEW = A.recs.length ? "overview" : "import";
   render();
+  try { await flAutoImport(false); } catch (e) { console.warn("marsad folders", e); }
 })();
 </script>
 </body>
