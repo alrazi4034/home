@@ -29,7 +29,7 @@ function tvRender() {
         </div>
       </div>
       ${TS.kpis(r)}
-      ${r.hasTT || r.cells.some(c => c.p > 0) ? TS.gridHTML(r, { compact: true, click: 'tvGo' }) : '<div style="font-size:12.5px;color:var(--text-muted);margin-top:4px">لا يوجد جدول حصص — يظهر أدناه عدد إدخالات الحضور لكل صف مع المشاركات والملاحظات.</div>'}
+      ${r.hasTT || r.cells.length ? TS.gridHTML(r, { compact: true, click: 'tvGo' }) : '<div style="font-size:12.5px;color:var(--text-muted);margin-top:4px">لا يوجد جدول حصص — يظهر أدناه عدد إدخالات الحضور لكل صف مع المشاركات والملاحظات.</div>'}
     </div>
     <div class="card" style="padding:14px 16px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">

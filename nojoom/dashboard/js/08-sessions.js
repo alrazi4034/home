@@ -25,9 +25,9 @@ function renderSessions(from, to, cls) {
   SES_ROWS = computeSessions(from, to, cls);
   const T = SES_ROWS.reduce((a, x) => ({ sch: a.sch + x.r.tot.scheduled, miss: a.miss + x.r.tot.missing, ent: a.ent + x.r.tot.entries, part: a.part + x.r.tot.part, notes: a.notes + x.r.tot.pos + x.r.tot.neg }), { sch: 0, miss: 0, ent: 0, part: 0, notes: 0 });
   box.innerHTML = TS.CSS + `
-    <div class="kpis">${kpi(SES_ROWS.length, 'معلم')}${kpi(T.sch, 'حصة في الجداول')}${kpi(T.sch - T.miss, 'أُدخل حضورها', 'ok')}${kpi(T.miss, 'بدون إدخال', T.miss ? 'bad' : '')}${kpi(T.ent, 'إدخال حضور')}${kpi(T.part, '✋ مشاركة')}${kpi(T.notes, '📝 ملاحظة')}</div>
+    <div class="kpis">${kpi(SES_ROWS.length, 'معلم')}${kpi(T.sch, 'حصة مطلوبة')}${kpi(T.sch - T.miss, 'أُدخل حضورها', 'ok')}${kpi(T.miss, 'باقية بدون إدخال', T.miss ? 'bad' : '')}${kpi(T.ent, 'إدخال حضور')}${kpi(T.part, '✋ مشاركة')}${kpi(T.notes, '📝 ملاحظة')}</div>
     <div class="card"><h3>🗓️ الحصص والإدخالات لكل معلم <span class="muted" style="font-size:12px">(${from} → ${to}${cls ? ' — ' + esc(cls) : ''}) — اضغط اسم المعلم لعرض جدوله أسبوعياً</span></h3>
-    ${sortableTable('sesT', [{ t: 'المعلم' }, { t: 'المادة' }, { t: 'ملف نجوم مدرستي' }, { t: 'حصص الجدول', num: 1 }, { t: 'أُدخلت', num: 1 }, { t: 'بدون إدخال', num: 1 }, { t: 'نسبة الإدخال' }, { t: 'إدخالات الحضور', num: 1 }, { t: '✋ مشاركات', num: 1 }, { t: '🌟 إيجابية', num: 1 }, { t: '⚠️ سلبية', num: 1 }],
+    ${sortableTable('sesT', [{ t: 'المعلم' }, { t: 'المادة' }, { t: 'ملف نجوم مدرستي' }, { t: 'الحصص المطلوبة', num: 1 }, { t: 'أُدخلت', num: 1 }, { t: 'باقية', num: 1 }, { t: 'نسبة الإدخال' }, { t: 'إدخالات الحضور', num: 1 }, { t: '✋ مشاركات', num: 1 }, { t: '🌟 إيجابية', num: 1 }, { t: '⚠️ سلبية', num: 1 }],
       SES_ROWS.map((x, i) => `<tr><td><span class="link" onclick="showTeacherSessions(${i})"><b>${esc(x.t.name)}</b></span></td><td>${esc((x.t.subjects || []).join('، '))}</td><td>${x.file ? '✅' : '<span class="muted">—</span>'}</td>
         <td class="num">${x.r.hasTT ? x.r.tot.scheduled : '<span class="muted">لا جدول</span>'}</td><td class="num">${x.r.hasTT ? x.r.tot.scheduled - x.r.tot.missing : '—'}</td>
         <td class="num"><b style="color:${x.r.tot.missing ? '#ff6b6b' : 'inherit'}">${x.r.hasTT ? x.r.tot.missing : '—'}</b></td>
@@ -53,7 +53,7 @@ function sesModal() {
       <button class="btn sm" onclick="sesShift(-1)">▶ السابق</button><b>الأسبوع ${f(SES_WEEK)} — ${f(TS.addDays(SES_WEEK, 4))}</b><button class="btn sm" onclick="sesShift(1)">التالي ◀</button>
     </div>
     ${TS.kpis(wr)}
-    ${wr.hasTT || wr.cells.some(c => c.p > 0) ? TS.gridHTML(wr) : ''}
+    ${TS.gridHTML(wr)}
     <h3 style="margin-top:12px">ملخص الصفوف — الفترة المختارة (${LAST.from} → ${LAST.to})</h3>
     ${TS.tableHTML(x.r)}
     <div class="actions"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);

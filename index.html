@@ -2325,6 +2325,20 @@ function readSheetHeaders(ws){
   return headerRow.map(h => String(h||'').trim()).filter(Boolean);
 }
 
+// يحوّل كل خانة وقت (تاريخ/رقم/نص) في ورقة التوقيت إلى نص «HH:MM» حتى لا يعرضها Excel كتاريخ
+function idxFixTimes(ws){
+  if(!ws || !ws['!ref']) return ws;
+  const R = XLSX.utils.decode_range(ws['!ref']), pad = n => String(n).padStart(2,'0');
+  for(let r = R.s.r + 1; r <= R.e.r; r++) for(let c = R.s.c + 1; c <= R.e.c; c++){
+    const a = XLSX.utils.encode_cell({r, c}), cell = ws[a]; if(!cell) continue;
+    let t = '';
+    if(cell.v instanceof Date) t = pad(cell.v.getHours()) + ':' + pad(cell.v.getMinutes());
+    else if(typeof cell.v === 'number'){ const m = Math.round((cell.v % 1) * 1440); t = pad(Math.floor(m/60) % 24) + ':' + pad(m % 60); }
+    else { const m = String(cell.v || '').match(/(\d{1,2})[:.](\d{2})/); if(m) t = pad(+m[1]) + ':' + m[2]; }
+    if(t) ws[a] = { t:'s', v:t, w:t, z:'@' };
+  }
+  return ws;
+}
 function loadWorkbookFromArrayBuffer(buf, fileName){
   lastLinkedFileHash = bufHash(buf);
   if(typeof hasUnsavedChanges !== 'undefined'){ hasUnsavedChanges = false; lastSavedSnapshot = null; }
@@ -2335,7 +2349,7 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
 
   const knownSheets = ['جميع الطلاب','الاداريين','المعلمين والجداول','التقويم المدرسي','الإجازات والعطل'];
   // أوراق أخرى في الملف (مثل «توقيت الحصص») تُحفظ كما هي وتُعاد عند الحفظ
-  state.extraSheets = wb.SheetNames.filter(n => !knownSheets.includes(n)).map(n => ({ name: n, ws: wb.Sheets[n] }));
+  state.extraSheets = wb.SheetNames.filter(n => !knownSheets.includes(n)).map(n => ({ name: n, ws: /توقيت/.test(n) ? idxFixTimes(wb.Sheets[n]) : wb.Sheets[n] }));
   if(!knownSheets.some(s => wb.SheetNames.includes(s))){
     throw new Error('لم يتم العثور على أي من الصفحات المتوقعة. الصفحات الموجودة: ' + wb.SheetNames.join('، '));
   }
