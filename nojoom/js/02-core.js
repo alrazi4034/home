@@ -94,7 +94,7 @@ function _today() {
   return _localDateStr(new Date());
 }
 // تصحيح sessionDate باستخدام التوقيت المحلي عند أول تحميل
-(function() { if (typeof sessionDate !== 'undefined') { sessionDate = _localDateStr(new Date()); } })();
+(function() { if (typeof sessionDate !== 'undefined') { const d = new Date(); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1); sessionDate = _localDateStr(d); } })();   // السبت/الأحد ⇐ آخر يوم دراسي
 function isWeekend(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
   const day = d.getDay(); // 0=الأحد, 6=السبت
@@ -183,6 +183,7 @@ function confirmChangeDate() {
   const val = document.getElementById('m-session-date').value;
   if (!val) return;
 
+  if (isWeekend(val)) { alert('⚠️ السبت والأحد عطلة نهاية الأسبوع — اختر يوماً دراسياً.'); return; }
   // منع اختيار تاريخ مستقبلي
   const today = _today();
   if (val > today) {
@@ -281,7 +282,8 @@ function editSubjectInfo() {
       <div style="line-height:2.1;font-size:13.5px">
         المدرسة: <b>${si.schoolName || '—'}</b><br>المدير/ة: <b>${si.principal || '—'}</b><br>
         المعلم: <b>${si.teacher || '—'}</b><br>المادة: <b>${si.subject || '—'}</b><br>
-        الفصل الدراسي: <b>${si.termStart || '—'}</b> إلى <b>${si.termEnd || '—'}</b></div>
+        الفصل الدراسي${si.term ? ' ' + ['', 'الأول', 'الثاني', 'الثالث'][+si.term] : ''}: <b>${si.termStart || '—'}</b> إلى <b>${si.termEnd || '—'}</b></div>
+      ${si.termStart ? '' : '<div style="font-size:12px;color:var(--absent);margin-top:6px">⚠️ لم تُقرأ تواريخ الفصل من الملف المركزي. تأكد من تعبئة تواريخ أسابيع الفصل في ورقة «التقويم المدرسي» (من البوابة ← بيانات المدرسة)، ثم اضغط 🔗 ← مزامنة.</div>'}
       <div style="font-size:12px;color:var(--text-muted);margin-top:8px">🔒 تُقرأ من الملف المركزي — للتعديل تواصل مع مسؤول البرنامج.</div>
       <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModalForce()">إغلاق</button></div>`);
   }
@@ -624,18 +626,22 @@ function toast(msg, icon='✅') {
 
 
 function showFileMenu(){
+  // ⚠️ حماية البيانات: الخيارات التي تستبدل أو تمسح بيانات المعلم مقفلة برمز المسؤول
   openModal(`
-    <div class="modal-title">📁 الملف</div>
+    <div class="modal-title">📁 الملف والنسخ الاحتياطية</div>
+    <div style="font-size:12px;color:var(--text-muted);margin:-4px 0 10px;line-height:1.7">بياناتك تُحفظ تلقائياً في ملفك المرتبط. هنا تنزّل نسخة احتياطية أو تدمج ملفاً قديماً (بدون حذف أي شيء).</div>
     <div class="modal-actions" style="flex-direction:column;gap:10px">
-      <button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();requestRestoreBackup()">
-        📥 استيراد بيانات<br><span style="font-size:11px;font-weight:400;opacity:.8">من نسخة احتياطية JSON أو ملف CSV</span>
-      </button>
       <button class="btn btn-success" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();exportToExcel()">
-        📤 تصدير بيانات<br><span style="font-size:11px;font-weight:400;opacity:.8">نسخة احتياطية JSON أو جداول CSV</span>
+        📤 تنزيل نسخة احتياطية<br><span style="font-size:11px;font-weight:400;opacity:.8">نسخة JSON أو جداول CSV — لا تغيّر شيئاً في بياناتك</span>
       </button>
-      <button class="btn btn-danger" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();clearAllData()">
-        🗑️ تصفير بيانات<br><span style="font-size:11px;font-weight:400;opacity:.8">مسح الحضور/المشاركات/الملاحظات/التقييمات</span>
+      <button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();mergeOldPick()">
+        📥 دمج بيانات قديمة<br><span style="font-size:11px;font-weight:400;opacity:.8">يضيف بيانات ملف سابق إلى بياناتك الحالية — لا يحذف شيئاً</span>
       </button>
-      <button class="btn btn-ghost" onclick="closeModalForce()">إلغاء</button>
+      <details style="width:100%;margin-top:4px"><summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">🔒 أدوات المسؤول (تحتاج رمز المسؤول)</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start" onclick="closeModalForce();requestRestoreBackup()">🔒 استعادة نسخة احتياطية <span style="font-size:11px;opacity:.75">(تستبدل بيانات المعلم الحالية)</span></button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;color:var(--absent)" onclick="closeModalForce();if(adminCodeOk('تصفير بيانات المعلم (مسح نهائي)'))clearAllData()">🔒 تصفير بيانات <span style="font-size:11px;opacity:.75">(مسح نهائي)</span></button>
+        </div></details>
+      <button class="btn btn-ghost" onclick="closeModalForce()">إغلاق</button>
     </div>`);
 }

@@ -1,5 +1,5 @@
 /* 14e-merge-old.js — «📥 دمج بيانات قديمة»: ملف نجوم مدرستي سابق (نسخة احتياطية أو ملف قديم) يُدمج في الملف الحالي
-   - الطلاب يُطابَقون برقم الطالب ثم بالاسم داخل نفس الشعبة (الأسماء القديمة بلا رقم تُطابق بالاسم).
+   - الطلاب يُطابَقون بالرقم (رقم الطالب أو الرقم داخل حسابات البوابة/ألف) في أي شعبة، ثم بالاسم، ثم بتشابه الاسم، والباقي يدوياً.
    - الدمج «جمع» وليس استبدالاً: أيام الحضور والغياب والتأخر والملاحظات وسجل النقاط والتقييمات تُضاف بدون تكرار.
    - الملاحظات القديمة تُحوَّل إلى صياغة القائمة الجديدة إن كان بندها موجوداً فيها، والباقي يبقى بنصّه ورمزه (يُحسب في مرصاد).
    - الملف نفسه لا يُدمج مرتين. */
@@ -22,32 +22,79 @@ function moNoteText(n) {
   return nw ? nw.text : n.text;
 }
 let MO = null;
+// كل الأرقام الممكنة للطالب: رقم الطالب + الأرقام داخل حسابات الطالب (البوابة/ألف) — الملفات القديمة بلا رقم تُطابق بها
+function moIds(s) {
+  const ids = new Set();
+  const sid = MO_SID(s); if (sid) ids.add(String(sid).trim());
+  [s.govAccount && s.govAccount.user, s.alifAccount && s.alifAccount.user].forEach(u => { const m = String(u || '').split('@')[0].match(/(\d{5,})/); if (m) ids.add(m[1]); });
+  return ids;
+}
+// تشابه الأسماء: نسبة الكلمات المشتركة (يتحمل تغيّر اسم الأب/الجد أو إضافة اسم)
+function moSim(a, b) {
+  const A = MO_NORM(a).split(' ').filter(Boolean), B = MO_NORM(b).split(' ').filter(Boolean);
+  if (!A.length || !B.length) return 0;
+  const sb = new Set(B); const common = A.filter(w => sb.has(w)).length;
+  let sc = common / Math.max(A.length, B.length);
+  if (A[0] === B[0]) sc += 0.15;                                  // نفس الاسم الأول
+  if (A[A.length - 1] === B[B.length - 1]) sc += 0.15;            // نفس اسم العائلة
+  return Math.min(1, sc);
+}
+function moAllStudents() {
+  const out = [];
+  state.classes.forEach(c => c.students.forEach(s => out.push({ cls: c, st: s })));
+  return out;
+}
 function mergeOldPreview(text, fname) {
   let d; try { d = JSON.parse(text); } catch (e) { return alert('الملف ليس ملف نجوم مدرستي صالحاً.'); }
   if (!d || !Array.isArray(d.classes)) return alert('الملف ليس ملف نجوم مدرستي (لا يحتوي صفوفاً).');
   const h = moHash(text);
   if ((state.rosterMeta && state.rosterMeta.mergedFrom || []).includes(h)) return alert('هذا الملف دُمج سابقاً في ملفك — لا حاجة لدمجه مرة أخرى.');
-  const plan = [], noClass = [], unmatched = [];
+  const all = moAllStudents();
+  const idIndex = new Map(); all.forEach(x => moIds(x.st).forEach(id => idIndex.set(id, x)));
+  const used = new Set();
+  const plan = [], unmatched = [];
+  let byId = 0, byName = 0, byFuzzy = 0;
   d.classes.forEach(oc => {
-    const cls = state.classes.find(c => c.name === oc.name) || (state.archivedClasses || []).map(a => a.cls).find(c => c && c.name === oc.name);
-    if (!cls) { if ((oc.students || []).length) noClass.push(oc.name); return; }
+    const cls = state.classes.find(c => c.name === oc.name);
     (oc.students || []).forEach(os => {
-      const sid = MO_SID(os), nm = MO_NORM(os.name);
-      const st = (sid && cls.students.find(s => MO_SID(s) === sid)) || cls.students.find(s => MO_NORM(s.name) === nm)
-        || (() => { const c = cls.students.filter(s => MO_NORM(s.name).startsWith(nm) || nm.startsWith(MO_NORM(s.name))); return c.length === 1 ? c[0] : null; })();
-      if (st) plan.push({ cls, oc, st, os }); else if (os.name) unmatched.push(oc.name + ' — ' + MO_NORM(os.name));
+      if (!os.name) return;
+      let hit = null, how = '';
+      // 1) بالرقم (في أي شعبة — الطالب قد يكون انتقل)
+      for (const id of moIds(os)) { const x = idIndex.get(id); if (x && !used.has(x.st)) { hit = x; how = 'id'; break; } }
+      // 2) بالاسم الكامل داخل نفس الشعبة
+      if (!hit && cls) { const st = cls.students.find(s => !used.has(s) && MO_NORM(s.name) === MO_NORM(os.name)); if (st) { hit = { cls, st }; how = 'name'; } }
+      // 3) تشابه الاسم داخل نفس الشعبة (مرشح واحد واضح)
+      if (!hit && cls) {
+        const sc = cls.students.filter(s => !used.has(s)).map(s => ({ s, v: moSim(os.name, s.name) })).sort((x, y) => y.v - x.v);
+        if (sc[0] && sc[0].v >= 0.6 && (!sc[1] || sc[0].v - sc[1].v >= 0.2)) { hit = { cls, st: sc[0].s }; how = 'fuzzy'; }
+      }
+      if (hit) { used.add(hit.st); plan.push({ cls: hit.cls, oc, st: hit.st, os, sameCls: hit.cls.name === oc.name, how }); how === 'id' ? byId++ : how === 'name' ? byName++ : byFuzzy++; }
+      else unmatched.push({ oc, os, cls });
     });
   });
   const notes = plan.reduce((n, x) => n + (x.os.behaviorNotes || []).length, 0);
   const days = new Set(d.classes.flatMap(c => c._savedDates || [])).size;
-  MO = { d, h, fname, plan, noClass, unmatched };
+  MO = { d, h, fname, plan, unmatched };
+  // المطابقة اليدوية للباقي: قائمة بطلاب نفس الشعبة (الأقرب اسماً أولاً) أو كل الطلاب
+  const opts = u => {
+    const pool = (u.cls ? u.cls.students.map(st => ({ cls: u.cls, st })) : all).filter(x => !used.has(x.st))
+      .map(x => ({ x, v: moSim(u.os.name, x.st.name) })).sort((a, b) => b.v - a.v);
+    return `<option value="">— لا يُدمج —</option>` + pool.map(({ x, v }) => `<option value="${x.cls.id}|${x.st.id}">${rsEsc(x.st.name)}${u.cls ? '' : ' — ' + rsEsc(x.cls.name)}${v >= 0.5 ? ' ⭐' : ''}</option>`).join('');
+  };
+  const fuzzyList = plan.filter(x => x.how === 'fuzzy');
   openModal(`
     <div class="modal-title">📥 دمج بيانات قديمة — ${rsEsc(fname)}</div>
     <div style="font-size:13px;line-height:2">
-      ✅ طلاب مطابَقون: <b>${plan.length}</b> · أيام حصص: <b>${days}</b> · ملاحظات: <b>${notes}</b> · تقييمات: <b>${(d.assessments || []).length}</b><br>
-      ${noClass.length ? `⚠️ صفوف غير موجودة في ملفك (لن تُدمج): <b>${noClass.map(rsEsc).join('، ')}</b> — أضفها من «🏫 إضافة / أرشفة شعب» ثم أعد الدمج.<br>` : ''}
-      ${unmatched.length ? `<details><summary style="cursor:pointer">⚠️ ${unmatched.length} طالب لم يُطابَق (ربما انتقل أو تغيّر اسمه)</summary><div style="font-size:12px;max-height:140px;overflow:auto">${unmatched.map(rsEsc).join('<br>')}</div></details>` : ''}
-      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">الدمج يضيف القديم إلى الحالي (لا يحذف شيئاً ولا يكرر). الملاحظات القديمة تُحوَّل إلى الصياغة الجديدة حيث أمكن.</div>
+      ✅ طلاب مطابَقون: <b>${plan.length}</b> <span style="font-size:11.5px;color:var(--text-muted)">(بالرقم ${byId} · بالاسم ${byName} · بتشابه الاسم ${byFuzzy})</span><br>
+      أيام حصص: <b>${days}</b> · ملاحظات: <b>${notes}</b> · تقييمات: <b>${(d.assessments || []).length}</b>
+      ${fuzzyList.length ? `<details><summary style="cursor:pointer">🔍 ${fuzzyList.length} طالب طوبق بتشابه الاسم — راجعهم</summary><div style="font-size:12px;max-height:120px;overflow:auto">${fuzzyList.map(x => rsEsc(MO_NORM(x.os.name)) + ' ⇐ <b>' + rsEsc(x.st.name) + '</b>').join('<br>')}</div></details>` : ''}
+      ${unmatched.length ? `<div style="margin-top:6px;font-weight:800">⚠️ ${unmatched.length} طالب لم يُطابَق تلقائياً — اختر الطالب المقابل له (أو اتركه بدون دمج):</div>
+        <div style="max-height:230px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:6px 8px">
+        ${unmatched.map((u, i) => `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--border);font-size:12.5px">
+          <span><b>${rsEsc(MO_NORM(u.os.name))}</b> <span style="color:var(--text-muted)">(${rsEsc(u.oc.name)})</span></span>
+          <select class="select mo-pick" data-i="${i}" style="max-width:55%;font-size:12px;padding:3px 6px">${opts(u)}</select></div>`).join('')}
+        </div>` : ''}
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">الدمج يضيف القديم إلى الحالي (لا يحذف شيئاً ولا يكرر). المطابقة بالرقم أولاً (رقم الطالب أو الرقم في حساباته)، ثم بالاسم.</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" style="flex:1" onclick="mergeOldApply()">📥 دمج الآن</button>
@@ -57,10 +104,18 @@ function mergeOldPreview(text, fname) {
 function mergeOldApply() {
   if (!MO) return closeModalForce();
   const { d, plan } = MO;
+  const taken = new Set(plan.map(x => x.st));
+  document.querySelectorAll('.mo-pick').forEach(sel => {
+    if (!sel.value) return;
+    const u = MO.unmatched[+sel.dataset.i]; const [cid, sid] = sel.value.split('|').map(Number);
+    const cls = state.classes.find(c => c.id === cid), st = cls && cls.students.find(x => x.id === sid);
+    if (!st || taken.has(st)) return;
+    taken.add(st); plan.push({ cls, oc: u.oc, st, os: u.os, sameCls: cls.name === u.oc.name, how: 'manual' });
+  });
   const uni = (a, b) => [...new Set([...(a || []), ...(b || [])])].sort();
   const touchedCls = new Set();
-  plan.forEach(({ cls, oc, st, os }) => {
-    if (!touchedCls.has(cls)) {
+  plan.forEach(({ cls, oc, st, os, sameCls }) => {
+    if (sameCls && !touchedCls.has(cls)) {
       touchedCls.add(cls);
       cls._savedDates = uni(cls._savedDates, oc._savedDates);
       cls._savedPeriods = Object.assign({}, cls._savedPeriods || {});

@@ -523,7 +523,7 @@ const FL = (() => {
     list.push(h); await saveFolders(list); return list;
   }
   async function add() {                       // يفتح اختيار مجلد (يمكن تكراره لأكثر من مجلد)
-    const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const h = await window.showDirectoryPicker({ id: 'razi-folders', mode: 'readwrite' });   // يتذكر آخر مكان (مجلد OneDrive)
     return addHandle(h);
   }
   async function remove(i) { const list = await folders(); list.splice(i, 1); await saveFolders(list); return list; }
@@ -1208,10 +1208,7 @@ let _plFiles = [], _plTeachers = [];
 async function portalFolders(interactive) {
   if (!FL.supported()) return alert('ربط المجلدات يعمل في Chrome أو Edge على الكمبيوتر فقط.');
   let st = await FL.status(false);
-  if (!st.length) {
-    try { await FL.add(); } catch (e) { if (e && e.name === 'AbortError') return; return alert('تعذّر ربط المجلد: ' + e.message); }
-    st = await FL.status(false);
-  }
+  if (!st.length) return plGuide();                            // أول مرة: شرح الخطوات ثم اختيار المجلدين
   if (st.some(x => !x.ok)) st = await FL.status(true);       // نحن داخل ضغطة زر: يمكن طلب الإذن
   plModal('<div style="padding:20px;text-align:center">⏳ جاري قراءة المجلدات…</div>');
   const { central, teachers } = await plCentralTeachers(false);
@@ -1236,9 +1233,11 @@ async function portalFolders(interactive) {
     <div style="font-size:12.5px;color:var(--ink-soft,#666);margin-bottom:10px">${admin
       ? 'اربط مجلد <b>«بيانات المدرسة»</b> والمجلد الذي يضم <b>مجلدات المعلمين</b> (أو المجلد الأب الذي يضمهما). الربط مرة واحدة ويُستخدم في نجوم مدرستي ولوحة التحكم وبرنامج الغياب.'
       : 'اربط مجلد <b>«بيانات المدرسة»</b> و<b>مجلدك</b> (يمكن أكثر من مجلد). بعدها يفتح «نجوم مدرستي» جاهزاً بملفك دون أي إعداد.'}</div>
+    ${admin ? '' : plChecklist(central, st, tf)}
     ${st.map((x, i) => `<div style="display:flex;align-items:center;gap:8px;border:1px solid #ddd;border-radius:10px;padding:6px 10px;margin-bottom:6px">📁 <b style="flex:1">${plEsc(x.name)}</b>${x.ok ? '✅' : '🔒'}<button class="btn" style="padding:2px 10px" onclick="FL.remove(${i}).then(()=>portalFolders())">✖</button></div>`).join('')}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px">
-      <button class="btn" onclick="FL.add().then(()=>portalFolders(),e=>{if(!(e&&e.name==='AbortError'))alert(e.message)})">➕ إضافة مجلد</button>
+      <button class="btn" onclick="plAdd()">➕ إضافة مجلد</button>
+      <button class="btn" onclick="plGuide(true)">❔ كيف أجهّز المجلدات؟</button>
     </div>
     <div>📗 بيانات المدرسة: ${central ? '<b>' + plEsc(central.path) + '</b> ✅' : '<span style="color:#b33">لم يُعثر عليه — أضف مجلد «بيانات المدرسة»</span>'}</div>
     ${!admin && me && tf ? `<div>📄 ملفي: <b>${plEsc(tf.name)}</b> ✅</div>` : ''}
@@ -1250,6 +1249,45 @@ async function portalFolders(interactive) {
       ${teachers.length ? '<button class="btn btn-primary" onclick="portalSaveMe()">💾 حفظ</button>' : ''}
       ${admin && central ? '<button class="btn" onclick="portalTeacherFiles()">🗂️ ملفات المعلمين</button>' : ''}
       <button class="btn" onclick="FL.clear().then(()=>FL.setMe(null)).then(()=>FL.setTeacherFile(null)).then(()=>{document.getElementById('plModal').remove();plHdrRefresh();})" title="إلغاء كل الروابط على هذا الجهاز">🗑️ فك الربط</button>
+      <button class="btn" onclick="document.getElementById('plModal').remove()">إغلاق</button>
+    </div>`);
+}
+// إضافة مجلد (يمكن تكرارها لأكثر من مجلد) ثم الرجوع لنافذة الربط
+function plAdd() {
+  FL.add().then(() => portalFolders(), e => { if (!(e && e.name === 'AbortError')) alert('تعذّر ربط المجلد: ' + e.message); });
+}
+// قائمة تحقق للمعلم: مجلد بيانات المدرسة + مجلده
+function plChecklist(central, st, tf) {
+  const mineOk = !!tf || st.some(x => !(central && String(central.path).startsWith(x.name + '/')));
+  const row = (ok, t, hint) => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0">${ok ? '✅' : '⬜'} <span style="flex:1"><b>${t}</b>${ok ? '' : `<br><span style="font-size:12px;color:#b7791f">${hint}</span>`}</span>${ok ? '' : '<button class="btn" style="padding:2px 10px" onclick="plAdd()">➕ اختيار</button>'}</div>`;
+  return `<div style="border:1px solid #cbd5e1;border-radius:10px;padding:6px 12px;margin-bottom:10px;background:rgba(148,163,184,.08)">
+    ${row(!!central, '1) مجلد «بيانات المدرسة»', 'اختر مجلد «بيانات المدرسة» من OneDrive على جهازك')}
+    ${row(mineOk, '2) مجلدي (المجلد الذي باسمي)', 'اختر المجلد الذي يحمل اسمك من OneDrive على جهازك')}</div>`;
+}
+// شرح خطوات تجهيز المجلدات (اختصار OneDrive + مزامنة) ثم اختيار المجلدين
+function plGuide(fromMain) {
+  plModal(`<h3 style="margin:0 0 6px">📁 ربط مجلداتك — مرة واحدة على هذا الجهاز</h3>
+    <div style="font-size:13px;color:var(--ink-soft,#555);margin-bottom:8px">ستربط <b>مجلدين</b>: مجلد <b>«بيانات المدرسة»</b> و<b>المجلد الذي يحمل اسمك</b>. بعدها تعمل كل البرامج (نجوم مدرستي، برنامج الحضور) بملفك مباشرة.</div>
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:8px 14px;background:rgba(148,163,184,.07)">
+      <b>أولاً: تجهيز المجلدات على جهازك (إن لم تفعل من قبل)</b>
+      <ol style="margin:4px 0;padding-inline-start:22px;font-size:13px">
+        <li>افتح مجلد نجوم مدرستي على <b>OneDrive</b> من الرابط الذي أُرسل لك.</li>
+        <li>على مجلد <b>«بيانات المدرسة»</b> اضغط <b>⋯</b> ثم <b>«إضافة اختصار إلى ملفاتي»</b> (Add shortcut to My files). كرّر ذلك على <b>المجلد الذي باسمك</b>.</li>
+        <li>تأكد أن تطبيق <b>OneDrive</b> يعمل على الجهاز ومسجّل بحساب المدرسة — سيظهر المجلدان في «مستكشف الملفات» تحت <b>OneDrive</b>.</li>
+        <li>يُفضّل: زر الفأرة الأيمن على كل مجلد ← <b>«الاحتفاظ دائماً على هذا الجهاز»</b>.</li>
+      </ol>
+    </div>
+    <div style="border:1px solid #86efac;border-radius:10px;padding:8px 14px;margin-top:8px;background:#f0fdf4">
+      <b>ثانياً: الربط هنا</b>
+      <ol style="margin:4px 0;padding-inline-start:22px;font-size:13px">
+        <li>اضغط الزر أدناه واختر مجلد <b>«بيانات المدرسة»</b> من OneDrive، ثم اضغط «تحديد مجلد» ← <b>«السماح»</b>.</li>
+        <li>بعدها اضغط <b>«➕ اختيار»</b> بجانب «مجلدي» واختر <b>المجلد الذي باسمك</b> بنفس الطريقة.</li>
+        <li>اختر اسمك من القائمة واضغط <b>💾 حفظ</b>.</li>
+      </ol>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-primary" onclick="plAdd()">📂 ابدأ: اختيار المجلد الأول</button>
+      ${fromMain ? '<button class="btn" onclick="portalFolders()">↩ رجوع</button>' : ''}
       <button class="btn" onclick="document.getElementById('plModal').remove()">إغلاق</button>
     </div>`);
 }

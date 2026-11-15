@@ -59,7 +59,7 @@
         <button class="tab-btn" onclick="showPage('seating',this)">🪑 الجلوس</button>
         <button class="tab-btn" onclick="showPage('teacher',this)">📊 لوحة التحكم</button>
         <div style="width:1px;background:rgba(255,255,255,0.2);margin:0 4px"></div>
-        <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="استيراد / تصدير / تصفير البيانات">📁</button>
+        <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="نسخة احتياطية / دمج بيانات قديمة">📁</button>
         <input type="file" id="importFile" style="display:none" accept=".csv,.json" onchange="importFromExcel(event)">
         <button onclick="openSetup()" id="btnSetup" class="btn btn-ghost btn-sm" title="الربط والإعداد: الملف المركزي + ملف بياناتي على OneDrive">🔗</button>
         <!-- زرّا الحالة القديمان: مخفيان، يُستخدمان داخلياً لمعرفة حالة كل ربط -->
@@ -143,7 +143,7 @@
     <div class="card-title" style="font-size:19px">🏫 صفوفي وطلابي</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm rs-managed-only" onclick="rosterOpenClassPicker()" title="أضف شعبة أو انقلها إلى الأرشيف (مع كامل بياناتها)">🏫 إضافة / أرشفة شعب</button>
-      <button class="btn btn-import btn-sm" onclick="showImportExportMenu()" title="استيراد وتصدير بيانات الطلاب">
+      <button class="btn btn-import btn-sm" style="display:none" onclick="showImportExportMenu()" title="استيراد وتصدير بيانات الطلاب (موقوف حالياً)">
         📂 استيراد / تصدير
       </button>
       <input type="file" id="importStudentsFile" style="display:none" accept=".csv,.json" onchange="importStudentsFile(event)">

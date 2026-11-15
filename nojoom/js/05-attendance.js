@@ -55,6 +55,36 @@ function renderPeriodChips() {
     (saved && saved.length ? `<span style="font-size:11px;color:var(--present)">✓ محفوظ: ${saved.join('، ')}</span>` : '');
   if (typeof renderTodayBar === 'function') renderTodayBar();
 }
+// نافذة منبثقة: اختيار رقم الحصة (إلزامي) ثم الحفظ — وتكمل الانتقال المعلّق إن وُجد
+function periodPickHTML(prefix) {
+  const n = periodsCount(sessionDate);
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 4px">` +
+    Array.from({ length: n }, (_, i) => i + 1).map(p => `<button class="flt-btn ${selPeriods.has(p) ? 'flt-btn-on' : ''}" id="${prefix}${p}" style="min-width:42px;padding:7px 10px;font-size:15px" onclick="periodPickToggle(${p},'${prefix}')">${p}</button>`).join('') + `</div>`;
+}
+function periodPickToggle(p, prefix) {
+  if (selPeriods.has(p)) selPeriods.delete(p); else selPeriods.add(p);
+  const b = document.getElementById(prefix + p); if (b) b.classList.toggle('flt-btn-on', selPeriods.has(p));
+  renderPeriodChips();
+}
+function askPeriodThenSave() {
+  const cls = state.classes.find(c => c.id === state.activeClass);
+  openModal(`
+    <div class="modal-title">🔢 اختر رقم الحصة للحفظ</div>
+    <div style="font-size:13px;line-height:1.8;text-align:center">حصة <b>${cls ? cls.name : ''}</b> بتاريخ <b>${sessionDate}</b> — اختر رقم الحصة (أو الحصتين إن كانت مزدوجة):</div>
+    ${periodPickHTML('pp-')}
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="periodPickSave()">💾 حفظ الحصة</button>
+      <button class="btn btn-ghost" onclick="window._guardProceed=null;closeModalForce()">إلغاء</button>
+    </div>`);
+}
+function periodPickSave() {
+  if (!selPeriods.size) return toast('اختر رقم الحصة', '⚠️');
+  closeModalForce();
+  saveSession();
+  if (typeof isSessionDirty === 'function' && isSessionDirty()) return;
+  const go = window._guardProceed; window._guardProceed = null;
+  if (go) go();
+}
 function togglePeriod(p) {
   if (selPeriods.has(p)) selPeriods.delete(p); else selPeriods.add(p);
   renderPeriodChips();
@@ -146,11 +176,7 @@ function updateSessionSummary(cls) {
 function saveSession() {
   const cls = state.classes.find(c => c.id === state.activeClass);
   if (!cls) return toast('اختر صفاً أولاً', '⚠️');
-  if (!selPeriods.size) {
-    const box = document.getElementById('period-chips');
-    if (box) { box.style.outline = '2px solid var(--absent)'; box.style.borderRadius = '10px'; setTimeout(() => box.style.outline = '', 1800); }
-    return toast('اختر رقم الحصة أولاً (أعلى القائمة)', '⚠️');
-  }
+  if (!selPeriods.size) return askPeriodThenSave();   // نافذة لاختيار رقم الحصة ثم الحفظ مباشرة
 
   const ATTEND_POINTS = 2; // نقطتان لكل حصة حضور
   const alreadySaved = (cls._savedDates || []).includes(sessionDate);

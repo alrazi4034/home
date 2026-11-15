@@ -43,7 +43,7 @@ const FL = (() => {
     list.push(h); await saveFolders(list); return list;
   }
   async function add() {                       // يفتح اختيار مجلد (يمكن تكراره لأكثر من مجلد)
-    const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const h = await window.showDirectoryPicker({ id: 'razi-folders', mode: 'readwrite' });   // يتذكر آخر مكان (مجلد OneDrive)
     return addHandle(h);
   }
   async function remove(i) { const list = await folders(); list.splice(i, 1); await saveFolders(list); return list; }

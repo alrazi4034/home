@@ -421,7 +421,12 @@ function confirmAddAssessment() {
 }
 
 function deleteAssessment(id) {
-  if (!confirm('حذف هذا التقييم وجميع درجاته؟')) return;
+  const _a = (state.assessments || []).find(a => a.id === id);
+  const _n = _a ? Object.values(_a.scores || {}).filter(v => v !== '' && v != null).length : 0;
+  if (_n) {   // تقييم فيه درجات ⇐ تأكيد بكتابة كلمة «حذف» (حماية من الحذف بالخطأ)
+    const w = prompt(`⚠️ التقييم «${_a.name}» فيه ${_n} درجة مُدخلة وسيُحذف نهائياً مع درجاته.\nللتأكيد اكتب كلمة: حذف`);
+    if (w === null || w.trim() !== 'حذف') { if (w !== null) toast('لم يُحذف — الكلمة غير مطابقة', '⚠️'); return; }
+  } else if (!confirm('حذف هذا التقييم؟')) return;
   state.assessments = (state.assessments||[]).filter(a => a.id !== id);
   // إعادة حساب النقاط الكاملة لكل الطلاب المتأثرين بعد الحذف
   state.classes.forEach(cls => {

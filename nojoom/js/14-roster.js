@@ -477,6 +477,7 @@ function rosterCommit(plan, meta) {
       const changed = state.schoolInfo.termStart !== info.termStart;
       state.schoolInfo.termStart = info.termStart;
       if (info.termEnd) state.schoolInfo.termEnd = info.termEnd;
+      if (info.term) state.schoolInfo.term = info.term;
       if (changed && typeof recalcAllTermWeeks === 'function') recalcAllTermWeeks();
     }
   }
@@ -529,7 +530,8 @@ async function rosterSyncNow(opts) {
       const perm = await rosterHandle.queryPermission({ mode: 'read' });
       if (perm !== 'granted') return;
       const f = await rosterHandle.getFile();
-      if (state.rosterMeta && state.rosterMeta.fileModified === f.lastModified) return;
+      // لا تخطِّ القراءة إذا كانت بيانات الفصل الدراسي ناقصة (ملف معلم جديد)
+      if (state.rosterMeta && state.rosterMeta.fileModified === f.lastModified && (state.schoolInfo || {}).termStart) return;
     }
     const src = await rsGetWorkbook(!!opts.interactive);
     if (!src) {
@@ -929,7 +931,7 @@ function adminCodeOk(action) {
 }
 // استعادة نسخة احتياطية: في الوضع المركزي برمز المسؤول فقط
 function requestRestoreBackup() {
-  if (rosterManaged() && !adminCodeOk('استعادة نسخة احتياطية (تستبدل بيانات المعلم الحالية)')) return;
+  if (!adminCodeOk('استعادة نسخة احتياطية (تستبدل بيانات المعلم الحالية)')) return;
   document.getElementById('importFile').click();
 }
 

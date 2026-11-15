@@ -45,6 +45,7 @@ function guardUnsaved(proceed) {
       لديك تسجيل حضور أو مشاركات في <b>${cls.name}</b> بتاريخ <b>${sessionDate}</b> لم تُحفظ بعد.<br>
       <span style="color:var(--text-muted);font-size:12px">الملاحظات السلوكية تُحفظ فوراً، أما الحضور وسجل المشاركات اليومي فيحتاجان «حفظ الحصة».</span>
     </div>
+    ${typeof selPeriods !== 'undefined' && !selPeriods.size ? `<div style="font-size:13px;font-weight:800;text-align:center">🔢 رقم الحصة (مطلوب للحفظ):</div>${periodPickHTML('gp-')}` : ''}
     <div class="modal-actions" style="flex-wrap:wrap">
       <button class="btn btn-primary" style="flex:1" onclick="guardSaveAndGo()">💾 حفظ ثم متابعة</button>
       <button class="btn btn-ghost" onclick="guardGoWithoutSave()">متابعة بدون حفظ</button>
@@ -52,6 +53,7 @@ function guardUnsaved(proceed) {
     </div>`);
 }
 function guardSaveAndGo() {
+  if (typeof selPeriods !== 'undefined' && !selPeriods.size) return toast('اختر رقم الحصة أولاً', '⚠️');
   closeModalForce();
   saveSession();
   if (isSessionDirty()) return;               // لم يُحفظ (مثلاً لم تُختر الحصة)
@@ -94,6 +96,22 @@ function onAttendancePage() { return document.getElementById('page-attendance')?
   ['toggleAttendance', 'markAllPresent', 'markAllAbsent', 'addParticipation', 'subtractPoint'].forEach(touch);
   // ملف الجلوس يُحمَّل بعد هذا الملف
   document.addEventListener('DOMContentLoaded', () => touch('sxAtt'));
+})();
+// 🚫 السبت والأحد عطلة نهاية الأسبوع: لا حضور ولا مشاركات ولا حفظ حصة
+(function blockWeekend() {
+  const block = name => {
+    const orig = window[name];
+    if (typeof orig !== 'function' || orig._wkWrapped) return;
+    const w = function (...args) {
+      if (typeof isWeekend === 'function' && isWeekend(sessionDate)) { toast('🚫 السبت والأحد عطلة — لا يمكن تسجيل حضور أو مشاركات. غيّر التاريخ إلى يوم دراسي.', '⚠️'); return; }
+      return orig.apply(this, args);
+    };
+    w._wkWrapped = true;
+    window[name] = w;
+  };
+  const list = ['toggleAttendance', 'markAllPresent', 'markAllAbsent', 'addParticipation', 'subtractPoint', 'saveSession', 'importAbsenceFromAttendance'];
+  list.forEach(block);
+  document.addEventListener('DOMContentLoaded', () => { block('sxAtt'); list.forEach(block); });
 })();
 window.addEventListener('beforeunload', e => {
   if (isSessionDirty()) { e.preventDefault(); e.returnValue = ''; }

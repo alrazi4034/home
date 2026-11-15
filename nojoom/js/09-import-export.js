@@ -135,7 +135,7 @@ function openImportFromSchoolDataModal() {
 
 /* يقرأ اسم المدرسة، اسم المديرة، والفصل الدراسي الحالي (بداية/نهاية) من صفحة "التقويم المدرسي" */
 function readSchoolInfoFromWorkbook(wb) {
-  const out = { schoolName:'', principal:'', academicYear:'', termStart:'', termEnd:'' };
+  const out = { schoolName:'', principal:'', academicYear:'', termStart:'', termEnd:'', term:'' };
   const wsCal = wb.Sheets['التقويم المدرسي'];
   if (!wsCal) return out;
   const grid = XLSX.utils.sheet_to_json(wsCal, {header:1, defval:''});
@@ -162,27 +162,32 @@ function readSchoolInfoFromWorkbook(wb) {
       if (!row || row.every(c => c === '' || c === undefined)) continue;
       rawRows.push(row);
     }
+    // التواريخ قد تكون: تاريخ Excel، رقم، «2026-08-31»، «31/08/2026» أو «31-8-2026»
     const toDate = v => {
-      if (v instanceof Date) return v;
-      if (typeof v === 'number') return new Date(Math.round((v - 25569) * 86400 * 1000));
-      const d = new Date(v);
-      return isNaN(d) ? null : d;
+      if (v instanceof Date) return isNaN(v) ? null : new Date(v.getFullYear(), v.getMonth(), v.getDate() + (v.getHours() >= 12 ? 1 : 0));
+      if (typeof v === 'number' && v > 20000) { const d = new Date(Math.round((v - 25569) * 86400 * 1000)); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); }
+      const t = String(v || '').trim(); if (!t) return null;
+      let m = t.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+      m = t.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); if (m) return new Date(+m[3], +m[2] - 1, +m[1]);   // يوم/شهر/سنة
+      return null;
     };
     const segments = [0,1,2].map(ti => {
-      const wCol = ti*2, dCol = ti*2+1;
+      const dCol = ti*2+1;
       const weeks = rawRows
         .map(row => toDate(row[dCol]))
         .filter(Boolean)
         .sort((a,b) => a - b);
-      return weeks.length ? { start: weeks[0], end: weeks[weeks.length-1] } : null;
+      return weeks.length ? { n: ti + 1, start: weeks[0], end: weeks[weeks.length-1] } : null;
     }).filter(Boolean);
     if (segments.length) {
       const today = new Date(); today.setHours(0,0,0,0);
       // الفصل الحالي = آخر فصل بدأ قبل اليوم أو يساويه، وإلا أول فصل
       let current = segments.filter(s => s.start <= today).pop() || segments[0];
-      const fmt = d => d.toISOString().slice(0,10);
+      const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const endD = new Date(current.end); endD.setDate(endD.getDate() + 4);   // آخر أسبوع: من الاثنين إلى الجمعة
       out.termStart = fmt(current.start);
-      out.termEnd   = fmt(current.end);
+      out.termEnd   = fmt(endD);
+      out.term      = String(current.n);
     }
   }
   return out;
