@@ -762,7 +762,20 @@ const MRS = (() => {
     'التنمر (لفظي أو جسدي) على زملاءه': 'B11', 'تجاهل توجيهات المعلم': 'B09', 'التحدث بدون إذن ومقاطعة المعلم': 'B08',
     'الخروج من الصف بدون إذن': 'B04', 'غياب متكرر يستدعي المتابعة': 'B05', 'التأخر المتكرر عن الحصة': 'B06',
     'إهمال الواجبات والمهمات الدراسية': 'A02', 'عدم إحضار الأدوات أو الكتب': 'A01', 'اللعب داخل الصف أو إحداث فوضى': 'B09',
-    'الانشغال بألعاب الحاسوب عن الحصة الدرسية': 'B14', 'النوم اثناء الحصة الدرسية': 'B03', 'الأكل اثناء الحصة': 'B02'
+    'الانشغال بألعاب الحاسوب عن الحصة الدرسية': 'B14', 'النوم اثناء الحصة الدرسية': 'B03', 'الأكل اثناء الحصة': 'B02',
+    // القائمة المدمجة الحالية
+    'كثرة الكلام أو مقاطعة المعلم دون استئذان': 'B08', 'عدم الالتزام بالتعليمات أو رفض تنفيذ المطلوب': 'B09', 'الجدال مع المعلم': 'B01',
+    'الأكل داخل الصف دون إذن': 'B02', 'استخدام الأجهزة دون إذن أو لغير التعلم': 'B14', 'ألفاظ غير لائقة مع الآخرين': 'B10',
+    'سلوك عدواني لفظي أو جسدي تجاه الزملاء': 'B11', 'مخالفة الزي أو المظهر المدرسي': 'B15', 'عدم إحضار الكتب أو الأدوات': 'A01',
+    'عدم حل الواجب المنزلي': 'A02', 'ضعف في المهارات الأساسية (قراءة، كتابة، حساب)': 'A03'
+  };
+  // أسماء البنود كاملة (للتقارير)
+  const SHORT_LABELS = {
+    B01: 'الجدال مع المعلم', B02: 'الأكل داخل الصف', B03: 'النوم أثناء الحصة', B04: 'الخروج دون إذن', B05: 'تكرار الغياب', B06: 'تكرار التأخر',
+    B07: 'التحدث أثناء الشرح', B08: 'الكلام ومقاطعة المعلم', B09: 'عدم الالتزام بالتعليمات', B10: 'ألفاظ غير لائقة', B11: 'سلوك عدواني',
+    B12: 'رفض تنفيذ المهام', B13: 'العبث بالممتلكات', B14: 'الأجهزة دون إذن', B15: 'مخالفة الزي',
+    A01: 'عدم إحضار الأدوات', A02: 'عدم حل الواجب', A03: 'ضعف المهارات الأساسية', A04: 'ضعف المشاركة', A05: 'ضعف التركيز',
+    A06: 'عدم إكمال المهام الصفية', A07: 'تدنّي نتائج التقييمات', A08: 'ضعف الدافعية'
   };
 
   // الملاحظات الإيجابية بعد دمج المتشابه — وكل مجموعة تُخفّف بنود مرصاد المقابلة لها
@@ -906,6 +919,7 @@ const MRS = (() => {
     const classPart = avg(b => b.partRate);
     const classDed = avg(b => b.dedRate);
     const tracksPart = classPart >= 0.15;            // المعلم يسجّل المشاركات فعلاً في هذا الصف
+    const classMeans = base.filter(b => b.scores.length >= cfg.minAssess).map(b => b.scores.reduce((x, y) => x + y, 0) / b.scores.length);
 
     // 2) البنود لكل طالب
     return base.map(b => {
@@ -968,6 +982,21 @@ const MRS = (() => {
       const genericDed = b.dedTotal - b.reasoned;
       if (enoughWeeks && genericDed >= 3 && b.dedRate >= Math.max(2 * classDed, 0.1))
         setData('A05', 'sometimes', `${genericDed} خصم (${b.dedRate.toFixed(2)} لكل حصة مقابل ${classDed.toFixed(2)} للصف)`);
+      const denomAll = b.attended || saved.length || 0;
+      // A05 التركيز (استنتاج): مؤشرات التشتت المسجّلة — النوم، الأجهزة، الكلام (ملاحظة أو خصم) — «أحياناً» كحد أقصى لأنها غير مباشرة
+      // النوم واللعب على الجهاز مؤشران مباشران (قد يصلان «دائماً»)، والكلام مؤشر غير مباشر («أحياناً» كحد أقصى)
+      { const sd = (b.neg.B03 || 0) + (b.neg.B14 || 0);
+        const talk = 0.5 * ((b.neg.B07 || 0) + (b.neg.B08 || 0)) + cfg.deductWeight * ((b.dedReasons.B07 || 0) + (b.dedReasons.B08 || 0));
+        if (denomAll && sd + talk >= 2) {
+          let lv = sd >= 2 ? lvByRate(sd, denomAll, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin) : 'never';
+          if (lv === 'never' && lvByRate(sd + talk, denomAll, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin) !== 'never') lv = 'sometimes';
+          if (lv !== 'never') setData('A05', lv, `مستنتج من التشتت: نوم/أجهزة ${sd}${talk ? ' + كلام ' + Math.round(talk * 10) / 10 : ''} في ${denomAll} حصة`);
+        } }
+      // B12 رفض المهام (استنتاج): عدم التزام متكرر بالتعليمات، أو مع جدال المعلم
+      if (auto.B09 === 'always') setData('B12', 'sometimes', 'مستنتج: عدم التزام متكرر بالتعليمات');
+      else if (auto.B09 === 'sometimes' && RANK[auto.B01] >= 1) setData('B12', 'sometimes', 'مستنتج: عدم التزام بالتعليمات مع جدال المعلم');
+      // A06 عدم إكمال المهام (استنتاج): واجب غير محلول بصورة دائمة مع مشاركة ضعيفة
+      // (يُسجَّل مباشرة من سبب الخصم «📋 لم يكمل النشاط»)
       // اتجاه النقاط: آخر 3 أسابيع مقارنة بما قبلها
       let declining = false;
       if (b.wk.length >= cfg.minWeeks + 2) {
@@ -981,6 +1010,7 @@ const MRS = (() => {
       if (declining) ind.push('نقاط متراجعة آخر 3 أسابيع');
       if (['A01', 'A02', 'A06'].some(c => RANK[auto[c]] >= 1 && kind[c] !== 'data')) ind.push('ملاحظات الأدوات/الواجب/الأنشطة');
       if (RANK[a07] >= 1) ind.push('تقييمات منخفضة');
+      if (RANK[auto.B03] >= 1) ind.push('نوم متكرر في الحصة');
       if (ind.length >= 2) setData('A08', ind.length >= 3 ? 'always' : 'sometimes', 'مؤشرات: ' + ind.join('، '));
       // بنود لا يمكن تقييمها في هذه الفترة (بيانات غير كافية ولا توجد ملاحظات) ⇐ تُترك فارغة في ملف مرصاد
       // حتى لا تُحسب «تحسّناً» وهمياً عند مقارنة فترة قصيرة بفترة طويلة
@@ -993,9 +1023,16 @@ const MRS = (() => {
       if ([a04ok, declOk, a07ok].filter(Boolean).length + 1 < 2 && !noteEv('A08')) na.A08 = true;
       if (!a07ok && !noteEv('A03')) na.A03 = true;
       if (!enoughWeeks && !noteEv('A05')) na.A05 = true;
+      CODES.forEach(c => { if (auto[c] !== 'never') delete na[c]; });   // ما ثبت بالاستنتاج يُقيَّم دائماً
       // A03 المهارات الأساسية: اقتراح فقط عند تدنٍّ شديد ومستمر — يحتاج تأكيد المعلم
       const needsConfirm = {};
-      if (a07 === 'always' && !b.neg.A03) { setData('A03', 'sometimes', 'اقتراح: تقييمات متدنية جداً — يحتاج تأكيد المعلم'); needsConfirm.A03 = true; }
+      // A03 المهارات الأساسية: أضعف طلاب الصف في التقييمات (أدنى 15%) مع متوسط دون حد «أحياناً»
+      if (b.scores.length >= cfg.minAssess && classMeans.length >= 5) {
+        const m = b.scores.reduce((x, y) => x + y, 0) / b.scores.length;
+        const rank = classMeans.filter(v => v < m - 1e-9).length / classMeans.length;   // نسبة الطلاب الأضعف منه
+        if (rank < 0.15 && m < cfg.testSome)
+          setData('A03', m < cfg.testAlways ? 'always' : 'sometimes', `من أضعف ${Math.max(1, Math.round(classMeans.length * 0.15))} طلاب في الصف بالتقييمات (متوسط ${Math.round(m)}%)`);
+      }
 
       // 3) مراجعة المعلم
       const rv = (opt.review && opt.review[key]) || {};
@@ -1126,7 +1163,7 @@ const MRS = (() => {
   }
 
   return { STATEMENTS, CODES, SHORT, SUBJECT_CODES, TEXT_CODE, POS_GROUPS, DEDUCT_REASONS, DEF, LABEL, RANK, LV,
-           posGroupOf, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
+           posGroupOf, SHORT_LABELS, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
 })();
 
 </script>
@@ -1303,6 +1340,307 @@ function portalZipFiles() {
   const sc = window._plScan; if (!sc) return;
   const files = sc.rows.map(r => ({ name: FL.safeName(r.t.name) + '/' + FL.fileNameFor(r.t), text: JSON.stringify(FL.starterData(r.t, sc.info), null, 2) }));
   MRS.download(MRS.makeZip(files), 'ملفات_نجوم_مدرستي_للمعلمين.zip');
+}
+
+/* timetable_pdf.js — قراءة «جدول المعلمين» من ملف PDF (مصدّر من Excel) وتحويله إلى جداول المعلمين في البوابة
+   1) عناوين الحصص (1..8 لكل يوم، 1..4 للجمعة) تحدد أعمدة الأيام والحصص بالموقع.
+   2) أسماء المعلمين في عمود «المعلم» تحدد الصفوف، وكل شعبة (مثل 7-2) تُنسب لأقرب صف وأقرب عمود.
+   3) التحقق: في كل عمود (يوم × حصة) يجب أن تظهر كل شعبة مرة واحدة فقط. */
+const TTPDF = (() => {
+  const DAYS = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+  const IGNORE_RX = /جيوجي?ت?س?ت?و|جوجيتسو|جيو\s*جيتسو|مصادر\s*(ال)?تعلم|التربية\s*الخاصة|اليبية\s*الخاصة|^الخاصة$/;
+
+  async function extract(buf) {
+    const lib = window.pdfjsLib;
+    if (!lib) throw new Error('مكتبة قراءة PDF لم تُحمَّل (تحتاج اتصالاً بالإنترنت).');
+    if (lib.GlobalWorkerOptions && !lib.GlobalWorkerOptions.workerSrc)
+      lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const doc = await lib.getDocument({ data: new Uint8Array(buf) }).promise;
+    const out = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const p = await doc.getPage(n), vp = p.getViewport({ scale: 1 }), tc = await p.getTextContent();
+      out.push(tc.items.filter(i => String(i.str).trim()).map(i => ({ s: String(i.str), x: i.transform[4], y: vp.height - i.transform[5], w: i.width || 0, page: n })));
+    }
+    return out;
+  }
+
+  const AR = /[؀-ۿ]/;
+  const med = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };
+
+  function parsePage(items) {
+    // 1) صف عناوين الحصص: الأرقام 1..8 الأكثر تكراراً على نفس الارتفاع
+    const nums = items.filter(i => /^[1-8]$/.test(i.s.trim()));
+    const byY = {};
+    nums.forEach(i => { const k = Math.round(i.y / 3); (byY[k] = byY[k] || []).push(i); });
+    const hdr = Object.values(byY).sort((a, b) => b.length - a.length)[0] || [];
+    if (hdr.length < 20) return null;
+    const hy = med(hdr.map(i => i.y));
+    const heads = nums.filter(i => Math.abs(i.y - hy) <= 6).map(i => ({ p: +i.s.trim(), cx: i.x + i.w / 2 })).sort((a, b) => b.cx - a.cx);   // من اليمين لليسار
+    // الأيام: كل مرة يرجع الترقيم إلى 1 يبدأ يوم جديد (الاثنين أولاً من اليمين)
+    const cols = []; let d = -1, last = 99;
+    heads.forEach(h => { if (h.p <= last && h.p === 1) d++; else if (h.p <= last) d++; last = h.p; if (d >= 0 && d < DAYS.length) cols.push({ day: DAYS[d], p: h.p, cx: h.cx }); });
+    const gap = med(cols.slice(1).map((c, i) => Math.abs(cols[i].cx - c.cx))) || 20;
+    const rightEdge = Math.max(...cols.map(c => c.cx)) + gap * 0.7;
+    // 2) أعمدة الرأس: «المعلم» و«النصاب» و«المادة»
+    const find = rx => items.find(i => rx.test(i.s.trim()) && i.y < hy + 4 && i.y > hy - 30);
+    const hT = find(/^المعلم$/), hL = find(/^النصاب$/);
+    const tX = hT ? hT.x + hT.w / 2 : rightEdge + 80;
+    const lX = hL ? hL.x + hL.w / 2 : rightEdge + 20;
+    const nameMin = (tX + lX) / 2, nameMax = tX + (tX - lX) * 0.75;
+    // 3) صفوف المعلمين = أسماء في عمود «المعلم» (تجميع القطع على نفس السطر)
+    const nameItems = items.filter(i => i.y > hy + 6 && (i.x + i.w / 2) > nameMin && (i.x + i.w / 2) < nameMax && !/^\d+$/.test(i.s.trim()));
+    const rows = [];
+    nameItems.sort((a, b) => a.y - b.y).forEach(i => {
+      const r = rows.find(r => Math.abs(r.y - i.y) <= 4);
+      if (r) { r.parts.push(i); r.y = (r.y * (r.parts.length - 1) + i.y) / r.parts.length; } else rows.push({ y: i.y, parts: [i] });
+    });
+    rows.forEach(r => { r.name = r.parts.sort((a, b) => (b.x + b.w) - (a.x + a.w)).map(p => p.s.trim()).join(' ').replace(/\s+/g, ' ').trim(); });
+    // آخر صف = حيث تنتهي الجداول (قبل الإحصاءات أسفل الصفحة)
+    const tok = items.filter(i => /\d\s*-+\s*\d/.test(i.s) && (i.x + i.w / 2) < rightEdge && i.y > hy + 6);
+    const maxTokY = Math.max(...tok.map(i => i.y), hy);
+    const R = rows.filter(r => r.y <= maxTokY + 20);
+    // النصاب لكل صف
+    const loads = items.filter(i => /^\d{1,2}$/.test(i.s.trim()) && Math.abs((i.x + i.w / 2) - lX) < gap * 1.2 && i.y > hy + 6);
+    R.forEach(r => { const i = nearest(loads, r.y); if (i && Math.abs(i.y - r.y) < 12) r.load = +i.s.trim(); });
+    // المادة (عناوين مدمجة رأسياً): يُنسب كل عنوان لأقرب صف، ويُستخدم للتجاهل فقط
+    const subjItems = items.filter(i => AR.test(i.s) && (i.x + i.w / 2) > nameMax && i.y > hy + 6 && i.y <= maxTokY + 20);
+    const subj = [];
+    subjItems.sort((a, b) => a.y - b.y).forEach(i => { const g = subj.find(g => Math.abs(g.y1 - i.y) <= 14); if (g) { g.t += ' ' + i.s.trim(); g.y1 = i.y; g.y = (g.y0 + i.y) / 2; } else subj.push({ t: i.s.trim(), y0: i.y, y1: i.y, y: i.y }); });
+    R.forEach(r => { const g = nearest(subj, r.y); r.subject = g ? g.t : ''; });
+    // 4) الشعب ⇐ أقرب صف وأقرب عمود
+    R.forEach(r => { r.cells = {}; DAYS.forEach(d => r.cells[d] = Array(d === 'الجمعة' ? 4 : 8).fill('')); r.bad = []; });
+    tok.forEach(i => {
+      const r = nearest(R, i.y); if (!r || Math.abs(r.y - i.y) > 16) return;
+      const cx = i.x + i.w / 2, c = cols.slice().sort((a, b) => Math.abs(a.cx - cx) - Math.abs(b.cx - cx))[0];
+      if (!c || Math.abs(c.cx - cx) > gap * 0.75) return;
+      const codes = (i.s.match(/\d\s*-\s*\d(?!\s*-)/g) || []).map(x => x.replace(/\s+/g, ''));
+      const clean = /^\s*\d\s*-\s*\d\s*$/.test(i.s);
+      if (!clean) r.bad.push(i.s.trim());
+      if (clean && codes[0]) {
+        const k = r.cells[c.day], idx = c.p - 1;
+        if (idx < k.length) k[idx] = k[idx] ? k[idx] + '+' + codes[0] : codes[0];
+      }
+    });
+    R.forEach(r => {
+      r.count = DAYS.reduce((n, d) => n + r.cells[d].filter(Boolean).length, 0);
+      r.ignore = IGNORE_RX.test(r.name) || IGNORE_RX.test(r.subject) || r.bad.length > 0 || (!r.count && !r.load);
+      r.ignoreWhy = IGNORE_RX.test(r.name) || IGNORE_RX.test(r.subject) ? 'تربية خاصة / مصادر تعلم / جيوجيتسو' : r.bad.length ? 'خانات غير مقروءة' : (!r.count ? 'لا حصص' : '');
+    });
+    return { cols, rows: R };
+  }
+  function nearest(list, y) { let b = null, bd = 1e9; list.forEach(r => { const d = Math.abs(r.y - y); if (d < bd) { bd = d; b = r; } }); return b; }
+
+  /* مطابقة الأسماء: تطبيع + تشابه الحروف (يتحمل أخطاء استخراج PDF مثل «بالل» = «بلال» و«هللا» = «الله») */
+  function norm(s) {
+    return String(s || '').replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
+      .replace(/\b(ال|عبد)\s+/g, '$1').replace(/[^ء-يa-z]/gi, '').toLowerCase();
+  }
+  function bag(s) { const m = {}; for (const ch of s) m[ch] = (m[ch] || 0) + 1; return m; }
+  function dice(a, b) {
+    if (!a || !b) return 0;
+    const A = bag(a), B = bag(b); let inter = 0;
+    Object.keys(A).forEach(k => { inter += Math.min(A[k], B[k] || 0); });
+    const bi = s => { const o = {}; for (let i = 0; i < s.length - 1; i++) { const g = s.substr(i, 2); o[g] = (o[g] || 0) + 1; } return o; };
+    const X = bi(a), Y = bi(b); let ib = 0, nx = 0, ny = 0;
+    Object.values(X).forEach(v => nx += v); Object.values(Y).forEach(v => ny += v);
+    Object.keys(X).forEach(k => { ib += Math.min(X[k], Y[k] || 0); });
+    return 0.6 * (2 * inter / (a.length + b.length)) + 0.4 * (nx + ny ? 2 * ib / (nx + ny) : 0);
+  }
+  // الاسم في الجدول غالباً جزء من الاسم الكامل (مثل «عماد الدين» ⇐ «عمادالدين حسن»)
+  function score(pdfName, full) {
+    const a = norm(pdfName), b = norm(full);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    // «لا» تُستخرج أحياناً «ال» (بلال ⇐ بالل، الله ⇐ هللا): مقارنة إضافية بدون الألف
+    const na = a.replace(/ا/g, ''), nb = b.replace(/ا/g, '');
+    if (na !== a || nb !== b) { const s2 = scoreRaw(pdfName, full, true); if (s2 >= 0.9) return s2 * 0.97; }
+    return scoreRaw(pdfName, full, false);
+  }
+  function scoreRaw(pdfName, full, noAlef) {
+    const f = x => noAlef ? norm(x).replace(/ا/g, '') : norm(x);
+    const a = f(pdfName), b = f(full);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const words = String(full || '').split(/\s+/).filter(Boolean);
+    let best = dice(a, b);
+    for (let i = 0; i < words.length; i++) for (let j = i + 1; j <= words.length; j++) {
+      const part = f(words.slice(i, j).join(' '));
+      if (part.length >= 3) best = Math.max(best, dice(a, part) * (j - i >= 2 ? 1 : 0.85));
+    }
+    return best;
+  }
+  function match(rows, teachers, nameOf, emailOf, subjOf) {
+    const used = new Set();
+    const cand = [];
+    rows.forEach((r, ri) => teachers.forEach((t, ti) => cand.push({ ri, ti, s: score(r.name, nameOf(t)) })));
+    cand.sort((a, b) => b.s - a.s).forEach(c => {
+      const r = rows[c.ri];
+      if (r.ti != null || used.has(c.ti) || c.s < 0.72 || r.ignore) return;
+      r.ti = c.ti; r.score = c.s; r.approx = c.s < 0.85; used.add(c.ti);
+    });
+    // جولة ثانية: الاسم الأول فريد بين المعلمين غير المطابَقين (مع ترجيح المادة)، أو الاسم اللاتيني مع البريد
+    const first = x => norm(String(x || '').trim().split(/\s+/)[0]);
+    rows.forEach(r => {
+      if (r.ti != null || r.ignore) return;
+      const free = teachers.map((t, ti) => ti).filter(ti => !used.has(ti));
+      let pick = null;
+      if (/[a-z]/i.test(r.name)) {
+        const a = r.name.toLowerCase().replace(/[^a-z]/g, '');
+        const sc = free.map(ti => ({ ti, s: dice(a, String((emailOf || (() => ''))(teachers[ti]) || '').toLowerCase().split('@')[0].replace(/[^a-z]/g, '')) })).sort((x, y) => y.s - x.s);
+        const fw = r.name.toLowerCase().split(/\s+/)[0].replace(/[^a-z]/g, '');
+        const byFirst = free.filter(ti => fw.length >= 3 && String((emailOf || (() => ''))(teachers[ti]) || '').toLowerCase().startsWith(fw));
+        if (byFirst.length === 1) pick = byFirst[0];
+        else if (sc[0] && sc[0].s >= 0.6) pick = sc[0].ti;
+      } else {
+        const whole = norm(r.name);                 // قطع الاسم قد تنفصل في PDF («البشي ر») ⇐ المقارنة بالبداية
+        let c = free.filter(ti => { const fw = first(nameOf(teachers[ti])); return fw.length >= 3 && whole.startsWith(fw); });
+        if (c.length > 1 && subjOf) { const sc = c.map(ti => ({ ti, s: dice(norm(r.subject), norm(subjOf(teachers[ti]))) })).sort((x, y) => y.s - x.s); if (sc[0].s - sc[1].s > 0.15) c = [sc[0].ti]; }
+        if (c.length === 1) pick = c[0];
+        else if (!c.length && subjOf) {       // نفس المادة ومعلم وحيد غير مطابَق فيها
+          const sc = free.map(ti => ({ ti, s: dice(norm(r.subject), norm(subjOf(teachers[ti]))) })).filter(x => x.s >= 0.75);
+          if (sc.length === 1) pick = sc[0].ti;
+        }
+      }
+      if (pick != null) { r.ti = pick; r.score = 0.7; r.approx = true; used.add(pick); }
+    });
+    rows.forEach(r => { if (r.ti == null) { r.ti = null; r.score = 0; } });
+  }
+
+  /* التحقق: كل عمود (يوم × حصة) يحتوي كل شعبة مرة واحدة فقط */
+  function validate(rows, classes) {
+    const issues = [], bad = {};
+    DAYS.forEach(d => {
+      const n = d === 'الجمعة' ? 4 : 8;
+      for (let p = 0; p < n; p++) {
+        const seen = {};
+        rows.forEach((r, ri) => { if (r.ignore) return; String(r.cells[d][p] || '').split('+').filter(Boolean).forEach(c => (seen[c] = seen[c] || []).push(ri)); });
+        const dup = Object.entries(seen).filter(([, l]) => l.length > 1);
+        const unknown = Object.keys(seen).filter(c => classes.length && !classes.includes(c));
+        const miss = classes.filter(c => !seen[c]);
+        if (dup.length || miss.length || unknown.length) {
+          issues.push({ d, p: p + 1, dup: dup.map(([c, l]) => ({ c, rows: l })), miss, unknown });
+          dup.forEach(([, l]) => l.forEach(ri => bad[ri + '|' + d + '|' + p] = 'dup'));
+          unknown.forEach(c => (seen[c] || []).forEach(ri => bad[ri + '|' + d + '|' + p] = 'unk'));
+        }
+      }
+    });
+    return { issues, bad };
+  }
+  return { DAYS, extract, parsePage, match, validate, score, norm };
+})();
+if (typeof module !== 'undefined') module.exports = TTPDF;
+
+/* ===== استيراد جدول المعلمين من PDF (إدارة البيانات ← المعلمون والجداول) ===== */
+const TTP_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+let TTP = null;   // {rows, cols, classes}
+function ttpLoadLib() {
+  if (window.pdfjsLib) return Promise.resolve();
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = TTP_LIB; s.onload = () => res(); s.onerror = () => rej(new Error('تعذّر تحميل مكتبة PDF — تأكد من الاتصال بالإنترنت.')); document.head.appendChild(s); });
+}
+function ttpPick() {
+  if (!state.teachers || !state.teachers.length) return alert('حمّل ملف «بيانات المدرسة» أولاً (فيه قائمة المعلمين).');
+  let inp = document.getElementById('ttpFile');
+  if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.id = 'ttpFile'; inp.accept = '.pdf,application/pdf'; inp.style.display = 'none'; inp.onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) ttpRead(f); }; document.body.appendChild(inp); }
+  inp.click();
+}
+async function ttpRead(file) {
+  ttpModal('<div style="padding:30px;text-align:center">⏳ جاري قراءة الجدول…</div>');
+  try {
+    await ttpLoadLib();
+    const pages = await TTPDF.extract(await file.arrayBuffer());
+    let res = null;
+    for (const items of pages) { res = TTPDF.parsePage(items); if (res && res.rows.length) break; }
+    if (!res || !res.rows.length) throw new Error('لم أجد جدول معلمين في الملف (أرقام الحصص 1..8 وأسماء المعلمين).');
+    const T = state.teachers;
+    TTPDF.match(res.rows, T, t => t['اسم المعلم'], t => t['البريد الالكتروني'], t => t['مادة التدريس']);
+    const fromState = (state.schoolClasses || []).filter(c => /^\d\d$/.test(c)).map(c => c[0] + '-' + c[1]);
+    const fromPdf = [...new Set(res.rows.filter(r => !r.ignore).flatMap(r => TTPDF.DAYS.flatMap(d => r.cells[d].filter(Boolean))))].sort();
+    TTP = { rows: res.rows, classes: fromState.length ? fromState : fromPdf, file: file.name };
+    ttpRender();
+  } catch (e) { ttpModal(`<div style="padding:20px"><h3>تعذّرت القراءة</h3><p>${plEsc(e.message)}</p><button class="btn" onclick="ttpClose()">إغلاق</button></div>`); }
+}
+function ttpModal(html) {
+  let ov = document.getElementById('ttpModal');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'ttpModal'; ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px'; document.body.appendChild(ov); }
+  ov.innerHTML = `<div style="background:#fff;color:#222;border-radius:14px;max-width:98vw;width:1500px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:14px 16px;direction:rtl">${html}</div>`;
+}
+function ttpClose() { const o = document.getElementById('ttpModal'); if (o) o.remove(); }
+function ttpEsc(s) { return plEsc(s); }
+function ttpRender() {
+  const R = TTP.rows, T = state.teachers, D = TTPDF.DAYS;
+  const v = TTPDF.validate(R, TTP.classes);
+  TTP.v = v;
+  const usedBy = {}; R.forEach((r, i) => { if (!r.ignore && r.ti != null) (usedBy[r.ti] = usedBy[r.ti] || []).push(i); });
+  const unmatched = R.filter(r => !r.ignore && r.ti == null).length;
+  const dupT = Object.values(usedBy).filter(l => l.length > 1).length;
+  const issueCols = new Set(v.issues.map(i => i.d + '|' + (i.p - 1)));
+  const notInPdf = T.filter((t, ti) => !usedBy[ti] && !/الخاصة|جيو|مصادر/.test((t['مادة التدريس'] || '') + (t['اسم المعلم'] || ''))).map(t => t['اسم المعلم']);
+  const opts = sel => `<option value="">— اختر المعلم —</option>` + T.map((t, ti) => `<option value="${ti}" ${sel === ti ? 'selected' : ''}>${ttpEsc(t['اسم المعلم'])}${t['مادة التدريس'] ? ' — ' + ttpEsc(t['مادة التدريس']) : ''}</option>`).join('');
+  const head1 = D.map(d => `<th colspan="${d === 'الجمعة' ? 4 : 8}" style="background:#eef2ff;border-left:3px solid #334">${d}</th>`).join('');
+  const head2 = D.map(d => Array.from({ length: d === 'الجمعة' ? 4 : 8 }, (_, p) => `<th style="min-width:38px;${issueCols.has(d + '|' + p) ? 'background:#fde68a' : ''}${p === 0 ? ';border-right:3px solid #334' : ''}">${p + 1}</th>`).join('')).join('');
+  const body = R.map((r, ri) => {
+    const bg = r.ignore ? '#f3f4f6' : r.ti == null ? '#fee2e2' : r.approx ? '#fffbeb' : '#fff';
+    const cells = D.map(d => r.cells[d].map((c, p) => {
+      const b = v.bad[ri + '|' + d + '|' + p];
+      return `<td style="padding:1px;${p === 0 ? 'border-right:3px solid #334;' : ''}${issueCols.has(d + '|' + p) && !r.ignore ? 'background:#fffbeb;' : ''}"><input value="${ttpEsc(c)}" data-r="${ri}" data-d="${d}" data-p="${p}" onchange="ttpCell(this)" style="width:36px;font-size:12px;text-align:center;padding:2px;border:1px solid ${b ? '#dc2626' : '#ddd'};border-radius:4px;${b ? 'background:#fecaca;font-weight:700;' : ''}${r.ignore ? 'opacity:.45;' : ''}"></td>`;
+    }).join('')).join('');
+    return `<tr style="background:${bg}">
+      <td style="position:sticky;right:0;background:${bg};z-index:1;white-space:nowrap;padding:3px 6px;border-left:1px solid #ddd">
+        <label style="font-size:11px;color:#666"><input type="checkbox" ${r.ignore ? 'checked' : ''} onchange="TTP.rows[${ri}].ignore=this.checked;ttpRender()"> تجاهل</label>
+        <b style="display:block;font-size:12.5px">${ttpEsc(r.name)}</b>
+        <span style="font-size:10.5px;color:#666">النصاب ${r.load ?? '—'} · مقروء ${r.count}${r.load != null && r.load !== r.count ? ' ⚠️' : ''}${r.ignore && r.ignoreWhy ? ' · ' + ttpEsc(r.ignoreWhy) : ''}</span></td>
+      <td style="padding:3px;white-space:nowrap">${r.ignore ? '' : `<select onchange="TTP.rows[${ri}].ti=this.value===''?null:+this.value;TTP.rows[${ri}].approx=false;ttpRender()" style="max-width:190px;font-size:12px;padding:3px;${r.ti == null ? 'border:2px solid #dc2626' : r.approx ? 'border:2px solid #f59e0b' : ''}">${opts(r.ti)}</select>${r.ti != null && usedBy[r.ti] && usedBy[r.ti].length > 1 ? '<div style="color:#dc2626;font-size:10.5px">⚠️ مختار لأكثر من صف</div>' : ''}${r.approx && r.ti != null ? '<div style="color:#b45309;font-size:10.5px">مطابقة تقريبية — تأكد</div>' : ''}`}</td>
+      ${cells}</tr>`;
+  }).join('');
+  const issuesHtml = v.issues.length ? `<div style="max-height:140px;overflow:auto;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;padding:6px 10px;font-size:12.5px;line-height:1.9">
+      ${v.issues.map(i => `<div>📍 <b>${i.d} — الحصة ${i.p}</b>: ${i.miss.length ? `<span style="color:#b45309">مفقود: ${i.miss.join('، ')}</span> ` : ''}${i.dup.length ? `<span style="color:#dc2626">مكرر: ${i.dup.map(x => x.c + ' (' + x.rows.map(ri => ttpEsc(R[ri].name)).join(' و ') + ')').join('، ')}</span> ` : ''}${i.unknown.length ? `<span style="color:#7c3aed">غير معروف: ${i.unknown.join('، ')}</span>` : ''}</div>`).join('')}</div>`
+    : `<div style="background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:13px">✅ كل الأعمدة سليمة: كل شعبة من الـ ${TTP.classes.length} شعبة تظهر مرة واحدة في كل حصة، بلا نقص ولا تكرار.</div>`;
+  ttpModal(`
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h3 style="margin:0">📄 مراجعة الجدول المقروء — ${ttpEsc(TTP.file)}</h3>
+      <div style="font-size:12.5px;color:#555">${R.filter(r => !r.ignore).length} معلم · ${R.filter(r => r.ignore).length} متجاهَل · ${unmatched ? `<b style="color:#dc2626">${unmatched} بدون مطابقة</b>` : 'كل المعلمين مطابَقون'}</div>
+    </div>
+    <div style="font-size:12px;color:#666;margin:4px 0 8px">الأحمر: معلم غير محدد · الأصفر: مطابقة تقريبية أو عمود فيه مشكلة · الخانة الحمراء: شعبة مكررة في نفس الحصة. يمكنك تعديل أي خانة مباشرة (مثال 7-2) وتُعاد المراجعة فوراً.</div>
+    ${issuesHtml}
+    ${notInPdf.length ? `<div style="font-size:12px;color:#555;margin-top:6px">ℹ️ معلمون في «بيانات المدرسة» غير موجودين في الجدول (لن يتغير جدولهم): ${notInPdf.map(ttpEsc).join('، ')}</div>` : ''}
+    <div style="overflow:auto;max-height:58vh;margin-top:8px;border:1px solid #ddd;border-radius:8px">
+      <style>#ttpModal table{width:auto;min-width:0}#ttpModal th,#ttpModal td{padding:2px 3px;text-align:center}#ttpModal td input{width:38px!important;min-width:0}</style>
+      <table style="border-collapse:collapse;font-size:12px"><thead style="position:sticky;top:0;background:#fff;z-index:2"><tr><th rowspan="2" style="position:sticky;right:0;background:#fff">المعلم في الملف</th><th rowspan="2">المعلم في البيانات</th>${head1}</tr><tr>${head2}</tr></thead><tbody>${body}</tbody></table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="ttpApply()">💾 اعتماد الجداول (${R.filter(r => !r.ignore && r.ti != null).length} معلم)</button>
+      <button class="btn" onclick="ttpClose()">إلغاء</button>
+    </div>`);
+}
+function ttpCell(inp) {
+  const r = TTP.rows[+inp.dataset.r], d = inp.dataset.d, p = +inp.dataset.p;
+  let v = inp.value.replace(/[٠-٩]/g, x => '٠١٢٣٤٥٦٧٨٩'.indexOf(x)).replace(/\s+/g, '').replace(/^(\d)\/?(\d)$/, '$1-$2');
+  r.cells[d][p] = /^\d-\d$/.test(v) ? v : '';
+  r.count = TTPDF.DAYS.reduce((n, x) => n + r.cells[x].filter(Boolean).length, 0);
+  ttpRender();
+}
+function ttpApply() {
+  const R = TTP.rows, v = TTP.v;
+  const act = R.filter(r => !r.ignore);
+  const un = act.filter(r => r.ti == null);
+  if (un.length) return alert('حدد المعلم في «بيانات المدرسة» لكل صف أحمر، أو اختر «تجاهل»:\n• ' + un.map(r => r.name).join('\n• '));
+  const seen = {}; const dup = act.filter(r => (seen[r.ti] = (seen[r.ti] || 0) + 1) > 1);
+  if (dup.length) return alert('اخترت نفس المعلم لأكثر من صف — صحّح الاختيار قبل الحفظ.');
+  if (v.issues.length && !confirm(`⚠️ يوجد ${v.issues.length} حصة فيها نقص أو تكرار في الشعب.\nالأفضل تصحيحها قبل الحفظ.\n\nالحفظ رغم ذلك؟`)) return;
+  act.forEach(r => {
+    const t = state.teachers[r.ti];
+    TTPDF.DAYS.forEach(d => {
+      const arr = r.cells[d].map(c => c ? c.replace('-', '') : '0');
+      while (arr.length < 8) arr.push('0');
+      t['_' + d] = arr;
+    });
+    const cls = [...new Set(TTPDF.DAYS.flatMap(d => t['_' + d].filter(c => c && c !== '0')))].sort();
+    if (cls.length) { t._classes = cls; t['الصفوف'] = cls.join('-'); }
+  });
+  ttpClose();
+  if (typeof markDirty === 'function') markDirty();
+  if (typeof renderTeachers === 'function') renderTeachers();
+  alert(`✅ تم تحديث جداول ${act.length} معلم وصفوفهم من الملف.\nاحفظ «بيانات المدرسة» لاعتماد التغييرات.`);
 }
 
 </script>
@@ -1542,6 +1880,7 @@ function portalZipFiles() {
     <div class="toolbar">
       <span style="font-size:13px;color:var(--ink-soft)">لكل معلم: بياناته، الصفوف التي يدرّسها، وجدول حصصه (الأيام صفوف، الحصص أعمدة). الاثنين–الخميس ٨ حصص، الجمعة ٤. استخدم "إدخال سريع" لتعبئة يوم كامل دفعة واحدة، مثل 51520510 = الأولى 5/1، الثانية 5/2، الثالثة فراغ...</span>
       <button class="btn" onclick="openAddTeacherModal()">+ إضافة معلم</button>
+      <button class="btn btn-primary" onclick="ttpPick()" title="ارفع جدول المعلمين (PDF مصدّر من Excel) ليُقرأ ويُفرَّغ تلقائياً مع مراجعة قبل الحفظ">📄 استيراد الجدول من PDF</button>
       <button class="btn btn-primary" onclick="printAllTeacherSchedules()">🖨️ طباعة جداول المعلمين</button>
       <button class="btn" onclick="openCommListModal('teacher')">📞 التواصل مع المعلمين</button>
     </div>
@@ -1992,6 +2331,7 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
   try{ linkedBaseNorm = normalizeXlsxBuf(buf); }catch(e){ linkedBaseNorm = null; }
   const wb = XLSX.read(buf, {type:'array', cellDates:true});
   state.fileName = fileName;
+  state.xlsxHidden = idxReadHidden(buf);
 
   const knownSheets = ['جميع الطلاب','الاداريين','المعلمين والجداول','التقويم المدرسي','الإجازات والعطل'];
   // أوراق أخرى في الملف (مثل «توقيت الحصص») تُحفظ كما هي وتُعاد عند الحفظ
@@ -2130,7 +2470,40 @@ function idxTextifyNumbers(wb){
       }
     }
   });
+  idxApplyHidden(wb);
   return wb;
+}
+/* الأوراق والأعمدة المخفية في Excel (مثل كلمات مرور الطلاب) تبقى مخفية بعد الحفظ من البوابة — القراءة لا تتأثر بالإخفاء */
+function idxReadHidden(buf){
+  const out = { sheets: {}, cols: {} };
+  try{
+    const wb = XLSX.read(buf, {type:'array', cellStyles:true, bookSheets:false});
+    (wb.Workbook && wb.Workbook.Sheets || []).forEach(x => { if(x.Hidden) out.sheets[x.name] = x.Hidden; });
+    wb.SheetNames.forEach(n => {
+      const ws = wb.Sheets[n], cols = ws && ws['!cols']; if(!cols || !ws['!ref']) return;
+      const R = XLSX.utils.decode_range(ws['!ref']), hid = [];
+      cols.forEach((c, i) => { if(c && c.hidden){ const h = ws[XLSX.utils.encode_cell({r:R.s.r, c:i})]; if(h && h.v !== '' && h.v != null) hid.push(String(h.v).trim()); } });
+      if(hid.length) out.cols[n] = hid;
+    });
+  }catch(e){ console.warn('hidden', e); }
+  return out;
+}
+function idxApplyHidden(wb){
+  const H = state.xlsxHidden; if(!H) return;
+  Object.entries(H.cols || {}).forEach(([n, names]) => {
+    const ws = wb.Sheets[n]; if(!ws || !ws['!ref']) return;
+    const R = XLSX.utils.decode_range(ws['!ref']);
+    const cols = ws['!cols'] = ws['!cols'] || [];
+    for(let c = R.s.c; c <= R.e.c; c++){
+      const h = ws[XLSX.utils.encode_cell({r:R.s.r, c})];
+      if(h && names.includes(String(h.v||'').trim())) cols[c] = Object.assign({}, cols[c] || {}, { hidden: true });
+    }
+  });
+  if(Object.keys(H.sheets || {}).length){
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Sheets = wb.SheetNames.map(n => ({ name: n, Hidden: H.sheets[n] || 0 }));
+    if(wb.SheetNames.every(n => H.sheets[n])) wb.Workbook.Sheets[0].Hidden = 0;   // ورقة واحدة على الأقل ظاهرة
+  }
 }
 /* تاريخ "اليوم" الفعلي حسب توقيت المتصفح المحلي (لتمييز الأسبوع/اليوم الحالي) - منفصل عمداً
    عن localDateStr لأنه لا يتعامل مع تاريخ إكسل بل مع اللحظة الحالية. */

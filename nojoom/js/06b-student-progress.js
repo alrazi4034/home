@@ -168,7 +168,7 @@ function pgPlans(a, cls, s) {
     if (!key) return;
     const recent = a.recentCodes[c] || 0;
     if (n >= 2 || recent >= 1 || key === 'aggression') {
-      const label = (typeof MARSAD_NOTES !== 'undefined' && (MARSAD_NOTES.find(x => x.code === c) || {}).text) || c;
+      const label = (typeof MARSAD_LABELS !== 'undefined' && MARSAD_LABELS[c]) || (typeof MARSAD_NOTES !== 'undefined' && (MARSAD_NOTES.find(x => x.code === c) || {}).text) || c;
       add(key, `«${label}» ${n} مرة${recent ? ` (منها ${recent} في آخر ${PG_RECENT_WEEKS} أسابيع)` : ''}`, key === 'aggression' ? 5 : 3);
     }
   });

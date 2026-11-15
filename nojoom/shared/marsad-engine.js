@@ -58,7 +58,20 @@ const MRS = (() => {
     'التنمر (لفظي أو جسدي) على زملاءه': 'B11', 'تجاهل توجيهات المعلم': 'B09', 'التحدث بدون إذن ومقاطعة المعلم': 'B08',
     'الخروج من الصف بدون إذن': 'B04', 'غياب متكرر يستدعي المتابعة': 'B05', 'التأخر المتكرر عن الحصة': 'B06',
     'إهمال الواجبات والمهمات الدراسية': 'A02', 'عدم إحضار الأدوات أو الكتب': 'A01', 'اللعب داخل الصف أو إحداث فوضى': 'B09',
-    'الانشغال بألعاب الحاسوب عن الحصة الدرسية': 'B14', 'النوم اثناء الحصة الدرسية': 'B03', 'الأكل اثناء الحصة': 'B02'
+    'الانشغال بألعاب الحاسوب عن الحصة الدرسية': 'B14', 'النوم اثناء الحصة الدرسية': 'B03', 'الأكل اثناء الحصة': 'B02',
+    // القائمة المدمجة الحالية
+    'كثرة الكلام أو مقاطعة المعلم دون استئذان': 'B08', 'عدم الالتزام بالتعليمات أو رفض تنفيذ المطلوب': 'B09', 'الجدال مع المعلم': 'B01',
+    'الأكل داخل الصف دون إذن': 'B02', 'استخدام الأجهزة دون إذن أو لغير التعلم': 'B14', 'ألفاظ غير لائقة مع الآخرين': 'B10',
+    'سلوك عدواني لفظي أو جسدي تجاه الزملاء': 'B11', 'مخالفة الزي أو المظهر المدرسي': 'B15', 'عدم إحضار الكتب أو الأدوات': 'A01',
+    'عدم حل الواجب المنزلي': 'A02', 'ضعف في المهارات الأساسية (قراءة، كتابة، حساب)': 'A03'
+  };
+  // أسماء البنود كاملة (للتقارير)
+  const SHORT_LABELS = {
+    B01: 'الجدال مع المعلم', B02: 'الأكل داخل الصف', B03: 'النوم أثناء الحصة', B04: 'الخروج دون إذن', B05: 'تكرار الغياب', B06: 'تكرار التأخر',
+    B07: 'التحدث أثناء الشرح', B08: 'الكلام ومقاطعة المعلم', B09: 'عدم الالتزام بالتعليمات', B10: 'ألفاظ غير لائقة', B11: 'سلوك عدواني',
+    B12: 'رفض تنفيذ المهام', B13: 'العبث بالممتلكات', B14: 'الأجهزة دون إذن', B15: 'مخالفة الزي',
+    A01: 'عدم إحضار الأدوات', A02: 'عدم حل الواجب', A03: 'ضعف المهارات الأساسية', A04: 'ضعف المشاركة', A05: 'ضعف التركيز',
+    A06: 'عدم إكمال المهام الصفية', A07: 'تدنّي نتائج التقييمات', A08: 'ضعف الدافعية'
   };
 
   // الملاحظات الإيجابية بعد دمج المتشابه — وكل مجموعة تُخفّف بنود مرصاد المقابلة لها
@@ -202,6 +215,7 @@ const MRS = (() => {
     const classPart = avg(b => b.partRate);
     const classDed = avg(b => b.dedRate);
     const tracksPart = classPart >= 0.15;            // المعلم يسجّل المشاركات فعلاً في هذا الصف
+    const classMeans = base.filter(b => b.scores.length >= cfg.minAssess).map(b => b.scores.reduce((x, y) => x + y, 0) / b.scores.length);
 
     // 2) البنود لكل طالب
     return base.map(b => {
@@ -264,6 +278,21 @@ const MRS = (() => {
       const genericDed = b.dedTotal - b.reasoned;
       if (enoughWeeks && genericDed >= 3 && b.dedRate >= Math.max(2 * classDed, 0.1))
         setData('A05', 'sometimes', `${genericDed} خصم (${b.dedRate.toFixed(2)} لكل حصة مقابل ${classDed.toFixed(2)} للصف)`);
+      const denomAll = b.attended || saved.length || 0;
+      // A05 التركيز (استنتاج): مؤشرات التشتت المسجّلة — النوم، الأجهزة، الكلام (ملاحظة أو خصم) — «أحياناً» كحد أقصى لأنها غير مباشرة
+      // النوم واللعب على الجهاز مؤشران مباشران (قد يصلان «دائماً»)، والكلام مؤشر غير مباشر («أحياناً» كحد أقصى)
+      { const sd = (b.neg.B03 || 0) + (b.neg.B14 || 0);
+        const talk = 0.5 * ((b.neg.B07 || 0) + (b.neg.B08 || 0)) + cfg.deductWeight * ((b.dedReasons.B07 || 0) + (b.dedReasons.B08 || 0));
+        if (denomAll && sd + talk >= 2) {
+          let lv = sd >= 2 ? lvByRate(sd, denomAll, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin) : 'never';
+          if (lv === 'never' && lvByRate(sd + talk, denomAll, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin) !== 'never') lv = 'sometimes';
+          if (lv !== 'never') setData('A05', lv, `مستنتج من التشتت: نوم/أجهزة ${sd}${talk ? ' + كلام ' + Math.round(talk * 10) / 10 : ''} في ${denomAll} حصة`);
+        } }
+      // B12 رفض المهام (استنتاج): عدم التزام متكرر بالتعليمات، أو مع جدال المعلم
+      if (auto.B09 === 'always') setData('B12', 'sometimes', 'مستنتج: عدم التزام متكرر بالتعليمات');
+      else if (auto.B09 === 'sometimes' && RANK[auto.B01] >= 1) setData('B12', 'sometimes', 'مستنتج: عدم التزام بالتعليمات مع جدال المعلم');
+      // A06 عدم إكمال المهام (استنتاج): واجب غير محلول بصورة دائمة مع مشاركة ضعيفة
+      // (يُسجَّل مباشرة من سبب الخصم «📋 لم يكمل النشاط»)
       // اتجاه النقاط: آخر 3 أسابيع مقارنة بما قبلها
       let declining = false;
       if (b.wk.length >= cfg.minWeeks + 2) {
@@ -277,6 +306,7 @@ const MRS = (() => {
       if (declining) ind.push('نقاط متراجعة آخر 3 أسابيع');
       if (['A01', 'A02', 'A06'].some(c => RANK[auto[c]] >= 1 && kind[c] !== 'data')) ind.push('ملاحظات الأدوات/الواجب/الأنشطة');
       if (RANK[a07] >= 1) ind.push('تقييمات منخفضة');
+      if (RANK[auto.B03] >= 1) ind.push('نوم متكرر في الحصة');
       if (ind.length >= 2) setData('A08', ind.length >= 3 ? 'always' : 'sometimes', 'مؤشرات: ' + ind.join('، '));
       // بنود لا يمكن تقييمها في هذه الفترة (بيانات غير كافية ولا توجد ملاحظات) ⇐ تُترك فارغة في ملف مرصاد
       // حتى لا تُحسب «تحسّناً» وهمياً عند مقارنة فترة قصيرة بفترة طويلة
@@ -289,9 +319,16 @@ const MRS = (() => {
       if ([a04ok, declOk, a07ok].filter(Boolean).length + 1 < 2 && !noteEv('A08')) na.A08 = true;
       if (!a07ok && !noteEv('A03')) na.A03 = true;
       if (!enoughWeeks && !noteEv('A05')) na.A05 = true;
+      CODES.forEach(c => { if (auto[c] !== 'never') delete na[c]; });   // ما ثبت بالاستنتاج يُقيَّم دائماً
       // A03 المهارات الأساسية: اقتراح فقط عند تدنٍّ شديد ومستمر — يحتاج تأكيد المعلم
       const needsConfirm = {};
-      if (a07 === 'always' && !b.neg.A03) { setData('A03', 'sometimes', 'اقتراح: تقييمات متدنية جداً — يحتاج تأكيد المعلم'); needsConfirm.A03 = true; }
+      // A03 المهارات الأساسية: أضعف طلاب الصف في التقييمات (أدنى 15%) مع متوسط دون حد «أحياناً»
+      if (b.scores.length >= cfg.minAssess && classMeans.length >= 5) {
+        const m = b.scores.reduce((x, y) => x + y, 0) / b.scores.length;
+        const rank = classMeans.filter(v => v < m - 1e-9).length / classMeans.length;   // نسبة الطلاب الأضعف منه
+        if (rank < 0.15 && m < cfg.testSome)
+          setData('A03', m < cfg.testAlways ? 'always' : 'sometimes', `من أضعف ${Math.max(1, Math.round(classMeans.length * 0.15))} طلاب في الصف بالتقييمات (متوسط ${Math.round(m)}%)`);
+      }
 
       // 3) مراجعة المعلم
       const rv = (opt.review && opt.review[key]) || {};
@@ -422,5 +459,5 @@ const MRS = (() => {
   }
 
   return { STATEMENTS, CODES, SHORT, SUBJECT_CODES, TEXT_CODE, POS_GROUPS, DEDUCT_REASONS, DEF, LABEL, RANK, LV,
-           posGroupOf, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
+           posGroupOf, SHORT_LABELS, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
 })();

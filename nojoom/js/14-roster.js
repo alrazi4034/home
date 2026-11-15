@@ -488,6 +488,7 @@ function rosterCommit(plan, meta) {
     holidays: plan.holidays || [],                            // الإجازات والعطل خلال الفصل
     timetable: teacher && teacher.timetable && Object.keys(teacher.timetable).length ? teacher.timetable : null,
     myClasses: Array.isArray(prev.myClasses) ? prev.myClasses : null,
+    assignedSnap: Array.isArray(prev.assignedSnap) ? prev.assignedSnap : null,   // توزيع الإدارة وقت آخر اختيار (لتنبيه المعلم عند تغيّره)
     homeroom: teacher && teacher.homeroom ? teacher.homeroom : [],      // الصفوف التي المعلم رائدها
     homeroomEnforced: !!plan.homeroomEnforced,
     fileName: meta.fileName, source: meta.source, fileModified: meta.fileModified,
@@ -554,6 +555,8 @@ async function rosterSyncNow(opts) {
       return;
     }
 
+    // الإدارة غيّرت صفوف المعلم في «بيانات المدرسة»؟ ⇐ تنبيه (اختيار المعلم يبقى هو المعتمد)
+    rosterCheckAssignChange(roster, meta);
     const plan = rosterPlan(roster, tKey);
     if (plan.rep.noClasses) {
       rosterBtnState('warn');
@@ -719,11 +722,53 @@ async function rosterOpenClassPicker() {
   } catch (e) { alert('تعذّرت قراءة الملف المركزي:\n' + e.message); }
 }
 
-function rosterShowClassPicker(roster, meta, first) {
+/* تغيّر توزيع الصفوف في «بيانات المدرسة» منذ آخر اختيار للمعلم */
+function rosterAssignDiff(roster) {
+  const m = state.rosterMeta || {};
+  const teacher = roster.teachers ? roster.teachers.find(t => t.key === m.teacherKey) : null;
+  if (!teacher) return null;
+  const now = (teacher.classes || []).slice().sort();
+  if (!Array.isArray(m.assignedSnap)) { m.assignedSnap = now; save(); return null; }   // أول مرة: نقطة البداية
+  const was = new Set(m.assignedSnap), cur = new Set(now);
+  const added = now.filter(c => !was.has(c)), removed = m.assignedSnap.filter(c => !cur.has(c));
+  return added.length || removed.length ? { added, removed, now } : null;
+}
+function rosterCheckAssignChange(roster, meta) {
+  const d = rosterAssignDiff(roster); if (!d) return;
+  const mine = new Set((state.rosterMeta.myClasses) || []);
+  const addNew = d.added.filter(c => !mine.has(c)), remNew = d.removed.filter(c => mine.has(c));
+  if (!addNew.length && !remNew.length) { state.rosterMeta.assignedSnap = d.now; save(); return; }   // المعلم سبق الإدارة
+  window._rosterAssign = { roster, meta, d, addNew, remNew };
+  setTimeout(() => openModal(`
+    <div class="modal-title">📋 تغيّرت صفوفك في بيانات المدرسة</div>
+    <div style="font-size:13.5px;line-height:2">
+      ${addNew.length ? `➕ أُضيف لك: <b>${addNew.map(rsEsc).join('، ')}</b><br>` : ''}
+      ${remNew.length ? `🗄️ لم يعد مُسنداً لك: <b>${remNew.map(rsEsc).join('، ')}</b><br>` : ''}
+      <span style="font-size:12px;color:var(--text-muted)">صفوفك الحالية لم تتغير بعد. الصف الذي يُزال يُنقل إلى الأرشيف مع كامل بياناته ويمكن استرجاعه.</span>
+    </div>
+    <div class="modal-actions" style="flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="rosterAssignReview()">🏫 مراجعة صفوفي</button>
+      <button class="btn btn-ghost" onclick="rosterAssignIgnore()" title="صفوفي كما هي — لن يظهر هذا التنبيه لنفس التغيير مرة أخرى">إبقاء صفوفي كما هي</button>
+    </div>`), 300);
+}
+function rosterAssignIgnore() {
+  const x = window._rosterAssign; if (x) { state.rosterMeta.assignedSnap = x.d.now; save(); }
+  closeModalForce();
+}
+function rosterAssignReview() {
+  const x = window._rosterAssign; if (!x) return closeModalForce();
+  const sug = new Set(state.rosterMeta.myClasses || []);
+  x.addNew.forEach(c => sug.add(c)); x.remNew.forEach(c => sug.delete(c));
+  closeModalForce();
+  rosterShowClassPicker(x.roster, x.meta, false, [...sug]);
+}
+
+function rosterShowClassPicker(roster, meta, first, suggest) {
   window._rosterCls = { roster, meta };
   const m = state.rosterMeta || {};
   const teacher = roster.teachers ? roster.teachers.find(t => t.key === m.teacherKey) : null;
-  const pre = new Set(Array.isArray(m.myClasses) ? m.myClasses : (teacher ? teacher.classes : state.classes.map(c => c.name)));
+  const pre = new Set(suggest || (Array.isArray(m.myClasses) ? m.myClasses : (teacher ? teacher.classes : state.classes.map(c => c.name))));
+  const official = new Set(teacher ? teacher.classes : []);
   const codes = Object.keys(roster.byClass).sort((a, b) => a.localeCompare(b, 'ar', { numeric: true }));
   const grades = {};
   codes.forEach(c => { (grades[c.split('/')[0]] = grades[c.split('/')[0]] || []).push(c); });
@@ -731,13 +776,14 @@ function rosterShowClassPicker(roster, meta, first) {
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px">
       ${list.map(code => `<label style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border-color);border-radius:10px;padding:8px 12px;font-size:13.5px;font-weight:700;cursor:pointer">
         <input type="checkbox" class="rs-cls-chk" value="${rsEsc(code)}" ${pre.has(code) ? 'checked' : ''}> ${rsEsc(code)}
-        <span style="font-size:10.5px;font-weight:400;color:var(--text-muted)">(${roster.byClass[code].length})</span></label>`).join('')}
+        <span style="font-size:10.5px;font-weight:400;color:var(--text-muted)">(${roster.byClass[code].length})</span>${official.has(code) ? '<span title="مُسند لك في بيانات المدرسة" style="font-size:11px">📋</span>' : ''}</label>`).join('')}
     </div>`).join('');
   openModal(`
     <div class="modal-title">🏫 صفوفي</div>
     <div style="font-size:12px;color:var(--text-muted);line-height:1.9;margin-bottom:10px">
       ${first ? 'حدّد الصفوف التي تدرّسها. ' : ''}الطلاب يُضافون تلقائياً من بيانات المدرسة.
-      إلغاء تحديد صف ينقله إلى الأرشيف مع كامل بياناته، ويرجع إذا حددته مرة أخرى.
+      إلغاء تحديد صف ينقله إلى الأرشيف مع كامل بياناته، ويرجع إذا حددته مرة أخرى.<br>
+      📋 = مُسند لك في بيانات المدرسة. <b>اختيارك هنا هو المعتمد</b> حتى لو اختلف عن بيانات المدرسة.
     </div>
     <div style="max-height:55vh;overflow-y:auto">${items}</div>
     <div class="modal-actions">
@@ -754,7 +800,8 @@ function rosterConfirmClasses() {
   const key = state.rosterMeta && state.rosterMeta.teacherKey;
   const plan = rosterPlan(ctx.roster, key, picked);
   closeModalForce();
-  state.rosterMeta = Object.assign({}, state.rosterMeta || {}, { myClasses: picked });
+  const tch = ctx.roster.teachers ? ctx.roster.teachers.find(t => t.key === key) : null;
+  state.rosterMeta = Object.assign({}, state.rosterMeta || {}, { myClasses: picked }, tch ? { assignedSnap: (tch.classes || []).slice().sort() } : {});
   save();
   if (plan.rep.risky) { rosterPendingReport = { plan, meta: ctx.meta }; rosterBtnState('warn'); return rosterShowReport(plan.rep, true); }
   rosterCommit(plan, ctx.meta);

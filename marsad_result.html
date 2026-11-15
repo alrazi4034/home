@@ -292,7 +292,20 @@ const MRS = (() => {
     'التنمر (لفظي أو جسدي) على زملاءه': 'B11', 'تجاهل توجيهات المعلم': 'B09', 'التحدث بدون إذن ومقاطعة المعلم': 'B08',
     'الخروج من الصف بدون إذن': 'B04', 'غياب متكرر يستدعي المتابعة': 'B05', 'التأخر المتكرر عن الحصة': 'B06',
     'إهمال الواجبات والمهمات الدراسية': 'A02', 'عدم إحضار الأدوات أو الكتب': 'A01', 'اللعب داخل الصف أو إحداث فوضى': 'B09',
-    'الانشغال بألعاب الحاسوب عن الحصة الدرسية': 'B14', 'النوم اثناء الحصة الدرسية': 'B03', 'الأكل اثناء الحصة': 'B02'
+    'الانشغال بألعاب الحاسوب عن الحصة الدرسية': 'B14', 'النوم اثناء الحصة الدرسية': 'B03', 'الأكل اثناء الحصة': 'B02',
+    // القائمة المدمجة الحالية
+    'كثرة الكلام أو مقاطعة المعلم دون استئذان': 'B08', 'عدم الالتزام بالتعليمات أو رفض تنفيذ المطلوب': 'B09', 'الجدال مع المعلم': 'B01',
+    'الأكل داخل الصف دون إذن': 'B02', 'استخدام الأجهزة دون إذن أو لغير التعلم': 'B14', 'ألفاظ غير لائقة مع الآخرين': 'B10',
+    'سلوك عدواني لفظي أو جسدي تجاه الزملاء': 'B11', 'مخالفة الزي أو المظهر المدرسي': 'B15', 'عدم إحضار الكتب أو الأدوات': 'A01',
+    'عدم حل الواجب المنزلي': 'A02', 'ضعف في المهارات الأساسية (قراءة، كتابة، حساب)': 'A03'
+  };
+  // أسماء البنود كاملة (للتقارير)
+  const SHORT_LABELS = {
+    B01: 'الجدال مع المعلم', B02: 'الأكل داخل الصف', B03: 'النوم أثناء الحصة', B04: 'الخروج دون إذن', B05: 'تكرار الغياب', B06: 'تكرار التأخر',
+    B07: 'التحدث أثناء الشرح', B08: 'الكلام ومقاطعة المعلم', B09: 'عدم الالتزام بالتعليمات', B10: 'ألفاظ غير لائقة', B11: 'سلوك عدواني',
+    B12: 'رفض تنفيذ المهام', B13: 'العبث بالممتلكات', B14: 'الأجهزة دون إذن', B15: 'مخالفة الزي',
+    A01: 'عدم إحضار الأدوات', A02: 'عدم حل الواجب', A03: 'ضعف المهارات الأساسية', A04: 'ضعف المشاركة', A05: 'ضعف التركيز',
+    A06: 'عدم إكمال المهام الصفية', A07: 'تدنّي نتائج التقييمات', A08: 'ضعف الدافعية'
   };
 
   // الملاحظات الإيجابية بعد دمج المتشابه — وكل مجموعة تُخفّف بنود مرصاد المقابلة لها
@@ -436,6 +449,7 @@ const MRS = (() => {
     const classPart = avg(b => b.partRate);
     const classDed = avg(b => b.dedRate);
     const tracksPart = classPart >= 0.15;            // المعلم يسجّل المشاركات فعلاً في هذا الصف
+    const classMeans = base.filter(b => b.scores.length >= cfg.minAssess).map(b => b.scores.reduce((x, y) => x + y, 0) / b.scores.length);
 
     // 2) البنود لكل طالب
     return base.map(b => {
@@ -498,6 +512,21 @@ const MRS = (() => {
       const genericDed = b.dedTotal - b.reasoned;
       if (enoughWeeks && genericDed >= 3 && b.dedRate >= Math.max(2 * classDed, 0.1))
         setData('A05', 'sometimes', `${genericDed} خصم (${b.dedRate.toFixed(2)} لكل حصة مقابل ${classDed.toFixed(2)} للصف)`);
+      const denomAll = b.attended || saved.length || 0;
+      // A05 التركيز (استنتاج): مؤشرات التشتت المسجّلة — النوم، الأجهزة، الكلام (ملاحظة أو خصم) — «أحياناً» كحد أقصى لأنها غير مباشرة
+      // النوم واللعب على الجهاز مؤشران مباشران (قد يصلان «دائماً»)، والكلام مؤشر غير مباشر («أحياناً» كحد أقصى)
+      { const sd = (b.neg.B03 || 0) + (b.neg.B14 || 0);
+        const talk = 0.5 * ((b.neg.B07 || 0) + (b.neg.B08 || 0)) + cfg.deductWeight * ((b.dedReasons.B07 || 0) + (b.dedReasons.B08 || 0));
+        if (denomAll && sd + talk >= 2) {
+          let lv = sd >= 2 ? lvByRate(sd, denomAll, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin) : 'never';
+          if (lv === 'never' && lvByRate(sd + talk, denomAll, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin) !== 'never') lv = 'sometimes';
+          if (lv !== 'never') setData('A05', lv, `مستنتج من التشتت: نوم/أجهزة ${sd}${talk ? ' + كلام ' + Math.round(talk * 10) / 10 : ''} في ${denomAll} حصة`);
+        } }
+      // B12 رفض المهام (استنتاج): عدم التزام متكرر بالتعليمات، أو مع جدال المعلم
+      if (auto.B09 === 'always') setData('B12', 'sometimes', 'مستنتج: عدم التزام متكرر بالتعليمات');
+      else if (auto.B09 === 'sometimes' && RANK[auto.B01] >= 1) setData('B12', 'sometimes', 'مستنتج: عدم التزام بالتعليمات مع جدال المعلم');
+      // A06 عدم إكمال المهام (استنتاج): واجب غير محلول بصورة دائمة مع مشاركة ضعيفة
+      // (يُسجَّل مباشرة من سبب الخصم «📋 لم يكمل النشاط»)
       // اتجاه النقاط: آخر 3 أسابيع مقارنة بما قبلها
       let declining = false;
       if (b.wk.length >= cfg.minWeeks + 2) {
@@ -511,6 +540,7 @@ const MRS = (() => {
       if (declining) ind.push('نقاط متراجعة آخر 3 أسابيع');
       if (['A01', 'A02', 'A06'].some(c => RANK[auto[c]] >= 1 && kind[c] !== 'data')) ind.push('ملاحظات الأدوات/الواجب/الأنشطة');
       if (RANK[a07] >= 1) ind.push('تقييمات منخفضة');
+      if (RANK[auto.B03] >= 1) ind.push('نوم متكرر في الحصة');
       if (ind.length >= 2) setData('A08', ind.length >= 3 ? 'always' : 'sometimes', 'مؤشرات: ' + ind.join('، '));
       // بنود لا يمكن تقييمها في هذه الفترة (بيانات غير كافية ولا توجد ملاحظات) ⇐ تُترك فارغة في ملف مرصاد
       // حتى لا تُحسب «تحسّناً» وهمياً عند مقارنة فترة قصيرة بفترة طويلة
@@ -523,9 +553,16 @@ const MRS = (() => {
       if ([a04ok, declOk, a07ok].filter(Boolean).length + 1 < 2 && !noteEv('A08')) na.A08 = true;
       if (!a07ok && !noteEv('A03')) na.A03 = true;
       if (!enoughWeeks && !noteEv('A05')) na.A05 = true;
+      CODES.forEach(c => { if (auto[c] !== 'never') delete na[c]; });   // ما ثبت بالاستنتاج يُقيَّم دائماً
       // A03 المهارات الأساسية: اقتراح فقط عند تدنٍّ شديد ومستمر — يحتاج تأكيد المعلم
       const needsConfirm = {};
-      if (a07 === 'always' && !b.neg.A03) { setData('A03', 'sometimes', 'اقتراح: تقييمات متدنية جداً — يحتاج تأكيد المعلم'); needsConfirm.A03 = true; }
+      // A03 المهارات الأساسية: أضعف طلاب الصف في التقييمات (أدنى 15%) مع متوسط دون حد «أحياناً»
+      if (b.scores.length >= cfg.minAssess && classMeans.length >= 5) {
+        const m = b.scores.reduce((x, y) => x + y, 0) / b.scores.length;
+        const rank = classMeans.filter(v => v < m - 1e-9).length / classMeans.length;   // نسبة الطلاب الأضعف منه
+        if (rank < 0.15 && m < cfg.testSome)
+          setData('A03', m < cfg.testAlways ? 'always' : 'sometimes', `من أضعف ${Math.max(1, Math.round(classMeans.length * 0.15))} طلاب في الصف بالتقييمات (متوسط ${Math.round(m)}%)`);
+      }
 
       // 3) مراجعة المعلم
       const rv = (opt.review && opt.review[key]) || {};
@@ -656,7 +693,7 @@ const MRS = (() => {
   }
 
   return { STATEMENTS, CODES, SHORT, SUBJECT_CODES, TEXT_CODE, POS_GROUPS, DEDUCT_REASONS, DEF, LABEL, RANK, LV,
-           posGroupOf, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
+           posGroupOf, SHORT_LABELS, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
 })();
 
 </script>
@@ -1800,7 +1837,8 @@ function vImpact() {
 
 /* التقييم من 10: لكل بند نأخذ متوسط كل مادة (متوسط معلميها) ثم متوسط المواد؛ الأعباء = متوسط (المستوى/4) للبنود المرصودة؛
    التقييم = 10 × (1 − العبء) − 0.3 لكل بند بإجماع معلمَين فأكثر (بحد أقصى 1.5) */
-let SENS = 1; try { SENS = Math.min(10, Math.max(1, parseFloat(localStorage.getItem("marsad_sens")) || 1)); } catch (e) {}
+const SENS_DEF = 3.5;   // منتصف السلايدر (1 – 6)
+let SENS = SENS_DEF; try { const v = parseFloat(localStorage.getItem("marsad_sens2")); if (!isNaN(v)) SENS = Math.min(6, Math.max(1, v)); } catch (e) {}
 function sensRange() {
   if (!A || !A.students || !A.students.size) return "";
   const v = []; A.students.forEach(s => [s.behScore, s.acaScore].forEach(x => { if (x != null) v.push(x); }));
@@ -1809,8 +1847,8 @@ function sensRange() {
   return `نطاق التقييمات الآن: <b>${Math.min(...v).toFixed(1)}</b> – <b>${Math.max(...v).toFixed(1)}</b> · المتوسط <b>${avg.toFixed(1)}</b>`;
 }
 function sensSet(v, final) {
-  SENS = Math.min(10, Math.max(1, parseFloat(v) || 1));
-  try { localStorage.setItem("marsad_sens", String(SENS)); } catch (e) {}
+  SENS = Math.min(6, Math.max(1, parseFloat(v) || SENS_DEF));
+  try { localStorage.setItem("marsad_sens2", String(SENS)); } catch (e) {}
   const lb = document.getElementById("sensVal"); if (lb) lb.textContent = SENS.toFixed(1);
   analyze();
   if (typeof computeImpact === "function") try { computeImpact(); } catch (e) {}
@@ -1825,6 +1863,7 @@ function sensCard() {
       <input type="range" id="sensSlider" min="1" max="6" step="0.25" value="${SENS}" style="flex:1;min-width:200px" oninput="sensSet(this.value)" onchange="sensSet(this.value, true)">
       <span>عالية</span>
       <b style="min-width:42px;text-align:center;font-size:18px" id="sensVal">${SENS.toFixed(1)}</b>
+      <button class="btn ghost sm" onclick="sensSet(SENS_DEF, true)" title="القيمة الافتراضية (المنتصف)">↺</button>
     </div>
     <div style="margin-top:6px;font-size:13px" id="sensRange">${sensRange()}</div></div>`;
 }
@@ -2576,7 +2615,7 @@ function render() {
   bindView();
 }
 
-/* ===== تعديل يدوي لتقييمات البنود (لكل مادة/معلم) ===== */
+/* ===== تعديل تقييم الطالب بسلايدر لكل بند (يُحسب على متوسط كل المواد) ===== */
 // السجل الأصلي الذي يُعدَّل: إعادة التقييم الأحدث للمادة، أو الاستجابة الأصلية
 function mxSrc(r) {
   if (!r) return null;
@@ -2587,30 +2626,76 @@ function mxSrc(r) {
   return STORE[r.responseId] || null;
 }
 let MXE = null;
+// متوسط البند عبر المواد (كل مادة بمتوسطها) — نفس طريقة حساب التقييم
+function mxMean(list, c) {
+  const m = {}; list.forEach(x => { const v = x.lv[c]; if (v !== undefined) (m[x.r.subject] = m[x.r.subject] || []).push(v); });
+  const k = Object.keys(m); return k.length ? mean(k.map(s => mean(m[s]))) : null;
+}
+// يُحرَّك متوسط البند إلى الهدف مع الحفاظ على الفروق بين المواد
+function mxScale(v, cur, tgt) {
+  if (cur == null || v === undefined) return v;
+  if (tgt >= cur) return cur >= 4 ? 4 : v + (4 - v) * (tgt - cur) / (4 - cur);
+  return cur <= 0 ? 0 : v * tgt / cur;
+}
+function mxApplied() {
+  return MXE.resp.map(x => {
+    const lv = Object.assign({}, x.lv);
+    CODES.forEach(c => { if (MXE.tgt[c] != null && MXE.cur[c] != null && Math.abs(MXE.tgt[c] - MXE.cur[c]) > 1e-9) lv[c] = Math.round(mxScale(x.lv[c], MXE.cur[c], MXE.tgt[c]) * 100) / 100; });
+    return { x, lv };
+  });
+}
+function mxScores() {
+  const res = mxApplied().map(y => Object.assign({}, y.x.r, { lv: y.lv }));
+  const tmp = { resp: res };
+  return { B: scoreOf(tmp, "B"), A: scoreOf(tmp, "A") };
+}
+function mxPaint() {
+  const sc = mxScores();
+  const el = document.getElementById("mxScores");
+  if (el) el.innerHTML = `<span>${esc(t("sc_beh"))}: ${scPill(MXE.s0.B)} ⟵ ${scPill(sc.B)}</span><span>${esc(t("sc_aca"))}: ${scPill(MXE.s0.A)} ⟵ ${scPill(sc.A)}</span>`;
+  CODES.forEach(c => { const l = document.getElementById("mxl_" + c); if (l && MXE.tgt[c] != null) l.textContent = lvlTxt(MXE.tgt[c]) + " · " + (MXE.tgt[c] / 4 * 100).toFixed(0) + "%"; });
+}
+function mxSlide(c, v) { MXE.tgt[c] = +v; mxPaint(); }
+function mxResetItem(c) { MXE.tgt[c] = MXE.cur[c]; const r = document.getElementById("mxr_" + c); if (r) r.value = MXE.cur[c]; mxPaint(); }
 function mxEditOpen() {
   const s = CUR && viewOf(A.students.get(CUR)); if (!s) return;
   const resp = s.resp.slice().sort((a, b) => String(a.subject).localeCompare(String(b.subject), "ar"));
-  MXE = { key: CUR, resp: resp.map(r => ({ r, src: mxSrc(r), lv: Object.assign({}, r.lv) })) };
-  const opts = l => [0, 1, 2, 3, 4].map(v => `<option value="${v}" ${l === v ? "selected" : ""}>${esc(lvlTxt(v))}</option>`).join("") + `<option value="" ${l === undefined ? "selected" : ""}>—</option>`;
-  const head = MXE.resp.map(x => `<th class="rot"><div><span class="rl1">${esc(x.r.subject)}</span><span class="rl2">${esc(x.r.teacher)}${x.r.reeval ? " 🔄" : ""}</span></div></th>`).join("");
-  const rows = CODES.map(c => `<tr><td style="min-width:260px">${esc(itemTxt(c))}</td>${MXE.resp.map((x, i) => `<td class="c"><select data-mx="${i}|${c}" style="font-size:12px;padding:2px">${opts(x.lv[c])}</select></td>`).join("")}</tr>`).join("");
+  MXE = { key: CUR, resp: resp.map(r => ({ r, src: mxSrc(r), lv: Object.assign({}, r.lv) })), cur: {}, tgt: {} };
+  CODES.forEach(c => { MXE.cur[c] = mxMean(MXE.resp, c); MXE.tgt[c] = MXE.cur[c]; });
+  MXE.s0 = { B: scoreOf({ resp: resp }, "B"), A: scoreOf({ resp: resp }, "A") };
+  const row = c => {
+    const cur = MXE.cur[c];
+    if (cur == null) return `<tr><td>${esc(itemTxt(c))}</td><td colspan="3" class="muted" style="font-size:12px">لا توجد بيانات لهذا البند</td></tr>`;
+    const per = MXE.resp.filter(x => x.lv[c] !== undefined).map(x => `${x.r.subject}: ${lvlTxt(x.lv[c])}`).join(" · ");
+    return `<tr><td style="min-width:240px">${esc(itemTxt(c))}<div class="muted" style="font-size:11px">${esc(per)}</div></td>
+      <td style="width:46%"><input type="range" id="mxr_${c}" min="0" max="4" step="0.25" value="${cur}" class="mx-rg" oninput="mxSlide('${c}', this.value)"></td>
+      <td style="white-space:nowrap;font-size:12px;min-width:110px" id="mxl_${c}"></td>
+      <td><button class="btn sm ghost" title="إرجاع" onclick="mxResetItem('${c}')">↺</button></td></tr>`;
+  };
   const m = document.createElement("div"); m.className = "modal"; m.id = "mxModal";
-  m.innerHTML = `<div class="box" style="max-width:1100px"><h3 style="margin-top:0">✏️ تعديل تقييم البنود — ${esc(sName(s))}</h3>
-    <p class="hint">غيّر مستوى أي بند في أي مادة. يُحفظ التعديل على هذا الجهاز ويظهر في كل التقارير.${MXE.resp.some(x => x.r.reeval) ? " المواد المعلَّمة 🔄 يُعدَّل فيها التقييم الأحدث (إعادة التقييم)." : ""} إعادة استيراد ملف أحدث لنفس المعلم والمادة تستبدل التعديل.</p>
-    <div style="overflow:auto;max-height:60vh"><table class="t"><thead><tr><th>البند</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="mxEditSave()">💾 حفظ التعديل</button><button class="btn ghost" onclick="document.getElementById('mxModal').remove()">إلغاء</button></div></div>`;
+  m.innerHTML = `<style>.mx-rg{direction:ltr;width:100%;-webkit-appearance:none;appearance:none;height:10px;border-radius:6px;background:linear-gradient(90deg,#2e9e5b,#f2c94c,#d64545);outline:none}
+      .mx-rg::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid #333;cursor:pointer}
+      .mx-rg::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #333;cursor:pointer}
+      #mxScores{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:6px 0 10px;font-weight:700}</style>
+    <div class="box" style="max-width:1000px"><h3 style="margin-top:0">✏️ تعديل تقييم البنود — ${esc(sName(s))}</h3>
+    <p class="hint">حرّك سلايدر البند نحو <b style="color:#2e9e5b">الأخضر</b> (لا يظهر) أو <b style="color:#d64545">الأحمر</b> (دائماً). السلايدر يمثل متوسط البند في كل المواد، والفروق بين المواد تبقى كما هي. التقييم الجديد يُحسب فوراً.</p>
+    <div id="mxScores"></div>
+    <div style="overflow:auto;max-height:58vh"><table class="t"><thead><tr><th>البند</th><th><div style="display:flex;justify-content:space-between;direction:ltr"><span>🟢 لا يظهر</span><span>أحياناً</span><span>دائماً 🔴</span></div></th><th>المتوسط</th><th></th></tr></thead>
+      <tbody><tr><td colspan="4" style="font-weight:800;background:#f4f4f4">${esc(t("sc_beh"))}</td></tr>${CODES.filter(c => c[0] === "B").map(row).join("")}
+      <tr><td colspan="4" style="font-weight:800;background:#f4f4f4">${esc(t("sc_aca"))}</td></tr>${CODES.filter(c => c[0] === "A").map(row).join("")}</tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="mxEditSave()">💾 حفظ التقييم الجديد</button><button class="btn ghost" onclick="document.getElementById('mxModal').remove()">إلغاء</button></div></div>`;
   document.body.appendChild(m);
+  mxPaint();
 }
 function mxEditSave() {
   if (!MXE) return;
   let changed = 0;
-  document.querySelectorAll("#mxModal select[data-mx]").forEach(sel => {
-    const [i, c] = sel.dataset.mx.split("|"), x = MXE.resp[+i];
-    if (!x || !x.src) return;
-    const v = sel.value === "" ? undefined : +sel.value;
-    if (x.src.lv[c] === v) return;
-    if (v === undefined) delete x.src.lv[c]; else x.src.lv[c] = v;
-    x.src.manual = true; x.src.editedAt = Date.now(); changed++;
+  mxApplied().forEach(({ x, lv }) => {
+    if (!x.src) return;
+    CODES.forEach(c => {
+      if (lv[c] === undefined || x.src.lv[c] === lv[c] || x.lv[c] === lv[c]) return;
+      x.src.lv[c] = lv[c]; x.src.manual = true; x.src.editedAt = Date.now(); changed++;
+    });
   });
   document.getElementById("mxModal").remove();
   if (!changed) return;
