@@ -95,7 +95,8 @@ async function readHandleText(handle){
   return text;
 }
 
-async function pickAndLinkJson(mode, givenHandle){
+async function pickAndLinkJson(mode, givenHandle, opts){
+  opts = opts || {};
   mode = mode || 'open';
   if(!ljFsApiSupported){
     alert('ميزة الربط التلقائي مدعومة فقط في متصفحي Chrome أو Edge على الحاسوب. استخدم زر "📁 الملف" للاستيراد والتصدير اليدوي بدلاً من ذلك.');
@@ -109,7 +110,7 @@ async function pickAndLinkJson(mode, givenHandle){
       const perm = await handle.requestPermission({mode:'readwrite'});
       if(perm !== 'granted'){ alert('لم تُمنح صلاحية الكتابة على ملفك — تأكد أن لديك صلاحية «تعديل» على مجلدك في OneDrive.'); return false; }
     } else if(mode === 'new'){
-      handle = await window.showSaveFilePicker({ suggestedName: 'nojoom_' + ((getSchoolInfo().teacher || 'data').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_')) + '.json', types: ljTypes });
+      handle = await window.showSaveFilePicker({ suggestedName: (typeof FL !== 'undefined' ? FL.fileNameFor({ name: getSchoolInfo().teacher || 'data', email: getSchoolInfo().teacherEmail || (state.rosterMeta && String(state.rosterMeta.teacherKey || '').includes('@') ? state.rosterMeta.teacherKey : '') }) : 'nojoom_data.json'), types: ljTypes });
     } else {
       const picked = await window.showOpenFilePicker({ types: ljTypes, multiple: false });
       handle = picked[0];
@@ -132,7 +133,7 @@ async function pickAndLinkJson(mode, givenHandle){
     }
 
     if(hasData){
-      const wantsImport = confirm('الملف المرتبط يحتوي على بيانات محفوظة سابقاً.\n\nاضغط "موافق" لاستيراد بياناته إلى المتصفح (سيتم دمجها مع البيانات الحالية حسب أسماء الطلاب).\nاضغط "إلغاء" للإبقاء على بيانات المتصفح الحالية وحفظها في الملف بدلاً منها.');
+      const wantsImport = opts.preferFile ? true : confirm('الملف المرتبط يحتوي على بيانات محفوظة سابقاً.\n\nاضغط "موافق" لاستيراد بياناته إلى المتصفح (سيتم دمجها مع البيانات الحالية حسب أسماء الطلاب).\nاضغط "إلغاء" للإبقاء على بيانات المتصفح الحالية وحفظها في الملف بدلاً منها.');
       if(wantsImport){
         importFromJSON(existingText);
         toast('تم استيراد البيانات من الملف المرتبط ✅', '🔗');

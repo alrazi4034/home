@@ -1,105 +1,155 @@
-/* 13b-folder-setup.js — الربط بالمجلدات (الطريقة الموصى بها)
-   المعلم يربط مجلد «بيانات المدرسة» ومجلده (يمكن أكثر من مجلد)، ثم يختار «من أنا؟»:
-   البرنامج يجد ملف بيانات المدرسة وملف المعلم بنفسه، أو ينشئ ملف المعلم في مجلده.
-   الربط مشترك مع بوابة الرازي (إن رُبط هناك يظهر هنا جاهزاً). */
-let FS_ROSTER = null, FS_CENTRAL = null;
+/* 13b-folder-setup.js — الربط من بوابة الرازي
+   الربط (المجلدات + «من أنا» + ملف المعلم) يتم مرة واحدة من زر «📁» في ترويسة بوابة الرازي.
+   نجوم مدرستي تقرأه تلقائياً عند الفتح: الملف المركزي + ملف المعلم + اسمه — بدون أي خيارات هنا.
+   إذا احتاج المتصفح إذناً جديداً يظهر زر واحد «🔓 متابعة». */
+let FL_PENDING = null;
 
-async function folderSetupOpen() {
-  if (!FL.supported()) return alert('الربط بالمجلدات يعمل في Chrome أو Edge على الكمبيوتر فقط.');
-  let st = await FL.status(false);
-  if (!st.length) { try { await FL.add(); } catch (e) { if (e && e.name === 'AbortError') return; return alert('تعذّر ربط المجلد: ' + e.message); } st = await FL.status(false); }
-  if (st.some(s => !s.ok)) st = await FL.status(true);
-  FS_CENTRAL = await FL.findCentral(false);
-  FS_ROSTER = null;
-  if (FS_CENTRAL) {
-    try { FS_ROSTER = parseRosterWorkbook(XLSX.read(await (await FS_CENTRAL.handle.getFile()).arrayBuffer(), { type: 'array', cellDates: true })); }
-    catch (e) { FS_ROSTER = null; }
+async function flPortalState() {
+  if (typeof FL === 'undefined' || !FL.supported()) return null;
+  const [folders, me, tf] = await Promise.all([FL.folders(), FL.me(), FL.teacherFile()]);
+  if (!folders.length || !me || !me.key || !tf) return null;
+  return { folders, me, tf };
+}
+async function flSame(a, b) { try { return !!(a && b && await a.isSameEntry(b)); } catch (e) { return false; } }
+async function flPermsOk(ps) {
+  try {
+    if ((await ps.tf.queryPermission({ mode: 'readwrite' })) !== 'granted') return false;
+    for (const f of ps.folders) if ((await f.queryPermission({ mode: 'read' })) !== 'granted') return false;
+    return true;
+  } catch (e) { return false; }
+}
+
+// عند الفتح: إن كان الربط في البوابة مختلفاً عمّا هنا يُعتمد تلقائياً
+async function flAdoptOnLoad() {
+  const ps = await flPortalState();
+  if (!ps) return false;
+  let curFile = null, curCentral = null;
+  try { curFile = await ljLoadHandle(); } catch (e) {}
+  try { curCentral = await rsIdb('get'); } catch (e) {}
+  const sameTeacher = state.rosterMeta && state.rosterMeta.teacherKey === ps.me.key;
+  if (sameTeacher && curCentral && await flSame(curFile, ps.tf)) return false;     // مطابق: يكمل التشغيل العادي
+  if (await flPermsOk(ps)) { await flApply(ps, false); return true; }
+  FL_PENDING = ps;
+  flShowBanner();
+  // معلم آخر على هذا المتصفح: لا يُفتح ملفه السابق حتى يضغط «متابعة»
+  return !!(state.rosterMeta && state.rosterMeta.teacherKey && state.rosterMeta.teacherKey !== ps.me.key);
+}
+
+function flShowBanner() {
+  let b = document.getElementById('fl-banner');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'fl-banner';
+    b.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:3000;background:var(--surface,#1e2236);border:2px solid var(--accent,#f7c948);border-radius:14px;padding:10px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:13.5px;max-width:92vw';
+    document.body.appendChild(b);
   }
-  const me = await FL.me();
-  const curKey = (state.rosterMeta && state.rosterMeta.teacherKey) || (me && me.key) || '';
-  const teachers = (FS_ROSTER && FS_ROSTER.teachers) || [];
-  const opts = teachers.map(t => `<option value="${rsEsc(t.key)}" ${t.key === curKey ? 'selected' : ''}>${rsEsc(t.name || t.email)}${t.subjects.length ? ' — ' + rsEsc(t.subjects.join('، ')) : ''}</option>`).join('');
-  openModal(`
-    <div class="modal-title">📁 الربط بالمجلدات</div>
-    <div style="font-size:12.5px;line-height:1.9;color:var(--text-muted);margin-bottom:10px">
-      اربط مجلد <b>«بيانات المدرسة»</b> و<b>مجلدك</b> على OneDrive (يمكن أكثر من مجلد). البرنامج يجد ملف بيانات المدرسة وملفك بنفسه.</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-      ${st.map((s, i) => `<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border-color);border-radius:10px;padding:6px 10px;font-size:13px">
-        <span>📁</span><b style="flex:1">${rsEsc(s.name)}</b>${s.ok ? '<span style="color:var(--present)">✓</span>' : '<span style="color:var(--absent)">🔒 يحتاج إذن</span>'}
-        <button class="btn btn-ghost btn-sm" onclick="folderSetupRemove(${i})" title="إزالة">✖</button></div>`).join('')}
-      <button class="btn btn-ghost btn-sm" onclick="folderSetupAdd()">➕ إضافة مجلد</button>
-    </div>
-    <div style="font-size:12.5px;margin-bottom:6px">📗 ملف بيانات المدرسة: ${FS_CENTRAL ? '<b>' + rsEsc(FS_CENTRAL.path) + '</b> ✅' : '<span style="color:var(--absent)">لم يُعثر عليه — أضف مجلد «بيانات المدرسة»</span>'}</div>
-    ${teachers.length ? `<div class="form-group" style="margin-top:8px"><label class="form-label">👤 من أنا؟</label>
-      <select class="input" id="fs-me"><option value="">— اختر اسمك —</option>${opts}</select></div>` : ''}
-    <div class="modal-actions">
-      <button class="btn btn-primary" style="flex:1" onclick="folderSetupApply()" ${FS_CENTRAL && teachers.length ? '' : 'disabled'}>✅ تطبيق</button>
-      <button class="btn btn-ghost" onclick="closeModalForce();openSetup(false)">↩ رجوع</button>
-    </div>`);
+  const n = FL_PENDING && FL_PENDING.me ? FL_PENDING.me.name : '';
+  b.innerHTML = `<span>📁 مرتبط من بوابة الرازي${n ? ': <b>' + rsEsc(n) + '</b>' : ''}</span>
+    <button class="btn btn-primary btn-sm" onclick="flContinue()">🔓 متابعة</button>`;
 }
-async function folderSetupAdd() {
-  try { await FL.add(); } catch (e) { if (!(e && e.name === 'AbortError')) alert('تعذّر ربط المجلد: ' + e.message); }
-  folderSetupOpen();
-}
-async function folderSetupRemove(i) { await FL.remove(i); folderSetupOpen(); }
+function flHideBanner() { const b = document.getElementById('fl-banner'); if (b) b.remove(); }
 
-async function folderSetupApply() {
-  const key = document.getElementById('fs-me')?.value;
-  if (!key) return toast('اختر اسمك من القائمة', '⚠️');
-  const t = FS_ROSTER.teachers.find(x => x.key === key);
-  if (!t) return;
-  closeModalForce();
-  await FL.setMe(t);
-  // 1) الملف المركزي
-  rosterHandle = FS_CENTRAL.handle;
+// ضغطة واحدة: طلب الإذن (يحتاج ضغطة من المستخدم) ثم إكمال الربط
+async function flContinue() {
+  const ps = FL_PENDING || await flPortalState();
+  if (!ps) return flUnlockExisting();
+  for (const f of ps.folders) {
+    try { if ((await f.queryPermission({ mode: 'readwrite' })) !== 'granted') await f.requestPermission({ mode: 'readwrite' }); }
+    catch (e) { try { await f.requestPermission({ mode: 'read' }); } catch (e2) {} }
+  }
+  try { if ((await ps.tf.queryPermission({ mode: 'readwrite' })) !== 'granted') await ps.tf.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+  if (!(await flPermsOk(ps))) { toast('اضغط «متابعة» مرة أخرى للسماح بالوصول للملفات', '🔓'); return; }
+  FL_PENDING = null; flHideBanner();
+  await flApply(ps, true);
+}
+
+async function flApply(ps, interactive) {
+  const central = await FL.findCentral(false);
+  if (!central) { toast('لم يُعثر على ملف «بيانات المدرسة» في المجلدات المربوطة — راجع الربط في بوابة الرازي', '⚠️'); return; }
+  // أوقف أي حفظ معلّق على الملف السابق قبل تغيير البيانات (حتى لا يُكتب في ملف معلم آخر)
+  if (typeof ljSyncTimer !== 'undefined' && ljSyncTimer) clearTimeout(ljSyncTimer);
+  linkedJsonHandle = null;
+  rosterHandle = central.handle;
   await rsIdb('put', rosterHandle);
-  // 2) المعلم وصفوفه (تُعبّأ مبدئياً من بيانات المدرسة، وتبقى قابلة للتعديل من «🏫 صفوفي»)
   const prev = state.rosterMeta || {};
-  const changedTeacher = prev.teacherKey && prev.teacherKey !== key;
-  state.rosterMeta = Object.assign({}, prev, { teacherKey: key });
-  if (changedTeacher || !Array.isArray(prev.myClasses)) state.rosterMeta.myClasses = null;   // يظهر اختيار الصفوف (مُعبّأ مسبقاً)
-  save();
-  // 3) ملف المعلم: موجود ← يُربط؛ غير موجود ← يُنشأ في مجلده
-  const found = await FL.findTeacherFile(t, true);
-  let fileHandle = found ? found.handle : null, mode = 'open';
-  if (!fileHandle) {
-    const dir = await FL.teacherDir(t, false);
-    if (!dir) {
-      alert('لم أجد مجلدك الخاص.\nأضف مجلدك (الذي لديك عليه صلاحية تعديل) من «➕ إضافة مجلد» ثم اضغط «تطبيق».');
-      return folderSetupOpen();
-    }
-    if (!(await FL.perm(dir, true, 'readwrite'))) return alert('لا توجد صلاحية كتابة على مجلدك «' + dir.name + '».');
-    try { fileHandle = await dir.getFileHandle(FL.fileNameFor(t), { create: true }); mode = 'new'; }
-    catch (e) { return alert('تعذّر إنشاء ملفك في «' + dir.name + '»:\n' + e.message + '\nتأكد أن صلاحيتك على المجلد «تعديل».'); }
+  const changed = prev.teacherKey && prev.teacherKey !== ps.me.key;
+  if (changed) {                       // معلم آخر على نفس المتصفح: لا تُخلط بياناته بملف هذا المعلم
+    state.classes = []; state.assessments = []; state.archivedStudents = []; state.archivedClasses = [];
+    state.seating = {}; state.marsadReview = {};
   }
-  const linked = await pickAndLinkJson(mode, fileHandle);
-  if (linked === false) return;
-  // 4) مزامنة القائمة المركزية (يظهر اختيار الصفوف أول مرة)
+  // صفوف المعلم: من ملفه (أنشأته البوابة) إن وُجدت، وإلا تُعرض نافذة الصفوف مُعبّأة من بيانات المدرسة
+  let fileMeta = null, fileData = null;
+  try { fileData = JSON.parse(await (await ps.tf.getFile()).text()) || null; fileMeta = fileData && fileData.rosterMeta || null; } catch (e) {}
+  // متصفح جديد (لا طلاب هنا) وملف المعلم فيه بيانات ⇒ تُنقل صفوفه كما هي ثم يُكمل الاستيراد
+  const hasLocal = (state.classes || []).some(c => (c.students || []).length);
+  if (!hasLocal && fileData && Array.isArray(fileData.classes) && fileData.classes.some(c => (c.students || []).length))
+    state.classes = JSON.parse(JSON.stringify(fileData.classes));
+  state.rosterMeta = Object.assign({}, changed ? {} : prev, { managed: true, teacherKey: ps.me.key });
+  if (changed || !Array.isArray(state.rosterMeta.myClasses)) state.rosterMeta.myClasses = fileMeta && Array.isArray(fileMeta.myClasses) && fileMeta.myClasses.length && !fileMeta.createdBy ? fileMeta.myClasses : null;
+  save();
+  await pickAndLinkJson('open', ps.tf, { preferFile: true });
+  await rosterSyncNow({ interactive: true });
+  if (!state.archivedStudents) state.archivedStudents = [];
+  if (!state.archivedClasses) state.archivedClasses = [];
+  if (typeof rosterApplyLockUI === 'function') rosterApplyLockUI();
+  if (typeof setupBtnRefresh === 'function') setupBtnRefresh();
+  toast('تم الربط من بوابة الرازي ✅', '📁');
+}
+
+// إذن منتهٍ لربط قائم (بدون تغيير): زر واحد يعيد التفعيل
+async function flUnlockExisting() {
+  try { if (rosterHandle && (await rosterHandle.queryPermission({ mode: 'read' })) !== 'granted') await rosterHandle.requestPermission({ mode: 'read' }); } catch (e) {}
+  try { if (linkedJsonHandle && (await linkedJsonHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') await linkedJsonHandle.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+  await initLinkedFileOnLoad();
   await rosterSyncNow({ interactive: true });
   if (typeof setupBtnRefresh === 'function') setupBtnRefresh();
 }
 
-// قسم «الربط بالمجلدات» في أعلى نافذة الإعداد
+// نافذة الإعداد: إن كان الربط من البوابة تظهر حالة مختصرة فقط (الخيارات اليدوية مخفية تحت «متقدم»)
 (function wrapSetup() {
   const orig = window.openSetup;
   if (typeof orig !== 'function') return;
-  window.openSetup = function (firstRun) {
-    const r = orig.apply(this, arguments);
-    Promise.resolve(r).then(async () => {
+  window.openSetup = async function (firstRun, advanced) {
+    const ps = advanced ? null : await flPortalState();
+    if (!ps) {
+      const r = await orig.call(this, firstRun);
       const box = document.getElementById('modal-content');
-      if (!box || !box.querySelector('.modal-title') || !/الربط والإعداد/.test(box.querySelector('.modal-title').textContent)) return;
-      if (!FL.supported()) return;
-      const st = await FL.status(false);
-      const me = await FL.me();
-      const el = document.createElement('div');
-      el.style.cssText = 'border:1px solid var(--accent);background:rgba(247,201,72,.07);border-radius:12px;padding:10px 12px;margin-bottom:12px';
-      el.innerHTML = `<div style="font-weight:800;margin-bottom:4px">📁 الربط بالمجلدات <span style="font-size:11px;color:var(--accent)">(موصى به)</span></div>
-        <div style="font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:8px">${st.length
-          ? 'المجلدات المربوطة: <b>' + st.map(s => rsEsc(s.name)).join('، ') + '</b>' + (me ? ' — 👤 ' + rsEsc(me.name) : '')
-          : 'اربط مجلد «بيانات المدرسة» ومجلدك مرة واحدة، والبرنامج يجد الملفات بنفسه — بدل الخطوات 1 و3.'}</div>
-        <button class="btn btn-primary btn-sm" onclick="closeModalForce();folderSetupOpen()">${st.length ? '📁 فتح الربط بالمجلدات' : '📁 ربط المجلدات'}</button>`;
-      box.querySelector('.modal-title').after(el);
-    });
-    return r;
+      if (!advanced && box && box.querySelector('.modal-title') && typeof FL !== 'undefined' && FL.supported()) {
+        const el = document.createElement('div');
+        el.style.cssText = 'border:1px solid var(--accent);background:rgba(247,201,72,.07);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.8';
+        el.innerHTML = '📁 <b>الطريقة الموصى بها:</b> اربط مجلداتك مرة واحدة من زر «📁» في ترويسة <b>بوابة الرازي</b>، ثم افتح نجوم مدرستي — يعمل مباشرة دون أي خطوات هنا.';
+        box.querySelector('.modal-title').after(el);
+      }
+      return r;
+    }
+    const m = state.rosterMeta || {}, si = getSchoolInfo();
+    const locked = !!FL_PENDING || document.getElementById('btnRoster')?.textContent.trim() === '🔓' || document.getElementById('btnLinkJson')?.textContent.trim() === '🔓';
+    openModal(`
+      <div class="modal-title">📁 مرتبط من بوابة الرازي</div>
+      <div style="font-size:13px;line-height:2">
+        👤 <b>${rsEsc(ps.me.name)}</b>${si.subject ? ' — ' + rsEsc(si.subject) : ''}<br>
+        📗 بيانات المدرسة: <b>${rsEsc(rosterHandle ? rosterHandle.name : '—')}</b>${m.lastSync ? ' — آخر مزامنة ' + new Date(m.lastSync).toLocaleString('ar') : ''}<br>
+        📄 ملفي: <b>${rsEsc(ps.tf.name)}</b>${typeof ljLastActionText === 'function' ? ljLastActionText() : ''}<br>
+        🏫 ${Array.isArray(m.myClasses) && m.myClasses.length ? m.myClasses.map(rsEsc).join('، ') : '—'}
+      </div>
+      <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px">لتغيير المجلدات أو الاسم: من زر «📁» في ترويسة بوابة الرازي.</div>
+      <div class="modal-actions" style="flex-wrap:wrap">
+        ${locked ? '<button class="btn btn-primary" onclick="closeModalForce();flContinue()">🔓 متابعة</button>' : ''}
+        <button class="btn btn-ghost" onclick="closeModalForce();rosterSyncNow({interactive:true})">🔄 مزامنة الآن</button>
+        <button class="btn btn-ghost" onclick="closeModalForce();rosterOpenClassPicker()">🏫 صفوفي</button>
+        <button class="btn btn-ghost" onclick="closeModalForce();startTour()">🎓 جولة</button>
+        <button class="btn btn-ghost" onclick="closeModalForce();openSetup(false, true)" style="font-size:11px;opacity:.7">⚙️ متقدم</button>
+        <button class="btn btn-ghost" onclick="closeModalForce()">إغلاق</button>
+      </div>`);
+  };
+})();
+
+// زر الإعداد يصبح «🔓» عند الحاجة لإذن من ربط البوابة
+(function wrapBtn() {
+  const orig = window.setupBtnRefresh;
+  if (typeof orig !== 'function') return;
+  window.setupBtnRefresh = function () {
+    orig.apply(this, arguments);
+    const btn = document.getElementById('btnSetup');
+    if (btn && FL_PENDING) { btn.innerHTML = '🔓'; btn.title = 'اضغط «متابعة» لتفعيل الربط من بوابة الرازي'; }
   };
 })();

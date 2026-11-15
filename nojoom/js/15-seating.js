@@ -1,14 +1,24 @@
 /* 15-seating.js — تاب أنماط الجلوس */
 
 /* ===================== 🪑 تاب أنماط الجلوس ===================== */
-const SX = { type:'classroom', swap:false, sel:null, excludeAbsent:true, zoom:{classroom:1, lab:0.6}, undo:[] };
+const SX = { type:'classroom', swap:false, sel:null, excludeAbsent:true, zoom:{classroom:1}, undo:[] };
 
 function sxEsc(t){ return String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function sxCls(){ return state.classes.find(c=>c.id===state.activeClass) || state.classes[0] || null; }
 function sxStore(){ if(!state.seating || typeof state.seating!=='object') state.seating={}; return state.seating; }
 function sxDefault(type){
-  return type==='lab' ? {layout:'u', seats:[], built:false}
-                      : {layout:'pairs', rows:7, cols:4, groupSizes:[], seats:[], built:false};
+  return {layout:'pairs', method:'random', geo:2, n:0, groupSizes:[], seats:[], built:false};
+}
+/* تخطيط القاعة (مثل «التخطيط الصفي» class seat):
+   ≤28 طالباً: 4 أعمدة × 7 صفوف، والزيادة فرادى في عمود أوسط من الأمام للخلف، وبعد 7 تُضاف صفوف.
+   ترتيب الملء: صفاً صفاً من الأمام (المقاعد الفارغة تبقى في الخلف). */
+const SX_COLS=4, SX_ROWS=7, SX_BASE=28;
+function sxLayoutOf(n){
+  let rows=SX_ROWS, mid=0;
+  if(n>SX_BASE){ const extra=n-SX_BASE; if(extra<=SX_ROWS) mid=extra; else { mid=SX_ROWS; rows=SX_ROWS+Math.ceil((extra-SX_ROWS)/SX_COLS); } }
+  const keys=[];
+  for(let r=0;r<rows;r++){ keys.push(r+'-0',r+'-1'); if(r<mid) keys.push(r+'-m'); keys.push(r+'-2',r+'-3'); }
+  return {rows, mid, keys};
 }
 function sxSlot(cls,type){
   const st=sxStore();
@@ -27,17 +37,11 @@ function sxSizes(n,size){
   return out;
 }
 function sxCapacity(slot,type){
-  if(type==='lab') return 30;
   if(sxIsGroups(slot)) return (slot.groupSizes||[]).reduce((a,b)=>a+b,0);
-  return (slot.rows||7)*(slot.cols||4);
+  return sxLayoutOf(slot.n||0).keys.length;
 }
 function sxGeom(slot,type,n){
-  if(type==='lab'){ slot.layout='u'; return 30; }
-  if(!sxIsGroups(slot)){
-    slot.rows=Math.max(1,slot.rows||7); slot.cols=Math.max(1,slot.cols||4);
-    if(n>slot.rows*slot.cols) slot.rows=Math.min(20,Math.ceil(n/slot.cols));
-    return slot.rows*slot.cols;
-  }
+  if(!sxIsGroups(slot)){ slot.n=n; slot.geo=2; return sxLayoutOf(n).keys.length; }
   const size=parseInt(slot.layout.slice(1))||4;
   slot.groupSizes=sxSizes(n,size);
   return n;
@@ -108,9 +112,15 @@ function sxUndo(){
   SX.sel=null; save(); sxRenderAll(); toast('تم التراجع','↩️');
 }
 
-function sxBuild(smart,silent,noSnap){
+/* طرق التوزيع: عشوائي · أبجدي · متمايز متجانس (مستويات متقاربة معاً) · متمايز مختلط (مستويات مختلفة معاً) — حسب نقاط الطلاب */
+const SX_METHODS=[['random','🔀 عشوائي'],['alpha','🔤 أبجدي'],['homo','🎯 متمايز: متجانس'],['mixed','🤝 متمايز: مختلط']];
+function sxBareName(n){ return String(n||'').replace(/\s*\([^()]*\)\s*$/,''); }
+function sxBuild(method,silent,noSnap){
   const cls=sxCls(); if(!cls) return;
   const type=SX.type, slot=sxSlot(cls,type);
+  if(method===true) method=slot.method||'mixed'; else if(method===false) method='random';
+  method=method||slot.method||'random';
+  slot.method=method;
   let pool=cls.students.filter(s=>!SX.excludeAbsent || s._todayAtt!=='absent');
   if(!noSnap && slot.built) sxSnap();
   slot.built=true;
@@ -120,41 +130,38 @@ function sxBuild(smart,silent,noSnap){
     if(!silent) toast('لا يوجد طلاب لتوزيعهم','⚠️');
     return;
   }
-  const total=pool.length;
   const cap=sxGeom(slot,type,pool.length);
-  let trimmed=0;
-  if(pool.length>cap){ trimmed=pool.length-cap; pool=sxShuffleArr(pool).slice(0,cap); }
-  const pct=sxPct(pool), edges=sxEdges(slot,type);
+  const byPts=()=>pool.slice().sort((a,b)=>(b.points||0)-(a.points||0) || (Math.random()-0.5));
+  let list;
+  if(method==='alpha') list=pool.slice().sort((a,b)=>sxBareName(a.name).localeCompare(sxBareName(b.name),'ar'));
+  else if(method==='homo') list=byPts();
+  else if(method==='mixed') list=byPts();
+  else list=sxShuffleArr(pool);
   let order=new Array(cap).fill(null);
-
   if(sxIsGroups(slot)){
     const sizes=slot.groupSizes, groups=sizes.map(()=>[]);
-    const list = smart
-      ? pool.map(s=>({s,k:pct[s.id]+(Math.random()-0.5)*0.12})).sort((a,b)=>a.k-b.k).map(o=>o.s)
-      : sxShuffleArr(pool);
-    let g=0, dir=1;
-    const step=()=>{ g+=dir; if(g>=sizes.length){ g=sizes.length-1; dir=-1; } else if(g<0){ g=0; dir=1; } };
-    list.forEach(s=>{
-      let guard=0;
-      while(groups[g].length>=sizes[g] && guard++<sizes.length*3) step();
-      groups[g].push(s); step();
-    });
+    if(method==='mixed'){
+      // توزيع ثعباني: كل مجموعة فيها متفوق ومتوسط ومحتاج للدعم
+      let g=0, dir=1;
+      const step=()=>{ g+=dir; if(g>=sizes.length){ g=sizes.length-1; dir=-1; } else if(g<0){ g=0; dir=1; } };
+      list.forEach(s=>{ let guard=0; while(groups[g].length>=sizes[g] && guard++<sizes.length*3) step(); groups[g].push(s); step(); });
+    } else {
+      // متجانس/أبجدي/عشوائي: تعبئة متتالية (المتجانس: المجموعة 1 الأعلى نقاطاً)
+      let g=0; list.forEach(s=>{ while(g<sizes.length-1 && groups[g].length>=sizes[g]) g++; groups[g].push(s); });
+    }
     order=[].concat(...groups);
   } else {
-    const idxs = type==='lab'
-      ? sxShuffleArr([...Array(cap).keys()]).slice(0,pool.length).sort((a,b)=>a-b)
-      : [...Array(pool.length).keys()];
-    const list=sxShuffleArr(pool);
-    idxs.forEach((p,k)=>{ order[p]=list[k]; });
+    if(method==='mixed'){
+      // ثنائيات: كل طاولة طالب أعلى + طالب أدنى (الأعلى مع الأدنى ثم الذي يليه...)
+      const a=list.slice(), out=[];
+      while(a.length){ out.push(a.shift()); if(a.length) out.push(a.pop()); }
+      list=out;
+    }
+    list.forEach((s,k)=>{ order[k]=s; });
   }
-  if(smart) sxOptimize(order,pct,edges,250*cap+2000);
-
   slot.seats=order.map(s=>s?{id:s.id,name:s.name}:null);
   SX.sel=null; save(); sxRenderAll();
-  if(!silent){
-    toast(smart?'🎲 تم الخلط الذكي حسب النقاط':'🔀 تم الخلط العشوائي','🪑');
-    if(trimmed) setTimeout(()=>toast(`${trimmed} طالب لم يجدوا مقعداً (السعة ${cap}) — موجودون في قائمة غير الموزَّعين`,'⚠️'),900);
-  }
+  if(!silent) toast((SX_METHODS.find(m=>m[0]===method)||['',''])[1]+' — تم التوزيع','🪑');
 }
 
 /* ---------- مطابقة المقاعد مع الطلاب الحاليين ---------- */
@@ -265,7 +272,7 @@ function sxSetLayout(l){
   const cls=sxCls(); const slot=sxSlot(cls,SX.type);
   if(slot.layout===l) return;
   sxSnap(); slot.layout=l;
-  sxBuild(true,true,true);
+  sxBuild(slot.method||'random',true,true);
   toast('تم تغيير النمط وإعادة التوزيع — يمكنك التراجع ↩️','🪑');
 }
 function sxResize(dr,dc){
@@ -294,12 +301,12 @@ function sxClear(){
 function sxSaveLayout(){
   const cls=sxCls(); if(!cls) return;
   save();
-  toast(`تم حفظ مخطط ${SX.type==='lab'?'المختبر':'القاعة الصفية'} للصف ${cls.name}`,'💾');
+  toast(`تم حفظ مخطط الجلوس للصف ${cls.name}`,'💾');
 }
 function sxPrint(){
   const cls=sxCls();
   const t=document.getElementById('sx-print-title');
-  if(t && cls) t.textContent=`مخطط ${SX.type==='lab'?'مختبر الحاسوب':'الجلوس الصفي'} — الصف ${cls.name}`;
+  if(t && cls) t.textContent=`مخطط الجلوس الصفي — الصف ${cls.name}`;
   document.body.classList.add('sx-printing');
   setTimeout(()=>{ window.print(); setTimeout(()=>document.body.classList.remove('sx-printing'),600); },120);
 }
@@ -336,16 +343,7 @@ function sxStageHTML(cls,slot,type){
   const seat=i=>sxSeatHTML(i,slot.seats[i],cls,type);
   const front=`<div class="sx-front"><div class="sx-bb"><span>السبورة</span></div><div class="sx-tray"></div></div>`;
   let body='';
-  if(type==='lab'){
-    let cells='';
-    for(let i=0;i<30;i++){
-      let r,c;
-      if(i<12){ r=i+1; c=1; } else if(i<18){ r=12; c=i-12+2; } else { r=12-(i-18); c=8; }
-      cells+=`<div class="sx-desk" style="grid-row:${r};grid-column:${c}">${seat(i)}</div>`;
-    }
-    cells+=`<div class="sx-teacher" style="grid-row:1 / 4;grid-column:2 / 8">🧑‍🏫 مكتب المعلم</div>`;
-    body=`<div class="sx-lab">${cells}</div>`;
-  } else if(sxIsGroups(slot)){
+  if(sxIsGroups(slot)){
     let off=0;
     body='<div class="sx-groups">'+(slot.groupSizes||[]).map((sz,g)=>{
       let seats='', tot=0, cnt=0;
@@ -358,21 +356,18 @@ function sxStageHTML(cls,slot,type){
       return `<div class="sx-gtable"><div class="sx-gtitle">مجموعة ${g+1} <small>· ${cnt} طلاب · متوسط ⭐${cnt?Math.round(tot/cnt):0}</small></div><div class="sx-ggrid">${seats}</div></div>`;
     }).join('')+'</div>';
   } else {
-    const R=slot.rows, C=slot.cols, pairs=slot.layout==='pairs';
+    // 4 أعمدة (طاولتان ثنائيتان أو 4 فرادى) + عمود أوسط للزيادة عن 28
+    const L=sxLayoutOf(slot.n||0), pairs=slot.layout==='pairs', idx={};
+    L.keys.forEach((k,i)=>idx[k]=i);
     let rows='';
-    for(let r=0;r<R;r++){
-      let desks='';
-      if(pairs){
-        for(let c=0;c<C;c+=2){
-          let s=seat(r*C+c); if(c+1<C) s+=seat(r*C+c+1);
-          desks+=`<div class="sx-desk">${s}</div>`;
-        }
-      } else {
-        for(let c=0;c<C;c++) desks+=`<div class="sx-desk">${seat(r*C+c)}</div>`;
-      }
-      rows+=`<div class="sx-rowline"><span class="sx-rowtag">${r+1}</span><div class="sx-desks ${pairs?'pairs':'single'}">${desks}</div></div>`;
+    for(let r=0;r<L.rows;r++){
+      const sk=k=>idx[k]!==undefined?seat(idx[k]):'';
+      const right = pairs ? `<div class="sx-desk">${sk(r+'-0')}${sk(r+'-1')}</div>` : `<div class="sx-desk">${sk(r+'-0')}</div><div class="sx-desk">${sk(r+'-1')}</div>`;
+      const left  = pairs ? `<div class="sx-desk">${sk(r+'-2')}${sk(r+'-3')}</div>` : `<div class="sx-desk">${sk(r+'-2')}</div><div class="sx-desk">${sk(r+'-3')}</div>`;
+      const mid = L.mid ? (r<L.mid ? `<div class="sx-desk sx-mid">${sk(r+'-m')}</div>` : `<div class="sx-desk sx-mid sx-mid-empty"></div>`) : '';
+      rows+=`<div class="sx-rowline"><span class="sx-rowtag">${r+1}</span><div class="sx-desks ${pairs?'pairs':'single'}" style="direction:rtl">${right}<div class="sx-aisle"></div>${mid}${mid?'<div class="sx-aisle"></div>':''}${left}</div></div>`;
     }
-    body=`<div class="sx-rows">${rows}</div>`;
+    body=`<div class="sx-rows">${rows}</div>`+(L.mid?`<div class="sx-hint" style="text-align:center">🟦 العمود الأوسط: مقاعد فردية للطلاب الزائدين عن 28</div>`:'');
   }
   return front+body+`<div class="sx-back-label">— مؤخرة القاعة —</div>`;
 }
@@ -386,7 +381,7 @@ function sxRenderAll(){
     stage.innerHTML=''; pool.innerHTML=''; return;
   }
   const type=SX.type, slot=sxSlot(cls,type);
-  if(!slot.built && cls.students.length){ sxBuild(true,true,true); return; }
+  if((!slot.built || slot.geo!==2 && !sxIsGroups(slot) || slot.layout==='u') && cls.students.length){ if(slot.layout==='u') slot.layout='pairs'; sxBuild(slot.method||'random',true,true); return; }
   const used=sxReconcile(cls,slot,type);
   const cap=sxCapacity(slot,type);
   const present=cls.students.filter(s=>s._todayAtt==='present').length;
@@ -394,27 +389,15 @@ function sxRenderAll(){
   const seated=used.size;
 
   const clsChips=state.classes.map(c=>`<button class="flt-btn ${c.id===cls.id?'flt-btn-on':''}" onclick="sxSetClass(${c.id})">🏫 ${sxEsc(c.name)} <span style="opacity:.7;font-size:11px">(${c.students.length})</span></button>`).join('');
-  const typeChips=[['classroom','🏫 قاعة صفية'],['lab','💻 مختبر حاسوب (U)']].map(([k,l])=>`<button class="flt-btn ${type===k?'flt-btn-on':''}" onclick="sxSetType('${k}')">${l}</button>`).join('');
-  let layoutLine='';
-  if(type==='classroom'){
-    const L=[['pairs','👥 ثنائيات'],['single','🧍 فردي متباعد'],['g4','مجموعات ٤'],['g5','مجموعات ٥'],['g6','مجموعات ٦']];
-    const chips=L.map(([k,l])=>`<button class="flt-btn ${slot.layout===k?'flt-btn-on':''}" onclick="sxSetLayout('${k}')">${l}</button>`).join('');
-    const steppers = sxIsGroups(slot) ? '' : `
-      <span class="sx-lbl" style="min-width:auto;margin-right:8px">الصفوف</span>
-      <span class="sx-step"><button onclick="sxResize(-1,0)">−</button><b>${slot.rows}</b><button onclick="sxResize(1,0)">＋</button></span>
-      <span class="sx-lbl" style="min-width:auto">الأعمدة</span>
-      <span class="sx-step"><button onclick="sxResize(0,-1)">−</button><b>${slot.cols}</b><button onclick="sxResize(0,1)">＋</button></span>`;
-    layoutLine=`<div class="sx-line"><span class="sx-lbl">🧩 النمط</span>${chips}${steppers}</div>`;
-  } else {
-    layoutLine=`<div class="sx-line"><span class="sx-hint">نمط U: 12 جهازاً على كل جانب + 6 أجهزة في الخلف = 30 جهازاً. الأرقام تسير حول الحرف U من الأمام يساراً.</span></div>`;
-  }
+  const L=[['pairs','👥 ثنائيات'],['single','🧍 فردي'],['g4','مجموعات ٤'],['g5','مجموعات ٥'],['g6','مجموعات ٦']];
+  const chips=L.map(([k,l])=>`<button class="flt-btn ${slot.layout===k?'flt-btn-on':''}" onclick="sxSetLayout('${k}')">${l}</button>`).join('');
+  const layoutLine=`<div class="sx-line"><span class="sx-lbl">🧩 النمط</span>${chips}</div>
+    <div class="sx-line"><span class="sx-lbl">🎛️ التوزيع</span>${SX_METHODS.map(([k,l])=>`<button class="flt-btn ${slot.method===k?'flt-btn-on':''}" onclick="sxBuild('${k}')" title="${k==='homo'?'طلاب بمستويات نقاط متقاربة معاً':k==='mixed'?'كل طاولة/مجموعة فيها مستويات مختلفة (متفوق مع من يحتاج دعماً)':''}">${l}</button>`).join('')}</div>`;
   host.innerHTML=`
     <div class="sx-line"><span class="sx-lbl">🏫 الصف</span>${clsChips}</div>
-    <div class="sx-line"><span class="sx-lbl">📐 نوع المكان</span>${typeChips}</div>
     ${layoutLine}
     <div class="sx-line">
-      <button class="sx-act pri" onclick="sxBuild(true)" title="يوزّع الطلاب بحيث يجلس بجانب كل طالب زملاء بمستويات نقاط مختلفة">🎲 خلط ذكي حسب النقاط</button>
-      <button class="sx-act" onclick="sxBuild(false)">🔀 خلط عشوائي</button>
+      <button class="sx-act pri" onclick="sxBuild(sxSlot(sxCls(),SX.type).method)" title="إعادة التوزيع بالطريقة المختارة">🔁 إعادة التوزيع</button>
       <button class="sx-act" onclick="sxUndo()" ${SX.undo.length?'':'disabled'}>↩️ تراجع</button>
       <button class="sx-act red" onclick="sxClear()">🗑️ تفريغ</button>
       <button class="sx-act grn" onclick="sxSaveLayout()">💾 حفظ المخطط</button>
@@ -433,7 +416,7 @@ function sxRenderAll(){
   if(!cls.students.length){
     stage.innerHTML='<div class="empty-state"><div class="icon">👤</div><p>لا يوجد طلاب في هذا الصف</p></div>';
   } else if(cap===0){
-    stage.innerHTML='<div class="empty-state"><div class="icon">🪑</div><p>لا يوجد طلاب موزَّعون — اضغط «خلط ذكي»</p></div>';
+    stage.innerHTML='<div class="empty-state"><div class="icon">🪑</div><p>لا يوجد طلاب موزَّعون — اختر طريقة التوزيع</p></div>';
   } else {
     stage.innerHTML=sxStageHTML(cls,slot,type);
   }

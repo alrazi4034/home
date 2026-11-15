@@ -628,6 +628,10 @@ body.light-mode .sx-stage-wrap{background-color:#e6ebf3;background-image:linear-
 .sx-desks{display:flex;gap:30px}
 .sx-desks.single{gap:16px}
 .sx-rows{display:flex;flex-direction:column;gap:16px}
+.sx-aisle{width:22px;flex-shrink:0}
+.sx-desks.pairs .sx-aisle{width:10px}
+.sx-desk.sx-mid{background:linear-gradient(180deg,#9bb4e0,#6f8fc7);box-shadow:0 4px 0 #4d6aa0,0 9px 14px rgba(0,0,0,.3)}
+.sx-desk.sx-mid-empty{visibility:hidden;width:calc(var(--sx-w,168px) + 16px)}
 
 .sx-seat{width:var(--sx-w,168px);background:var(--surface);border:2px solid var(--border-color);border-radius:10px;padding:6px 7px 6px;display:flex;flex-direction:column;gap:5px;position:relative;transition:box-shadow .15s,border-color .15s,opacity .15s;box-sizing:border-box}
 body.light-mode .sx-seat{border-color:#94a3b8}

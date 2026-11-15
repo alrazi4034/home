@@ -87,8 +87,12 @@ function parseCentral(wb) {
   const out = { students: new Map(), classes: [], teachers: [], terms: [], school: {}, issues: [], holidays: [] };
   if (!wb) return out;
   // الإجازات والعطل
-  { const hs = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
-    if (hs) sheetRows(wb, hs, true).slice(1).forEach(r => { const f = toISO(r[1]), t = toISO(r[2]) || f; if (f) out.holidays.push({ name: String(r[0] || '').trim(), from: f, to: t }); }); }
+  // (جدول أسفل ورقة «التقويم المدرسي»، أو ورقة مستقلة في الملفات القديمة)
+  { const cs = findSheet(wb, 'التقويم المدرسي', 'التقويم'), cg = cs ? sheetRows(wb, cs, true) : [];
+    const hr = cg.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
+    const hs = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
+    const rows = hr >= 0 ? cg.slice(hr + 2) : hs ? sheetRows(wb, hs, true).slice(1) : [];
+    rows.forEach(r => { const f = toISO(r[1]), t = toISO(r[2]) || f; if (f) out.holidays.push({ name: String(r[0] || '').trim(), from: f, to: t }); }); }
 
   // الطلاب
   const stSheet = findSheet(wb, 'جميع الطلاب');
@@ -151,13 +155,14 @@ function parseCentral(wb) {
     });
   }
   const ti = cal.findIndex(row => row.some(v => String(v).includes('الفصل الدراسي')));
+  const calEnd = (() => { const h = cal.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل')); return h > ti ? h : cal.length; })();
   if (ti >= 0) {
     const hdr = cal[ti];
     for (let c = 0; c < hdr.length; c += 2) {
       const tname = String(hdr[c] || '').trim();
       if (!tname) continue;
       const weeks = [];
-      for (let r = ti + 1; r < cal.length; r++) { const d = toISO(cal[r][c + 1]); if (d) weeks.push(d); }
+      for (let r = ti + 1; r < calEnd; r++) { const d = toISO(cal[r][c + 1]); if (d) weeks.push(d); }
       if (weeks.length) out.terms.push({ name: tname, start: weeks[0], end: addDays(weeks[weeks.length - 1], 4), weeks });
     }
   }

@@ -88,6 +88,7 @@ function render() {
   renderTeachers(teachers, to);
   renderStars(stars);
   renderQuality(quality);
+  if (typeof renderSessions === 'function') renderSessions(from, to, cls);
 }
 
 /* ---------- الإعدادات ---------- */

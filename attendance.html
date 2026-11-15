@@ -4428,6 +4428,26 @@ const FL = (() => {
   /* ---------- «من أنا؟» ---------- */
   async function me() { try { return (await idb('get', 'me')) || null; } catch (e) { return null; } }
   async function setMe(t) { await idb('put', 'me', t ? { key: t.key || '', name: t.name || '', email: normEmail(t.email) } : null); }
+  // ملف نجوم مدرستي الخاص بالمعلم (يُحدَّد في بوابة الرازي، وتستخدمه نجوم مدرستي مباشرة)
+  async function teacherFile() { try { return (await idb('get', 'tfile')) || null; } catch (e) { return null; } }
+  async function setTeacherFile(h) { await idb('put', 'tfile', h || null); }
+  // مطابقة ملف بيانات بمعلم من قائمة بيانات المدرسة
+  function matchTeacher(d, teachers) {
+    const si = (d && d.schoolInfo) || {};
+    const em = normEmail(si.teacherEmail || d.teacherEmail || (d.rosterMeta && String(d.rosterMeta.teacherKey || '').includes('@') ? d.rosterMeta.teacherKey : ''));
+    const key = d.rosterMeta && d.rosterMeta.teacherKey;
+    const nm = norm(si.teacher || d.teacher);
+    return teachers.find(t => em && normEmail(t.email) === em) || teachers.find(t => key && t.key === key)
+      || teachers.find(t => nm && norm(t.name) === nm) || null;
+  }
+  // كل ملفات نجوم مدرستي في المجلدات المربوطة: [{handle, path, dir, d, teacher}]
+  async function scanTeacherFiles(teachers, interactive) {
+    const out = [];
+    for (const x of await listJson(interactive, 2)) {
+      try { const d = JSON.parse(await (await x.handle.getFile()).text()); if (d && Array.isArray(d.classes)) out.push(Object.assign({ d, teacher: matchTeacher(d, teachers || []) }, x)); } catch (e) {}
+    }
+    return out;
+  }
 
   // ملف المعلم: بالبريد أو مفتاح المعلم داخل الملف، ثم باسم المجلد/الملف
   async function findTeacherFile(t, interactive) {
@@ -4469,7 +4489,11 @@ const FL = (() => {
     }
     return nonCentral.length === 1 ? nonCentral[0] : null;
   }
-  const fileNameFor = t => 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  // اسم ملف المعلم من اسم المستخدم في بريده (أحرف إنجليزية لا تتشوه): nojoom_data_mahmoud.shehada.json
+  const fileNameFor = t => {
+    const u = normEmail(t.email).split('@')[0].replace(/[^a-z0-9._-]+/g, '');
+    return u ? 'nojoom_data_' + u + '.json' : 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  };
 
   /* ---------- ملف بداية للمعلم (تملؤه نجوم مدرستي من بيانات المدرسة عند أول فتح) ---------- */
   function starterData(t, info) {
@@ -4514,7 +4538,7 @@ const FL = (() => {
   }
 
   return { supported, folders, addHandle, add, remove, clear, perm, status, findCentral, listJson, readFiles,
-           me, setMe, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
+           me, setMe, teacherFile, setTeacherFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
 })();
 
 </script>
@@ -4607,9 +4631,15 @@ function parseSharedTeachers(wb){
 let SHARED_HOLIDAYS = [];
 function parseSharedHolidays(wb){
   SHARED_HOLIDAYS = [];
-  const sn = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
-  if(!sn) return;
-  XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '', raw: true }).slice(1).forEach(r => {
+  // جدول أسفل ورقة «التقويم المدرسي»، أو ورقة مستقلة في الملفات القديمة
+  let rows = [];
+  const cal = wb.Sheets['التقويم المدرسي'];
+  if(cal){ const g = XLSX.utils.sheet_to_json(cal, { header: 1, defval: '', raw: true }); const hr = g.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل')); if(hr >= 0) rows = g.slice(hr + 2); }
+  if(!rows.length){
+    const sn = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
+    if(sn) rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '', raw: true }).slice(1);
+  }
+  rows.forEach(r => {
     const f = isoFromAny(typeof r[1] === 'number' ? XLSX.SSF.format('yyyy-mm-dd', r[1]) : r[1]);
     const t = isoFromAny(typeof r[2] === 'number' ? XLSX.SSF.format('yyyy-mm-dd', r[2]) : r[2]) || f;
     if(f) SHARED_HOLIDAYS.push({ name: String(r[0] || '').trim() || 'إجازة', from: f, to: t });
@@ -4636,6 +4666,30 @@ function loadSharedTeachersFromPortal(){
   }catch(e){ console.warn('teachers sheet', e); }
 }
 function expectedTeachers(jsDay, period, className){ return SHARED_TEACHERS.tt.get(jsDay + '|' + period + '|' + className) || []; }
+/* مادة المعلم من بيانات المدرسة (بالاسم) */
+function entrySubjectOf(name){
+  const t = SHARED_TEACHERS.list.find(x => x.name === name) || SHARED_TEACHERS.list.find(x => name && (x.name.includes(name) || String(name).includes(x.name)));
+  return t ? t.subjects.join('، ') : '';
+}
+/* حجم مربعات تقرير الإدخالات ثابت، والنص يصغر ليتلاءم مع المربع */
+function entryFitText(root){
+  (root || document).querySelectorAll('.entry-cell .ec-fit').forEach(el => {
+    el.style.fontSize = '';
+    let fs = parseFloat(getComputedStyle(el).fontSize) || 11, guard = 0;
+    while(el.scrollWidth > el.clientWidth + 1 && fs > 7 && guard++ < 12){ fs -= 0.5; el.style.fontSize = fs + 'px'; }
+  });
+}
+(function(){
+  const st = document.createElement('style');
+  st.textContent = `#entryGridTable{table-layout:fixed}
+    #entryGridTable td.entry-cell{width:122px;min-width:122px;max-width:122px;height:66px;vertical-align:middle;overflow:hidden;padding:5px 4px !important}
+    #entryGridTable .ec-fit{white-space:nowrap;overflow:hidden;text-overflow:clip;line-height:1.35}
+    #entryGridTable .ec-tname{font-size:10.5px;font-weight:700;margin-top:2px}
+    #entryGridTable .ec-subj{font-size:9.5px;font-weight:500;opacity:.8}
+    #entryGridTable .ec-time{font-weight:500;opacity:.75;font-size:9.5px}
+    #entryGridTable td.entry-cell-log{width:auto;max-width:none}`;
+  document.head.appendChild(st);
+})();
 function teacherLabel(t){ return (t.subjects.length ? t.subjects.join('، ') + ' — ' : '') + t.name; }
 
 /* اسم المعلم: الاسم العربي من بيانات المدرسة (بالبريد)، وإلا من البريد بدون البادئة TID- */
@@ -5114,12 +5168,13 @@ renderEntryReport = function(){
         const isNj = info.src === 'nojoom';
         if(isNj) nojoomCount++;
         body += `<td class="entry-cell recorded entry-cell-clickable${isNj ? ' entry-cell-nj' : ''}" data-cls="${escapeHtml(c.className)}" data-period="${escapeHtml(p)}">
-            <div class="ec-line1">تم ✓ (الغياب: ${fmt(info.count)})</div>
-            <div class="ec-line2">${isNj ? '<span class="nj-star" title="من نجوم مدرستي">⭐</span>' : ''}${escapeHtml(info.teacherName||'')} ${isNj ? '' : escapeHtml(fmtTime24(info.date))}</div>
+            <div class="ec-line1 ec-fit">تم ✓ (الغياب: ${fmt(info.count)})${isNj ? '' : ' <span class="ec-time">' + escapeHtml(fmtTime24(info.date)) + '</span>'}</div>
+            <div class="ec-tname ec-fit" title="${escapeHtml(info.teacherName||'')}">${isNj ? '<span class="nj-star" title="من نجوم مدرستي">⭐</span>' : ''}${escapeHtml(info.teacherName||'')}</div>
+            <div class="ec-subj ec-fit">${escapeHtml(entrySubjectOf(info.teacherName))}</div>
           </td>`;
       } else {
         const exp = expectedTeachers(jsDay, p, c.className);
-        body += `<td class="entry-cell missing">✘ لم يُسجَّل${exp.length ? `<div class="ec-exp">${exp.map(t => escapeHtml(teacherLabel(t))).join('<br>')}</div>` : ''}</td>`;
+        body += `<td class="entry-cell missing"><div class="ec-line1 ec-fit">✘ لم يُسجَّل</div>${exp.map(t => `<div class="ec-tname ec-fit" title="${escapeHtml(teacherLabel(t))}">${escapeHtml(t.name)}</div><div class="ec-subj ec-fit">${escapeHtml(t.subjects.join('، '))}</div>`).join('')}</td>`;
       }
     });
     body += '</tr>';
@@ -5127,6 +5182,7 @@ renderEntryReport = function(){
   body += '</tbody>';
   table.innerHTML = head + body;
   table.querySelectorAll('.entry-cell-clickable').forEach(td => td.addEventListener('click', () => openEntryCellModal(entryReportDate, td.dataset.cls, td.dataset.period)));
+  entryFitText(table);
   const pct = totalCells ? Math.round((recordedCount / totalCells) * 100) : 0;
   summary.innerHTML = `
     <div class="rec-sum-box"><div class="n" style="color:var(--forest);">${fmt(recordedCount)}</div><div class="l">حصة تم رصدها${nojoomCount ? ` (منها ${fmt(nojoomCount)} من ⭐ نجوم مدرستي)` : ''}${logRows ? ` — ${fmt(logRows)} شعبة من 📦 السجل` : ''}</div></div>

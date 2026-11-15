@@ -538,6 +538,7 @@ function showStudentReport() {
           <div style="display:flex;gap:5px;flex-shrink:0">
             ${s.parentPhone ? `<button onclick="showParentQR(${reportActiveStudent},'${s.name}','${s.parentPhone}')" style="background:rgba(37,211,102,0.15);border:1px solid rgba(10,111,50,0.3);color:#25d366;border-radius:6px;cursor:pointer;padding:3px 7px;font-size:12px" title="إرسال واتساب">📱</button>
             <button onclick="showCallQR('${s.parentPhone}','${s.name}')" style="background:rgba(162,155,254,0.15);border:1px solid rgba(50,55,80,0.3);color:#a29bfe;border-radius:6px;cursor:pointer;padding:3px 7px;font-size:12px" title="QR اتصال">📲</button>` : ''}
+            ${isPos ? `<button onclick="showNoteCertificate(${reportActiveStudent},${i})" style="background:rgba(200,150,12,0.15);border:1px solid rgba(200,150,12,0.45);color:#e0b030;border-radius:6px;cursor:pointer;padding:3px 7px;font-size:12px" title="شهادة تقدير لهذه الملاحظة">🏅</button>` : ''}
             <button onclick="editNote(${reportActiveStudent},${i},'${s.name}','${s.parentPhone||''}')" style="background:rgba(247,201,72,0.1);border:1px solid rgba(70,60,22,0.3);color:var(--accent);border-radius:6px;cursor:pointer;padding:3px 7px;font-size:12px">✏️</button>
             <button onclick="deleteNote(${reportActiveStudent},${i})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;opacity:0.6;padding:3px">🗑️</button>
           </div>
@@ -551,7 +552,7 @@ function showStudentReport() {
           <div class="student-avatar" style="width:46px;height:46px;font-size:18px;background:linear-gradient(135deg,var(--accent),#ff9f43);color:#1a1530">${s.name.charAt(0)}</div>
           <div>
             <div style="font-size:15px;font-weight:800">${s.name}</div>
-            <div style="font-size:12px;color:var(--text-muted)">${cls.name} • ${level}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${cls.name} • ${level}${(() => { const id = s.sid || (String(s.name).match(/\(([^()]+)\)\s*$/) || [])[1] || ''; return id ? ` • 🆔 رقم الطالب: <b style="color:var(--text);direction:ltr;unicode-bidi:embed">${id}</b>` : ''; })()}</div>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">

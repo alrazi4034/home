@@ -542,7 +542,7 @@ function renderGradesContent() {
                     oninput="updateGradePreview(${assess.id},${s.id},${assess.maxScore})"
                     onkeydown="gradeKeyNav(event)" onpaste="gradePasteColumn(event, ${assess.id}, ${assess.maxScore})"
                     style="width:80px;text-align:center;background:var(--surface2);border:1.5px solid var(--border-color);border-radius:8px;padding:5px 8px;color:var(--accent);font-family:Tajawal,sans-serif;font-size:14px;font-weight:900;outline:none"
-                    onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-color)'" />
+                    onfocus="this.style.borderColor='var(--accent)';this.closest('.student-row').classList.add('grade-focus')" onblur="this.style.borderColor='var(--border-color)';this.closest('.student-row').classList.remove('grade-focus')" />
                 </div>
                 <div style="width:80px;text-align:center">
                   <span id="gpct-${assess.id}-${s.id}" style="font-size:13px;font-weight:800;color:${color}">${pct !== null ? pct+'%' : '—'}</span>
@@ -678,47 +678,109 @@ function openQuickGrades(assessId) {
   openModal(`
     <div class="modal-title">⚡ إدخال سريع — ${a.name}</div>
     <div style="font-size:12.5px;color:var(--text-muted);line-height:1.8;margin-bottom:8px">
-      الصق من Excel سطراً لكل طالب:<br>
-      • <b>رقم الطالب</b> أو <b>اسمه</b> ثم الدرجة (مثل: <code>20190012345	17</code>)، أو<br>
-      • <b>عمود درجات فقط</b> بنفس ترتيب الطلاب في الشعبة المختارة.<br>
+      الصق من Excel سطراً لكل طالب بإحدى الصيغ:<br>
+      • <b>رقم الطالب</b> ثم الدرجة: <code>20190012345 17</code> أو <code>AB12345 17</code><br>
+      • <b>الاسم (الرقم)</b> ثم الدرجة: <code>محمد أحمد (20190012345) 17</code><br>
+      • أو <b>عمود درجات فقط</b> بنفس ترتيب الطلاب في الشعبة المختارة.<br>
+      تظهر نافذة <b>مراجعة</b> قبل الاعتماد لتصحيح أي سطر.<br>
       💡 يمكنك أيضاً لصق عمود الدرجات مباشرة في خانة أول طالب، والتنقل بين الخانات بـ Enter.
     </div>
     <div class="form-group"><label class="form-label">الشعبة (للعمود بالترتيب)</label>
       <select class="select" id="qg-cls">${classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
     <textarea class="input" id="qg-text" rows="9" style="font-family:monospace;direction:ltr;text-align:left" placeholder="20190012345	17"></textarea>
     <div class="modal-actions">
-      <button class="btn btn-primary" style="flex:1" onclick="applyQuickGrades(${a.id})">تطبيق وحفظ</button>
+      <button class="btn btn-primary" style="flex:1" onclick="applyQuickGrades(${a.id})">🔍 مراجعة</button>
       <button class="btn btn-ghost" onclick="closeModalForce()">إلغاء</button>
     </div>`);
   setTimeout(() => document.getElementById('qg-text')?.focus(), 100);
 }
+let QG_REVIEW = null;
+function qgNormId(x) { return String(x || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[\s\-_]/g, '').toUpperCase(); }
+function qgSidOf(s) { return qgNormId(s.sid || (String(s.name).match(/\(([^()]+)\)\s*$/) || [])[1] || ''); }
+// يقرأ النص ⇐ نافذة مراجعة (لا يُحفظ شيء قبل «اعتماد»)
 function applyQuickGrades(assessId) {
   const a = (state.assessments || []).find(x => x.id === assessId); if (!a) return;
-  const digits = x => String(x).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const digits = x => String(x).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/٫/g, '.');
   const lines = digits(document.getElementById('qg-text').value).split(/\r?\n/).map(x => x.trim()).filter(Boolean);
   if (!lines.length) return toast('الصق الدرجات أولاً', '⚠️');
   const clsSel = state.classes.find(c => c.id === +document.getElementById('qg-cls').value);
-  const pool = state.classes.filter(c => a.classIds.includes(c.id)).flatMap(c => c.students.map(s => ({ c, s })));
-  const norm = t => String(t).replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
-  const sidOf = s => String(s.sid || (String(s.name).match(/\(([^()]+)\)\s*$/) || [])[1] || '');
-  const onlyNums = lines.every(l => /^-?\d+(\.\d+)?$/.test(l));
-  let ok = 0; const miss = [];
-  const setScore = (s, v) => { const el = document.getElementById(`gscore-${a.id}-${s.id}`); if (el) { el.value = Math.min(a.maxScore, Math.max(0, v)); ok++; } };
-  if (onlyNums) {
+  const pool = state.classes.filter(c => a.classIds.includes(c.id)).flatMap(c => c.students.map(s => ({ c, s, k: c.id + ':' + s.id })));
+  const norm = t => String(t).replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+  const bare = n => norm(String(n).replace(/\([^()]*\)\s*$/, ''));
+  const rows = [];
+  if (lines.every(l => /^-?\d+(\.\d+)?$/.test(l))) {
     if (!clsSel) return;
-    lines.forEach((l, i) => { const s = clsSel.students[i]; if (s) setScore(s, parseFloat(l)); });
+    lines.forEach((l, i) => { const s = clsSel.students[i]; rows.push({ line: l, k: s ? clsSel.id + ':' + s.id : '', g: parseFloat(l), how: s ? 'بالترتيب' : '' }); });
   } else {
     lines.forEach(l => {
-      const m = l.match(/^(.*?)[\s\t,;:،-]+(-?\d+(\.\d+)?)\s*$/);
-      if (!m) { miss.push(l); return; }
-      const key = m[1].trim(), v = parseFloat(m[2]);
-      let hit = pool.find(x => sidOf(x.s) && sidOf(x.s) === key.replace(/\D/g, '') && /\d{5,}/.test(key));
-      if (!hit) { const nk = norm(key); hit = pool.find(x => norm(String(x.s.name).replace(/\([^()]*\)\s*$/, '')) === nk) || pool.find(x => norm(x.s.name).includes(nk)); }
-      if (hit) setScore(hit.s, v); else miss.push(l);
+      const m = l.match(/^(.*?)[\s,;:،]+(-?\d+(?:\.\d+)?)\s*$/);
+      if (!m) { rows.push({ line: l, k: '', g: '', how: '' }); return; }
+      let key = m[1].trim(), g = parseFloat(m[2]), id = '', name = '';
+      const pm = key.match(/^(.*?)\s*[\(\[]\s*([^()\[\]]+?)\s*[\)\]]\s*$/);
+      if (pm) { name = pm[1]; id = pm[2]; }
+      else if (!/\s/.test(key) && /\d/.test(key)) id = key;           // رقم فقط أو أرقام وحروف
+      else name = key;
+      let hit = null, how = '';
+      if (id) { const ni = qgNormId(id); hit = pool.find(x => qgSidOf(x.s) && qgSidOf(x.s) === ni); if (hit) how = 'بالرقم'; }
+      if (!hit && name) {
+        const nk = norm(name);
+        hit = pool.find(x => bare(x.s.name) === nk);
+        if (!hit) { const c = pool.filter(x => bare(x.s.name).includes(nk) || nk.includes(bare(x.s.name))); if (c.length === 1) hit = c[0]; }
+        if (hit) how = 'بالاسم';
+      }
+      rows.push({ line: l, k: hit ? hit.k : '', g, how });
     });
   }
-  closeModalForce();
-  saveGrades();
-  if (miss.length) toast(`لم يُطابَق ${miss.length} سطر: ${miss.slice(0, 2).join(' | ')}`, '⚠️');
-  else toast(`تم إدخال ${ok} درجة ✅`, '⚡');
+  QG_REVIEW = { assessId, rows, pool };
+  qgRenderReview();
 }
+function qgRenderReview() {
+  const R = QG_REVIEW; if (!R) return;
+  const a = (state.assessments || []).find(x => x.id === R.assessId);
+  const cnt = {}; R.rows.forEach(r => { if (r.k) cnt[r.k] = (cnt[r.k] || 0) + 1; });
+  const opts = sel => '<option value="">— غير مطابق —</option>' + R.pool.map(x => `<option value="${x.k}" ${x.k === sel ? 'selected' : ''}>${x.c.name} — ${x.s.name.replace(/\s*\([^()]*\)\s*$/, '')}${x.s.sid ? ' (' + x.s.sid + ')' : ''}</option>`).join('');
+  const ok = R.rows.filter(r => r.k && r.g !== '' && !isNaN(r.g)).length;
+  openModal(`
+    <div class="modal-title">🔍 مراجعة الدرجات قبل الاعتماد — ${a ? a.name : ''}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">صحّح الطالب أو الدرجة عند الحاجة. الدرجة القصوى ${a ? a.maxScore : ''}. ✅ ${ok} من ${R.rows.length}</div>
+    <div style="max-height:55vh;overflow:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <tr style="color:var(--text-muted)"><th style="text-align:right">السطر</th><th>الطالب</th><th>الدرجة</th><th></th></tr>
+      ${R.rows.map((r, i) => {
+        const dup = r.k && cnt[r.k] > 1, over = a && r.g !== '' && (r.g > a.maxScore || r.g < 0);
+        const st = !r.k ? '❌' : dup ? '⚠️ مكرر' : over ? '⚠️ خارج الحد' : '✅ ' + (r.how || '');
+        return `<tr style="border-top:1px solid var(--border-color);background:${!r.k || dup || over ? 'rgba(255,107,107,.08)' : 'transparent'}">
+          <td style="font-family:monospace;direction:ltr;text-align:left;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${rsEsc(r.line)}">${rsEsc(r.line)}</td>
+          <td><select class="select" style="font-size:12px;padding:4px" onchange="QG_REVIEW.rows[${i}].k=this.value;QG_REVIEW.rows[${i}].how='يدوي';qgRenderReview()">${opts(r.k)}</select></td>
+          <td style="text-align:center"><input class="input" type="number" value="${r.g}" style="width:70px;padding:4px;text-align:center" oninput="QG_REVIEW.rows[${i}].g=this.value===''?'':parseFloat(this.value)" onchange="qgRenderReview()"></td>
+          <td style="font-size:11px;white-space:nowrap">${st}</td></tr>`; }).join('')}
+    </table></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="qgApprove()">✅ اعتماد وحفظ (${ok})</button>
+      <button class="btn btn-ghost" onclick="openQuickGrades(${R.assessId})">↩ تعديل النص</button>
+      <button class="btn btn-ghost" onclick="QG_REVIEW=null;closeModalForce()">إلغاء</button>
+    </div>`);
+}
+function qgApprove() {
+  const R = QG_REVIEW; if (!R) return;
+  const a = (state.assessments || []).find(x => x.id === R.assessId); if (!a) return;
+  if (!a.scores) a.scores = {};
+  let n = 0;
+  R.rows.forEach(r => {
+    if (!r.k || r.g === '' || isNaN(r.g)) return;
+    const sid = +r.k.split(':')[1], v = Math.min(a.maxScore, Math.max(0, r.g));
+    const el = document.getElementById(`gscore-${a.id}-${sid}`);
+    if (el) el.value = v; else a.scores[sid] = v;
+    n++;
+  });
+  QG_REVIEW = null;
+  closeModalForce();
+  if (activeAssessmentId === a.id) saveGrades();      // يحسب نقاط الدرجات ويحفظ كالمعتاد
+  else { save(); if (typeof renderGradesContent === 'function') renderGradesContent(); }
+  toast(`تم اعتماد ${n} درجة ✅`, '⚡');
+}
+(function () {   // إبراز صف الطالب أثناء إدخال درجته
+  const st = document.createElement('style');
+  st.textContent = '.student-row.grade-focus{background:rgba(247,201,72,.16)!important;outline:2px solid var(--accent);outline-offset:-2px;border-radius:12px}.student-row.grade-focus .student-name{color:var(--accent)}';
+  document.head.appendChild(st);
+})();

@@ -73,6 +73,8 @@ function p2gCompute(items, c) {
     .sort((a, b) => b.pts - a.pts || a.s.name.localeCompare(b.s.name, 'ar'));
   let rk = 0, last = null;
   rows.forEach((r, i) => { if (r.pts !== last) { rk = i + 1; last = r.pts; } r.rank = rk; });
+  // العرض أبجدياً (حسب الشعبة ثم الاسم) — الترتيب بالنقاط يبقى في عمود «الترتيب»
+  rows.sort((a, b) => String(a.cls).localeCompare(String(b.cls), 'ar', { numeric: true }) || a.s.name.localeCompare(b.s.name, 'ar'));
   const mean = grades.reduce((a, b) => a + b, 0) / n;
   return { rows, gamma, notes, stats: { n, max: Math.max(...grades), min: Math.min(...grades), mean, countT: grades.filter(v => v >= c.t).length } };
 }
@@ -155,7 +157,7 @@ function p2gRender() {
           · ≥${c.t}: ${st.countT ?? 0} ${c.useK || c.useMean ? (okK && okM ? '✅' : '⚠️') : ''}</span></div>
       ${g.notes.map(n => `<div style="font-size:11.5px;color:var(--text-muted)">${n}</div>`).join('')}
       <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px">
-        <tr style="color:var(--text-muted)"><th style="text-align:center">#</th><th style="text-align:right">الطالب</th>${c.separate ? '' : '<th>الشعبة</th>'}<th>النقاط</th><th>الدرجة</th></tr>
+        <tr style="color:var(--text-muted)"><th style="text-align:center" title="الترتيب حسب النقاط">الترتيب</th><th style="text-align:right">الطالب</th>${c.separate ? '' : '<th>الشعبة</th>'}<th>النقاط</th><th>الدرجة</th></tr>
         ${g.rows.map(x => `<tr style="border-top:1px solid var(--border-color)"><td style="text-align:center">${x.rank}</td><td>${x.s.name}</td>${c.separate ? '' : `<td style="text-align:center">${x.cls}</td>`}
           <td style="text-align:center">${x.pts}</td><td style="text-align:center;font-weight:900;color:${x.grade >= c.t ? 'var(--present)' : 'var(--accent)'}">${x.grade}</td></tr>`).join('')}
       </table></div>`;
@@ -174,20 +176,34 @@ function p2gDesc(c) {
 function p2gPrint() {
   if (!PG_LAST) return;
   const si = getSchoolInfo(), c = PG_LAST.cfg;
+  // صفحة A4 لكل شعبة (حتى لو حُسبت الشعب معاً) — مرتبة أبجدياً
+  const pages = [];
+  PG_LAST.groups.forEach(g => {
+    const byCls = {};
+    g.rows.forEach(x => (byCls[x.cls] = byCls[x.cls] || []).push(x));
+    Object.keys(byCls).sort((a, b) => a.localeCompare(b, 'ar', { numeric: true })).forEach(cls => {
+      const rows = byCls[cls], gr = rows.map(x => x.grade);
+      pages.push({ title: 'الشعبة ' + cls, rows, notes: g.notes, joint: !c.separate && Object.keys(byCls).length > 1,
+        st: { n: rows.length, max: Math.max(...gr), min: Math.min(...gr), mean: gr.reduce((a, b) => a + b, 0) / (gr.length || 1), countT: gr.filter(v => v >= c.t).length } });
+    });
+  });
   const w = window.open('', '_blank');
   if (!w) return toast('اسمح بالنوافذ المنبثقة للطباعة', '⚠️');
+  const dt = new Date().toLocaleDateString('ar-EG', { numberingSystem: 'latn' });
   w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير الدرجات</title>
-    <style>@page{size:A4;margin:12mm}body{font-family:Tajawal,Tahoma,sans-serif;color:#111}h2{margin:0}.s{color:#555;margin:4px 0 12px}
-    table{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:13px}th,td{border:1px solid #bbb;padding:5px 7px;text-align:center}td.n{text-align:right}
-    th{background:#f2f2f2}.g{break-inside:avoid;margin-bottom:16px}.sum{font-size:12.5px;color:#333;margin:4px 0}.hi{font-weight:800}</style></head><body>
-    <h2>تقرير تحويل النقاط إلى درجات (من 100)</h2>
-    <div class="s">${si.schoolName || ''} — ${si.subject || ''} — المعلم: ${si.teacher || ''} — ${new Date().toLocaleDateString('ar-EG', { numberingSystem: 'latn' })}<br>الشروط: ${p2gDesc(c)}</div>
-    ${PG_LAST.groups.map(g => `<div class="g"><h3 style="margin:6px 0">${g.title}</h3>
-      <div class="sum">عدد الطلاب ${g.stats ? g.stats.n : 0} · أعلى ${g.stats ? g.stats.max : '—'} · أقل ${g.stats ? g.stats.min : '—'} · المتوسط ${g.stats ? g.stats.mean.toFixed(1) : '—'} · عدد ≥ ${c.t}: ${g.stats ? g.stats.countT : 0}</div>
-      ${g.notes.map(n => `<div class="sum">${n}</div>`).join('')}
-      <table><tr><th>#</th><th>الطالب</th><th>رقم الطالب</th>${c.separate ? '' : '<th>الشعبة</th>'}<th>النقاط</th><th>الدرجة</th></tr>
-      ${g.rows.map(x => `<tr><td>${x.rank}</td><td class="n">${x.s.name}</td><td>${x.s.sid || ''}</td>${c.separate ? '' : `<td>${x.cls}</td>`}<td>${x.pts}</td><td class="hi">${x.grade}</td></tr>`).join('')}
-      </table></div>`).join('')}
+    <style>@page{size:A4;margin:10mm}body{font-family:Tajawal,Tahoma,sans-serif;color:#111;margin:0}h2{margin:0;font-size:17px}.s{color:#555;margin:3px 0 6px;font-size:11.5px;line-height:1.6}
+    .pg{page-break-after:always;break-after:page}.pg:last-child{page-break-after:auto;break-after:auto}
+    table{width:100%;border-collapse:collapse;margin-top:4px}th,td{border:1px solid #bbb;text-align:center}td.n{text-align:right}
+    th{background:#f2f2f2}.sum{font-size:11.5px;color:#333;margin:2px 0}.hi{font-weight:800}</style></head><body>
+    ${pages.map(p => {
+      const n = p.rows.length, fs = n <= 24 ? 13 : n <= 30 ? 12 : n <= 36 ? 11 : 10, pad = n <= 24 ? 5 : n <= 30 ? 3.5 : 2.5;
+      return `<div class="pg"><h2>تقرير تحويل النقاط إلى درجات — ${p.title}</h2>
+      <div class="s">${si.schoolName || ''} — ${si.subject || ''} — المعلم: ${si.teacher || ''} — ${dt}<br>الشروط: ${p2gDesc(c)}${p.joint ? ' — (حُسبت الشعب معاً)' : ''}</div>
+      <div class="sum">عدد الطلاب ${p.st.n} · أعلى ${p.st.max} · أقل ${p.st.min} · المتوسط ${p.st.mean.toFixed(1)} · عدد ≥ ${c.t}: ${p.st.countT}</div>
+      ${p.joint ? '' : p.notes.map(x => `<div class="sum">${x}</div>`).join('')}
+      <table style="font-size:${fs}px"><tr><th style="padding:${pad}px">م</th><th>الطالب</th><th>رقم الطالب</th><th>النقاط</th><th>الترتيب</th><th>الدرجة</th></tr>
+      ${p.rows.map((x, i) => `<tr><td style="padding:${pad}px">${i + 1}</td><td class="n">${x.s.name}</td><td>${x.s.sid || ''}</td><td>${x.pts}</td><td>${x.rank}</td><td class="hi">${x.grade}</td></tr>`).join('')}
+      </table></div>`; }).join('')}
     <script>setTimeout(()=>print(),400)<\/script></body></html>`);
   w.document.close();
 }

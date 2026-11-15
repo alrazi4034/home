@@ -107,6 +107,26 @@ const FL = (() => {
   /* ---------- «من أنا؟» ---------- */
   async function me() { try { return (await idb('get', 'me')) || null; } catch (e) { return null; } }
   async function setMe(t) { await idb('put', 'me', t ? { key: t.key || '', name: t.name || '', email: normEmail(t.email) } : null); }
+  // ملف نجوم مدرستي الخاص بالمعلم (يُحدَّد في بوابة الرازي، وتستخدمه نجوم مدرستي مباشرة)
+  async function teacherFile() { try { return (await idb('get', 'tfile')) || null; } catch (e) { return null; } }
+  async function setTeacherFile(h) { await idb('put', 'tfile', h || null); }
+  // مطابقة ملف بيانات بمعلم من قائمة بيانات المدرسة
+  function matchTeacher(d, teachers) {
+    const si = (d && d.schoolInfo) || {};
+    const em = normEmail(si.teacherEmail || d.teacherEmail || (d.rosterMeta && String(d.rosterMeta.teacherKey || '').includes('@') ? d.rosterMeta.teacherKey : ''));
+    const key = d.rosterMeta && d.rosterMeta.teacherKey;
+    const nm = norm(si.teacher || d.teacher);
+    return teachers.find(t => em && normEmail(t.email) === em) || teachers.find(t => key && t.key === key)
+      || teachers.find(t => nm && norm(t.name) === nm) || null;
+  }
+  // كل ملفات نجوم مدرستي في المجلدات المربوطة: [{handle, path, dir, d, teacher}]
+  async function scanTeacherFiles(teachers, interactive) {
+    const out = [];
+    for (const x of await listJson(interactive, 2)) {
+      try { const d = JSON.parse(await (await x.handle.getFile()).text()); if (d && Array.isArray(d.classes)) out.push(Object.assign({ d, teacher: matchTeacher(d, teachers || []) }, x)); } catch (e) {}
+    }
+    return out;
+  }
 
   // ملف المعلم: بالبريد أو مفتاح المعلم داخل الملف، ثم باسم المجلد/الملف
   async function findTeacherFile(t, interactive) {
@@ -148,7 +168,11 @@ const FL = (() => {
     }
     return nonCentral.length === 1 ? nonCentral[0] : null;
   }
-  const fileNameFor = t => 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  // اسم ملف المعلم من اسم المستخدم في بريده (أحرف إنجليزية لا تتشوه): nojoom_data_mahmoud.shehada.json
+  const fileNameFor = t => {
+    const u = normEmail(t.email).split('@')[0].replace(/[^a-z0-9._-]+/g, '');
+    return u ? 'nojoom_data_' + u + '.json' : 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  };
 
   /* ---------- ملف بداية للمعلم (تملؤه نجوم مدرستي من بيانات المدرسة عند أول فتح) ---------- */
   function starterData(t, info) {
@@ -193,5 +217,5 @@ const FL = (() => {
   }
 
   return { supported, folders, addHandle, add, remove, clear, perm, status, findCentral, listJson, readFiles,
-           me, setMe, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
+           me, setMe, teacherFile, setTeacherFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
 })();

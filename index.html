@@ -587,6 +587,26 @@ const FL = (() => {
   /* ---------- «من أنا؟» ---------- */
   async function me() { try { return (await idb('get', 'me')) || null; } catch (e) { return null; } }
   async function setMe(t) { await idb('put', 'me', t ? { key: t.key || '', name: t.name || '', email: normEmail(t.email) } : null); }
+  // ملف نجوم مدرستي الخاص بالمعلم (يُحدَّد في بوابة الرازي، وتستخدمه نجوم مدرستي مباشرة)
+  async function teacherFile() { try { return (await idb('get', 'tfile')) || null; } catch (e) { return null; } }
+  async function setTeacherFile(h) { await idb('put', 'tfile', h || null); }
+  // مطابقة ملف بيانات بمعلم من قائمة بيانات المدرسة
+  function matchTeacher(d, teachers) {
+    const si = (d && d.schoolInfo) || {};
+    const em = normEmail(si.teacherEmail || d.teacherEmail || (d.rosterMeta && String(d.rosterMeta.teacherKey || '').includes('@') ? d.rosterMeta.teacherKey : ''));
+    const key = d.rosterMeta && d.rosterMeta.teacherKey;
+    const nm = norm(si.teacher || d.teacher);
+    return teachers.find(t => em && normEmail(t.email) === em) || teachers.find(t => key && t.key === key)
+      || teachers.find(t => nm && norm(t.name) === nm) || null;
+  }
+  // كل ملفات نجوم مدرستي في المجلدات المربوطة: [{handle, path, dir, d, teacher}]
+  async function scanTeacherFiles(teachers, interactive) {
+    const out = [];
+    for (const x of await listJson(interactive, 2)) {
+      try { const d = JSON.parse(await (await x.handle.getFile()).text()); if (d && Array.isArray(d.classes)) out.push(Object.assign({ d, teacher: matchTeacher(d, teachers || []) }, x)); } catch (e) {}
+    }
+    return out;
+  }
 
   // ملف المعلم: بالبريد أو مفتاح المعلم داخل الملف، ثم باسم المجلد/الملف
   async function findTeacherFile(t, interactive) {
@@ -628,7 +648,11 @@ const FL = (() => {
     }
     return nonCentral.length === 1 ? nonCentral[0] : null;
   }
-  const fileNameFor = t => 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  // اسم ملف المعلم من اسم المستخدم في بريده (أحرف إنجليزية لا تتشوه): nojoom_data_mahmoud.shehada.json
+  const fileNameFor = t => {
+    const u = normEmail(t.email).split('@')[0].replace(/[^a-z0-9._-]+/g, '');
+    return u ? 'nojoom_data_' + u + '.json' : 'nojoom_' + safeName(t.name).replace(/\s+/g, '_') + '.json';
+  };
 
   /* ---------- ملف بداية للمعلم (تملؤه نجوم مدرستي من بيانات المدرسة عند أول فتح) ---------- */
   function starterData(t, info) {
@@ -673,7 +697,7 @@ const FL = (() => {
   }
 
   return { supported, folders, addHandle, add, remove, clear, perm, status, findCentral, listJson, readFiles,
-           me, setMe, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
+           me, setMe, teacherFile, setTeacherFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
 })();
 
 </script>
@@ -1131,42 +1155,88 @@ async function plCentralTeachers(interactive) {
   return { central: c, teachers: FL.teachersFromWorkbook(wb), info };
 }
 
+/* زر الربط في الترويسة: يوضح الحالة (مربوط باسم المعلم / غير مربوط) */
+async function plHdrRefresh() {
+  const b = document.getElementById('plHdrBtn'); if (!b) return;
+  if (!FL.supported()) { b.style.display = 'none'; return; }
+  const [f, me] = await Promise.all([FL.folders(), FL.me()]);
+  if (!f.length) { b.innerHTML = '📁 ربط المجلدات'; b.title = 'اربط مجلد «بيانات المدرسة» ومجلدك على OneDrive — مرة واحدة لكل البرامج'; b.classList.add('btn-primary'); return; }
+  b.classList.remove('btn-primary');
+  b.innerHTML = '📁 ' + (me && me.name ? plEsc(me.name.split(' ').slice(0, 2).join(' ')) : 'المجلدات') + ' <span style="color:#16a34a">●</span>';
+  b.title = 'مربوط: ' + f.map(x => x.name).join('، ') + (me ? ' — ' + me.name : '');
+}
+document.addEventListener('DOMContentLoaded', plHdrRefresh); setTimeout(plHdrRefresh, 300);
+
+let _plFiles = [], _plTeachers = [];
 async function portalFolders(interactive) {
   if (!FL.supported()) return alert('ربط المجلدات يعمل في Chrome أو Edge على الكمبيوتر فقط.');
-  let st = await FL.status(!!interactive);
+  let st = await FL.status(false);
   if (!st.length) {
     try { await FL.add(); } catch (e) { if (e && e.name === 'AbortError') return; return alert('تعذّر ربط المجلد: ' + e.message); }
     st = await FL.status(false);
   }
+  if (st.some(x => !x.ok)) st = await FL.status(true);       // نحن داخل ضغطة زر: يمكن طلب الإذن
+  plModal('<div style="padding:20px;text-align:center">⏳ جاري قراءة المجلدات…</div>');
   const { central, teachers } = await plCentralTeachers(false);
-  const me = await FL.me();
+  _plTeachers = teachers;
+  _plFiles = await FL.scanTeacherFiles(teachers, false);
+  let me = await FL.me();
   const admin = plRole() === 'admin';
-  plModal(`<h3 style="margin:0 0 6px">📁 ربط مجلدات نجوم مدرستي</h3>
+  let autoMsg = '';
+  // ملف معلم واحد فقط في المجلدات ⇒ هو هذا المعلم (بدون سؤال)
+  const mine = _plFiles.filter(f => f.teacher);
+  if (!admin && mine.length === 1 && (!me || me.key !== mine[0].teacher.key)) {
+    me = mine[0].teacher; await FL.setMe(me); await FL.setTeacherFile(mine[0].handle);
+    autoMsg = `✅ تم التعرف عليك من ملفك: <b>${plEsc(me.name)}</b>`;
+  } else if (me) {
+    const f = _plFiles.find(x => x.teacher && x.teacher.key === me.key);
+    if (f) await FL.setTeacherFile(f.handle);
+  }
+  plHdrRefresh();
+  const tf = await FL.teacherFile();
+  const ask = admin ? false : (!me || mine.length > 1 || !mine.length);
+  plModal(`<h3 style="margin:0 0 6px">📁 ربط المجلدات</h3>
     <div style="font-size:12.5px;color:var(--ink-soft,#666);margin-bottom:10px">${admin
-      ? 'اربط مجلد <b>«بيانات المدرسة»</b> والمجلد الذي يضم <b>مجلدات المعلمين</b> (أو المجلد الأب الذي يضمهما معاً). الربط يُستخدم في البوابة ونجوم مدرستي ولوحة التحكم وبرنامج الغياب.'
-      : 'اربط مجلد <b>«بيانات المدرسة»</b> و<b>مجلدك</b> على OneDrive (الذي لك عليه صلاحية تعديل)، ثم اختر اسمك. بعدها يفتح «نجوم مدرستي» جاهزاً بملفك.'}</div>
+      ? 'اربط مجلد <b>«بيانات المدرسة»</b> والمجلد الذي يضم <b>مجلدات المعلمين</b> (أو المجلد الأب الذي يضمهما). الربط مرة واحدة ويُستخدم في نجوم مدرستي ولوحة التحكم وبرنامج الغياب.'
+      : 'اربط مجلد <b>«بيانات المدرسة»</b> و<b>مجلدك</b> (يمكن أكثر من مجلد). بعدها يفتح «نجوم مدرستي» جاهزاً بملفك دون أي إعداد.'}</div>
     ${st.map((x, i) => `<div style="display:flex;align-items:center;gap:8px;border:1px solid #ddd;border-radius:10px;padding:6px 10px;margin-bottom:6px">📁 <b style="flex:1">${plEsc(x.name)}</b>${x.ok ? '✅' : '🔒'}<button class="btn" style="padding:2px 10px" onclick="FL.remove(${i}).then(()=>portalFolders())">✖</button></div>`).join('')}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px">
       <button class="btn" onclick="FL.add().then(()=>portalFolders(),e=>{if(!(e&&e.name==='AbortError'))alert(e.message)})">➕ إضافة مجلد</button>
-      ${st.some(x => !x.ok) ? '<button class="btn" onclick="portalFolders(true)">🔓 منح الإذن</button>' : ''}
     </div>
-    <div>📗 ملف بيانات المدرسة: ${central ? '<b>' + plEsc(central.path) + '</b> ✅' : '<span style="color:#b33">لم يُعثر عليه في المجلدات المربوطة</span>'}</div>
-    ${teachers.length ? `<div style="margin-top:10px">👤 من أنا؟ ${admin ? '<span style="font-size:12px;color:#777">(اختياري — إذا كنت تستخدم نجوم مدرستي كمعلم)</span>' : ''}<br>
+    <div>📗 بيانات المدرسة: ${central ? '<b>' + plEsc(central.path) + '</b> ✅' : '<span style="color:#b33">لم يُعثر عليه — أضف مجلد «بيانات المدرسة»</span>'}</div>
+    ${!admin && me && tf ? `<div>📄 ملفي: <b>${plEsc(tf.name)}</b> ✅</div>` : ''}
+    ${autoMsg ? `<div style="margin-top:8px;background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:6px 10px">${autoMsg}</div>` : ''}
+    ${teachers.length ? `<div style="margin-top:10px">👤 من أنا؟ ${admin ? '<span style="font-size:12px;color:#777">(اختياري — إذا كنت تستخدم نجوم مدرستي كمعلم)</span>' : ask ? '<span style="font-size:12px;color:#b7791f">اختر اسمك</span>' : ''}<br>
       <select id="plMe" style="width:100%;padding:8px;border-radius:8px;margin-top:4px"><option value="">— اختر اسمك —</option>
-      ${teachers.map(t => `<option value="${plEsc(t.key)}" ${me && me.key === t.key ? 'selected' : ''}>${plEsc(t.name || t.email)}${t.subjects.length ? ' — ' + plEsc(t.subjects.join('، ')) : ''}</option>`).join('')}</select></div>` : ''}
+      ${teachers.map(t => `<option value="${plEsc(t.key)}" ${me && me.key === t.key ? 'selected' : ''}>${plEsc(t.name || t.email)}${t.subjects.length ? ' — ' + plEsc(t.subjects.join('، ')) : ''}${_plFiles.some(f => f.teacher && f.teacher.key === t.key) ? ' 📄' : ''}</option>`).join('')}</select></div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       ${teachers.length ? '<button class="btn btn-primary" onclick="portalSaveMe()">💾 حفظ</button>' : ''}
       ${admin && central ? '<button class="btn" onclick="portalTeacherFiles()">🗂️ ملفات المعلمين</button>' : ''}
-      <button class="btn" onclick="document.getElementById(\'plModal\').remove()">إغلاق</button>
+      <button class="btn" onclick="FL.clear().then(()=>FL.setMe(null)).then(()=>FL.setTeacherFile(null)).then(()=>{document.getElementById('plModal').remove();plHdrRefresh();})" title="إلغاء كل الروابط على هذا الجهاز">🗑️ فك الربط</button>
+      <button class="btn" onclick="document.getElementById('plModal').remove()">إغلاق</button>
     </div>`);
-  window._plTeachers = teachers;
 }
 async function portalSaveMe() {
   const key = document.getElementById('plMe') && document.getElementById('plMe').value;
-  const t = (window._plTeachers || []).find(x => x.key === key);
-  await FL.setMe(t || null);
+  const t = _plTeachers.find(x => x.key === key);
+  if (!t) { await FL.setMe(null); await FL.setTeacherFile(null); plHdrRefresh(); const ov = document.getElementById('plModal'); if (ov) ov.remove(); return; }
+  // ملف المعلم: الموجود في مجلداته، وإلا يُنشأ في مجلده
+  let f = _plFiles.find(x => x.teacher && x.teacher.key === t.key);
+  let h = f ? f.handle : null;
+  if (!h) {
+    const dir = await FL.teacherDir(t, false);
+    if (!dir) return alert('لم أجد مجلدك الخاص.\nأضف مجلدك (الذي لديك عليه صلاحية تعديل) من «➕ إضافة مجلد».');
+    if (!(await FL.perm(dir, true, 'readwrite'))) return alert('لا توجد صلاحية كتابة على المجلد «' + dir.name + '».');
+    try {
+      h = await dir.getFileHandle(FL.fileNameFor(t), { create: true });
+      const cur = await (await h.getFile()).text();
+      if (!cur.trim()) await FL.writeText(h, JSON.stringify(FL.starterData(t, {}), null, 2));
+    } catch (e) { return alert('تعذّر إنشاء ملفك في «' + dir.name + '»:\n' + e.message); }
+  }
+  await FL.setMe(t); await FL.setTeacherFile(h);
   const ov = document.getElementById('plModal'); if (ov) ov.remove();
-  alert(t ? `تم الحفظ ✅\nعند فتح «نجوم مدرستي» سيُربط تلقائياً بملف «${t.name}».` : 'تم الحفظ.');
+  plHdrRefresh();
+  alert(`تم الربط ✅\n👤 ${t.name}\n📄 ${h.name}\n\nافتح «نجوم مدرستي» — سيعمل مباشرة بملفك.`);
 }
 
 /* ---------- الإدارة: إنشاء ملفات بداية لكل المعلمين ---------- */
@@ -1252,6 +1322,7 @@ function portalZipFiles() {
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
       <button class="btn btn-primary" id="saveToLinkBtn" title="حفظ التعديلات في الملف المرتبط" onclick="saveToLinkedFile(true)" style="display:none;">💾 حفظ</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
+      <button class="btn" id="plHdrBtn" onclick="portalFolders()" title="ربط المجلدات">📁 ربط المجلدات</button>
       <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
     </div>
   </header>
@@ -1337,7 +1408,6 @@ function portalZipFiles() {
         <p>الحضور والمشاركة والملاحظات والتقارير — مرتبط بقائمة الطلاب المركزية</p>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
           <a href="./index-nojoom.html" target="_blank" class="btn btn-primary" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">⭐ فتح البرنامج</a>
-          <button class="btn" style="flex:1;padding:6px 10px;font-size:12.5px;" onclick="portalFolders()">📁 ربط مجلداتي</button>
         </div>
       </div>
 
@@ -1349,10 +1419,6 @@ function portalZipFiles() {
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
           <a href="./index-nojoom.html" target="_blank" class="btn" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">🧑‍🏫 برنامج المعلم</a>
           <a href="./index-nojoom-dashboard.html" target="_blank" class="btn btn-primary" style="flex:1;text-align:center;text-decoration:none;padding:6px 10px;font-size:12.5px;">📊 لوحة التحكم</a>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
-          <button class="btn" style="flex:1;padding:6px 10px;font-size:12.5px;" onclick="portalFolders()">📁 ربط المجلدات</button>
-          <button class="btn" style="flex:1;padding:6px 10px;font-size:12.5px;" onclick="portalTeacherFiles()">🗂️ ملفات المعلمين</button>
         </div>
       </div>
 
@@ -1996,7 +2062,8 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
     if(termHeaderRow >= 0){
       state.termHeaders = aoa[termHeaderRow];
       const rawRows = [];
-      for(let i = termHeaderRow+1; i < aoa.length; i++){
+      const holRow = aoa.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
+      for(let i = termHeaderRow+1; i < (holRow > termHeaderRow ? holRow : aoa.length); i++){
         const row = aoa[i];
         if(!row || row.every(c => c === '' || c === undefined)) continue;
         rawRows.push(row);
@@ -2016,13 +2083,20 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
     }
   }
 
-  // الإجازات والعطل خلال الفصول (ورقة مستقلة حتى لا تتأثر قراءة الأسابيع في البرامج الأخرى)
+  // الإجازات والعطل: جدول أسفل ورقة «التقويم المدرسي» (أو ورقة مستقلة في الملفات القديمة)
   state.holidays = [];
-  const wsHol = wb.Sheets['الإجازات والعطل'];
-  if(wsHol){
-    XLSX.utils.sheet_to_json(wsHol, {header:1, defval:''}).slice(1).forEach(r => {
+  let holRows = [];
+  if(wb.Sheets['التقويم المدرسي']){
+    const g = XLSX.utils.sheet_to_json(wb.Sheets['التقويم المدرسي'], {header:1, defval:''});
+    const hr = g.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
+    if(hr >= 0) holRows = g.slice(hr + 2);
+  }
+  if(!holRows.length && wb.Sheets['الإجازات والعطل']) holRows = XLSX.utils.sheet_to_json(wb.Sheets['الإجازات والعطل'], {header:1, defval:''}).slice(1);
+  {
+    holRows.forEach(r => {
       if(!r || (!r[0] && !r[1])) return;
-      state.holidays.push({ name: String(r[0]||''), from: fmtDate(r[1]), to: fmtDate(r[2] || r[1]), note: String(r[3]||'') });
+      const rd = v => { if(v instanceof Date){ const d = new Date(v); d.setHours(d.getHours() + 12, 0, 0, 0); d.setHours(0); return fmtDate(d); } return fmtDate(v); };   // تقريب لأقرب يوم
+      state.holidays.push({ name: String(r[0]||''), from: rd(r[1]), to: rd(r[2] || r[1]), note: String(r[3]||'') });
     });
   }
   document.getElementById('emptyState').style.display = 'none';
@@ -4057,14 +4131,15 @@ function exportWorkbook(){
     });
     aoa.push(row);
   }
+  aoa.push([]);
+  aoa.push(['الإجازات والعطل']);
+  aoa.push(['اسم الإجازة','من تاريخ','إلى تاريخ','ملاحظات']);
+  (state.holidays||[]).filter(h => h.name || h.from).forEach(h => aoa.push([h.name||'', h.from||'', h.to||h.from||'', h.note||'']));
   const wsCal = XLSX.utils.aoa_to_sheet(aoa);
   XLSX.utils.book_append_sheet(wb, wsCal, 'التقويم المدرسي');
   if(!wb.SheetNames.some(n => (state.extraSheets||[]).some(x => x.name === n))) (state.extraSheets || []).forEach(x => { try{ XLSX.utils.book_append_sheet(wb, x.ws, x.name); }catch(e){} });
 
 
-  // الإجازات والعطل
-  const holAoa = [['اسم الإجازة','من تاريخ','إلى تاريخ','ملاحظات']].concat((state.holidays||[]).filter(h => h.name || h.from).map(h => [h.name||'', h.from||'', h.to||h.from||'', h.note||'']));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(holAoa), 'الإجازات والعطل');
   idxTextifyNumbers(wb);
   const today = todayStr();
   const outName = `بيانات_المدرسة_${today}.xlsx`;
@@ -4901,13 +4976,14 @@ function buildWorkbook(){
     });
     aoa.push(row);
   }
+  aoa.push([]);
+  aoa.push(['الإجازات والعطل']);
+  aoa.push(['اسم الإجازة','من تاريخ','إلى تاريخ','ملاحظات']);
+  (state.holidays||[]).filter(h => h.name || h.from).forEach(h => aoa.push([h.name||'', h.from||'', h.to||h.from||'', h.note||'']));
   const wsCal = XLSX.utils.aoa_to_sheet(aoa);
   XLSX.utils.book_append_sheet(wb, wsCal, 'التقويم المدرسي');
   if(!wb.SheetNames.some(n => (state.extraSheets||[]).some(x => x.name === n))) (state.extraSheets || []).forEach(x => { try{ XLSX.utils.book_append_sheet(wb, x.ws, x.name); }catch(e){} });
 
-  // الإجازات والعطل
-  const holAoa = [['اسم الإجازة','من تاريخ','إلى تاريخ','ملاحظات']].concat((state.holidays||[]).filter(h => h.name || h.from).map(h => [h.name||'', h.from||'', h.to||h.from||'', h.note||'']));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(holAoa), 'الإجازات والعطل');
   idxTextifyNumbers(wb);
   (state.extraSheets || []).forEach(x => { try{ XLSX.utils.book_append_sheet(wb, x.ws, x.name); }catch(e){} });
   return wb;

@@ -116,17 +116,25 @@ function parseRosterWorkbook(wb) {
 
 // صفحة المعلمين ("المعلمين والجداول"): اسم المعلم | مادة التدريس | البريد الالكتروني | الصفوف (51-52-53)
 // ترجع null إذا لم توجد الصفحة
-/* ورقة «الإجازات والعطل»: [{name, from, to}] */
-function parseHolidaySheet(wb) {
+/* الإجازات والعطل: جدول أسفل ورقة «التقويم المدرسي» (أو ورقة مستقلة في الملفات القديمة) — [{name, from, to}] */
+function holidayRowsFromWorkbook(wb) {
+  const cal = wb.Sheets['التقويم المدرسي'];
+  if (cal) {
+    const g = XLSX.utils.sheet_to_json(cal, { header: 1, defval: '' });
+    const hr = g.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
+    if (hr >= 0) return g.slice(hr + 2);
+  }
   const sn = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
-  if (!sn) return [];
+  return sn ? XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' }).slice(1) : [];
+}
+function parseHolidaySheet(wb) {
   const iso = v => {
-    if (v instanceof Date && !isNaN(v)) return new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (v instanceof Date && !isNaN(v)) { const d = new Date(v); d.setHours(d.getHours() + 12, 0, 0, 0); d.setHours(0); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }   // تقريب لأقرب يوم (تواريخ Excel قد تنقص ثواني)
     if (typeof v === 'number') return new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10);
     const m = String(v || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
     return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : '';
   };
-  return XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' }).slice(1)
+  return holidayRowsFromWorkbook(wb)
     .map(r => ({ name: String(r[0] || '').trim(), from: iso(r[1]), to: iso(r[2]) || iso(r[1]) }))
     .filter(h => h.from);
 }

@@ -40,4 +40,6 @@ updateReportSelects();
 
 
 // المزامنة مع القائمة المركزية بعد اكتمال قراءة الملف المرتبط
-initLinkedFileOnLoad().finally(() => rosterInitOnLoad());
+// الربط من بوابة الرازي يُعتمد أولاً (إن وُجد)، ثم التشغيل العادي
+(typeof flAdoptOnLoad === 'function' ? flAdoptOnLoad().catch(e => { console.warn('portal link', e); return false; }) : Promise.resolve(false))
+  .then(done => { if (!done) return initLinkedFileOnLoad().finally(() => rosterInitOnLoad()); });

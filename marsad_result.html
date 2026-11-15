@@ -1597,7 +1597,7 @@ function vStudent() {
     }
     return `<tr><td>${esc(itemTxt(c))}</td>${cols.map(col => cellFor(c, col)).join("")}</tr>`;
   };
-  const rel = (s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "") + (s.resp.some(r => mxSrc(r) && mxSrc(r).manual) ? `<div class="note no-print">✏️ بعض تقييمات هذا الطالب معدّلة يدوياً.</div>` : "");
+  const rel = (s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "");   // التعديل اليدوي لا يُذكر في التقرير (يبقى علامة داخلية فقط)
   const R = repCfg();
   if (STUPREV) return `<div class="tb no-print"><button class="btn ghost" data-prevback="1">→ رجوع للتعديل</button><button class="btn" id="btnPrint">🖨️ طباعة</button></div><div class="rwrap" id="reports" dir="rtl">${studentReport(s, R)}</div>`;
   const ax = actOf(s.key), sug = suggestActions(s);

@@ -153,7 +153,8 @@ function readSchoolInfoFromWorkbook(wb) {
   if (termHeaderRow >= 0) {
     const termHeaders = grid[termHeaderRow];
     const rawRows = [];
-    for (let i = termHeaderRow+1; i < grid.length; i++) {
+    const holRow = grid.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
+    for (let i = termHeaderRow+1; i < (holRow > termHeaderRow ? holRow : grid.length); i++) {
       const row = grid[i];
       if (!row || row.every(c => c === '' || c === undefined)) continue;
       rawRows.push(row);

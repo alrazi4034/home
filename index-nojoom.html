@@ -57,6 +57,7 @@
         <button class="tab-btn" onclick="showPage('absence',this)" data-i18n="nav_absence">📅 سجل الغياب</button>
         <button class="tab-btn" onclick="showPage('stats',this)">📈 الإحصائيات</button>
         <button class="tab-btn" onclick="showPage('seating',this)">🪑 الجلوس</button>
+        <button class="tab-btn" onclick="showPage('teacher',this)">👤 المعلم</button>
         <div style="width:1px;background:rgba(255,255,255,0.2);margin:0 4px"></div>
         <button onclick="showFileMenu()" class="btn btn-ghost btn-sm" title="استيراد / تصدير / تصفير البيانات">📁</button>
         <input type="file" id="importFile" style="display:none" accept=".csv,.json" onchange="importFromExcel(event)">
@@ -282,6 +283,11 @@
   <div class="sx-panel" id="sx-pool" style="margin-top:14px"></div>
 </div>
 
+<!-- ========== TEACHER PAGE ========== -->
+<div id="page-teacher" class="page">
+  <div id="tv-content"></div>
+</div>
+
 </div><!-- end container -->
 
 <div class="site-footer">
@@ -317,6 +323,8 @@
 <script src="nojoom/js/14-roster.js"></script>
 <script src="nojoom/shared/folder-link.js"></script>
 <script src="nojoom/js/13b-folder-setup.js"></script>
+<script src="nojoom/shared/teacher-sessions.js"></script>
+<script src="nojoom/js/14d-teacher-view.js"></script>
 <script src="nojoom/js/14b-session-tools.js"></script>
 <script src="nojoom/js/14c-tour.js"></script>
 <script src="nojoom/js/15-seating.js"></script>

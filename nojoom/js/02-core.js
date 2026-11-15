@@ -562,6 +562,7 @@ function showPage(page, btn) {
   if (page === 'grades') initGradesPage();
   if (page === 'stats') initStatsPage();
   if (page === 'seating') sxInit();
+  if (page === 'teacher' && typeof tvInit === 'function') tvInit();
 }
 
 function _nearestWeekday(dateStr, direction) {
