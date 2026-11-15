@@ -57,7 +57,9 @@ function pgAnalyze(cls, s) {
   const att = w => w.sessions ? (w.sessions - w.absent) / w.sessions * 100 : null;
 
   // التقييمات بترتيب إنشائها
+  const aDate = a => a.date || new Date(a.id).toISOString().slice(0, 10);
   const scores = (state.assessments || []).filter(a => (a.classIds || []).includes(cls.id))
+    .slice().sort((x, y) => aDate(x).localeCompare(aDate(y)))
     .map(a => { const v = a.scores && a.scores[s.id]; return v !== undefined && v !== '' && a.maxScore ? { name: a.name, pct: parseFloat(v) / a.maxScore * 100 } : null; })
     .filter(Boolean);
 

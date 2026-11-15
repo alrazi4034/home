@@ -265,6 +265,8 @@ function addMinutes(hm, m) { const [h, mi] = hm.split(':').map(Number); const x 
 function renderTodayBar() {
   const box = document.getElementById('today-bar');
   if (!box) return;
+  const hol = typeof holidayOn === 'function' ? holidayOn(sessionDate) : null;
+  if (hol) { box.innerHTML = `<span style="font-size:12.5px;font-weight:800;color:var(--accent)">🏖️ ${hol.name || 'إجازة'} — ${hol.from}${hol.to && hol.to !== hol.from ? ' إلى ' + hol.to : ''} (ليس يوم دوام)</span>`; return; }
   const sched = myScheduleFor(sessionDate);
   const bell = bellForDate(sessionDate);
   const cur = currentPeriod(sessionDate);

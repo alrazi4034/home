@@ -41,6 +41,12 @@ async function linkSource(kind) {
   if (!dshFsOk()) { document.getElementById('fb-' + kind).click(); return; }
   try {
     let h;
+    if (kind === 'folder' && typeof FL !== 'undefined') {     // مجلدات مشتركة مع البوابة وباقي البرامج (يمكن أكثر من مجلد)
+      await FL.add(); FALLBACK.folder = null;
+      toast('تمت إضافة المجلد');
+      await refreshAll(true);
+      return;
+    }
     if (kind === 'folder') h = await window.showDirectoryPicker({ mode: 'read' });
     else [h] = await window.showOpenFilePicker({ multiple: false, types: [{ description: 'Excel', accept: {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'application/vnd.ms-excel': ['.xls'] } }] });
@@ -98,6 +104,10 @@ async function readSources(interactive) {
         RAW.central = xlsxFromBuffer(await f.arrayBuffer());
         RAW.names.central = f.name + ' — ' + new Date(f.lastModified).toLocaleString('ar'); status.central = 'ok';
       } else status.central = 'locked';
+    } else if (typeof FL !== 'undefined' && (await FL.folders()).length && (RAW._flc = await FL.findCentral(interactive))) {
+      const f = await RAW._flc.handle.getFile();
+      RAW.central = xlsxFromBuffer(await f.arrayBuffer());
+      RAW.names.central = RAW._flc.path + ' — ' + new Date(f.lastModified).toLocaleString('ar') + ' (من المجلدات المربوطة)'; status.central = 'ok';
     } else if (localStorage.getItem('raziSchoolDataXlsx')) {
       const dataUrl = localStorage.getItem('raziSchoolDataXlsx');
       const bin = atob(dataUrl.split(',')[1]);
@@ -131,6 +141,11 @@ async function readSources(interactive) {
       for (const f of FALLBACK.folder) if (/\.json$/i.test(f.name))
         RAW.files.push({ path: f.webkitRelativePath || f.name, modified: f.lastModified, text: await f.text() });
       RAW.names.folder = RAW.files.length + ' ملف'; status.folder = 'ok';
+    } else if (typeof FL !== 'undefined' && (await FL.folders()).length) {
+      const st = await FL.status(interactive);
+      RAW.files = await FL.readFiles(interactive, 4);
+      RAW.names.folder = st.map(x => x.name + (x.ok ? '' : ' 🔒')).join('، ') + ' — ' + RAW.files.length + ' ملف JSON';
+      status.folder = st.some(x => x.ok) ? 'ok' : 'locked';
     } else if (SRC.folder) {
       if (await ensurePerm(SRC.folder, interactive)) {
         await readJsonFiles(SRC.folder, '', RAW.files);
@@ -156,4 +171,13 @@ function renderSourceStatus(status) {
     card.classList.toggle('locked', st === 'locked');
     document.getElementById('st-' + k).textContent = st === 'ok' ? '✅ ' + (RAW.names[k] || '') : txt[st] || '';
   });
+}
+
+// إدارة المجلدات المربوطة (مشتركة مع البوابة وباقي البرامج)
+async function dshManageFolders() {
+  const st = await FL.status(false);
+  openModal(`<h2>📁 المجلدات المربوطة</h2>
+    <div class="muted" style="line-height:1.9;margin-bottom:8px">اربط مجلد «بيانات المدرسة» والمجلد الذي يضم مجلدات المعلمين (أو مجلدات المعلمين نفسها). نفس الربط يُستخدم في البوابة ونجوم مدرستي وبرنامج الغياب.</div>
+    ${st.length ? st.map((x, i) => `<div class="row" style="margin-bottom:6px">📁 <b style="flex:1">${esc(x.name)}</b> ${x.ok ? '✅' : '🔒 يحتاج إذن'} <button class="btn sm" onclick="FL.remove(${i}).then(()=>{dshManageFolders();refreshAll(false)})">✖ إزالة</button></div>`).join('') : '<div class="muted">لا توجد مجلدات مربوطة.</div>'}
+    <div class="actions"><button class="btn primary" onclick="closeModal();linkSource('folder')">➕ إضافة مجلد</button><button class="btn" onclick="closeModal();refreshAll(true)">🔄 تحديث وإذن القراءة</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
 }

@@ -119,6 +119,7 @@ function mrvRender() {
       ${codes.map(c => {
         const a = r.answers[c];
         const tip = (r.reasons[c] || 'لا توجد بيانات لهذا البند') + (r.overridden[c] ? ` | ✏️ عدّلها المعلم (المقترح: ${MRS.LABEL[r.auto[c]]})` : '') + (r.needsConfirm[c] ? ' | ⚠️ يحتاج تأكيدك' : '');
+        if (r.na && r.na[c] && !r.overridden[c]) return `<td class="mrv-c mrv-na" title="لا توجد بيانات كافية لهذا البند في هذه الفترة — اضغط لتقييمه يدوياً" onclick="mrvCell('${r.key}','${c}')">·</td>`;
         return `<td class="mrv-c lv-${a}${r.overridden[c] ? ' ovr' : ''}${r.needsConfirm[c] && !r.overridden[c] ? ' conf' : ''}${r.kind[c] === 'data' ? ' dat' : ''}" title="${tip.replace(/"/g, '&quot;')}" onclick="mrvCell('${r.key}','${c}')">${sym[a]}</td>`;
       }).join('')}</tr>`).join('');
   const sel = MRV.rows.find(r => r.key === MRV.sel);
@@ -143,9 +144,8 @@ function mrvRender() {
     ${detail}
     <div class="mrv-actions">
       <button class="btn btn-primary btn-sm" onclick="mrvApprove()">✅ اعتماد مراجعة الشعبة</button>
-      <button class="btn btn-ghost btn-sm" onclick="mrvExport('one')">📦 ملف مرصاد لهذه الشعبة</button>
-      <button class="btn btn-ghost btn-sm" onclick="mrvExport('all')">📦 ملفات كل صفوفي (ZIP)</button>
       <button class="btn btn-ghost btn-sm" onclick="mrvResetAll()">↺ إرجاع المقترح</button>
+      <span class="mrv-hint" style="font-size:12px;align-self:center">مراجعتك تُحفظ في ملفك، والإدارة تصدّر ملفات مرصاد من لوحة التحكم.</span>
     </div></div>`;
 }
 

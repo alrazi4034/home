@@ -84,8 +84,11 @@ function findSheet(wb, ...names) {
 
 /* ---------- الملف المركزي ---------- */
 function parseCentral(wb) {
-  const out = { students: new Map(), classes: [], teachers: [], terms: [], school: {}, issues: [] };
+  const out = { students: new Map(), classes: [], teachers: [], terms: [], school: {}, issues: [], holidays: [] };
   if (!wb) return out;
+  // الإجازات والعطل
+  { const hs = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
+    if (hs) sheetRows(wb, hs, true).slice(1).forEach(r => { const f = toISO(r[1]), t = toISO(r[2]) || f; if (f) out.holidays.push({ name: String(r[0] || '').trim(), from: f, to: t }); }); }
 
   // الطلاب
   const stSheet = findSheet(wb, 'جميع الطلاب');

@@ -95,7 +95,7 @@ async function readHandleText(handle){
   return text;
 }
 
-async function pickAndLinkJson(mode){
+async function pickAndLinkJson(mode, givenHandle){
   mode = mode || 'open';
   if(!ljFsApiSupported){
     alert('ميزة الربط التلقائي مدعومة فقط في متصفحي Chrome أو Edge على الحاسوب. استخدم زر "📁 الملف" للاستيراد والتصدير اليدوي بدلاً من ذلك.');
@@ -104,7 +104,11 @@ async function pickAndLinkJson(mode){
   try{
     const ljTypes = [{ description:'ملف بيانات نجوم مدرستي', accept: {'application/json':['.json']} }];
     let handle;
-    if(mode === 'new'){
+    if(givenHandle){                       // من ربط المجلدات: الملف معروف مسبقاً
+      handle = givenHandle;
+      const perm = await handle.requestPermission({mode:'readwrite'});
+      if(perm !== 'granted'){ alert('لم تُمنح صلاحية الكتابة على ملفك — تأكد أن لديك صلاحية «تعديل» على مجلدك في OneDrive.'); return false; }
+    } else if(mode === 'new'){
       handle = await window.showSaveFilePicker({ suggestedName: 'nojoom_' + ((getSchoolInfo().teacher || 'data').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_')) + '.json', types: ljTypes });
     } else {
       const picked = await window.showOpenFilePicker({ types: ljTypes, multiple: false });

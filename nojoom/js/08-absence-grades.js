@@ -349,7 +349,7 @@ function renderAssessmentTabs() {
   c.innerHTML = state.assessments.map(a => `
     <div style="display:inline-flex;align-items:center;gap:2px;position:relative">
       <button class="flt-btn ${a.id === activeAssessmentId ? 'flt-btn-on' : ''}" onclick="setActiveAssessment(${a.id})">
-        📝 ${a.name} <span style="opacity:.7;font-size:11px">(/${a.maxScore})</span>
+        📝 ${a.name} <span style="opacity:.7;font-size:11px">(/${a.maxScore})${a.date ? ' · ' + a.date.slice(5).split('-').reverse().join('/') : ''}</span>
       </button>
       
     </div>`).join('');
@@ -368,6 +368,10 @@ function showAddAssessmentModal() {
     <div class="form-group">
       <label class="form-label">اسم التقييم</label>
       <input class="input" id="m-assess-name" placeholder="مثال: اختبار الفصل الأول، نشاط الوحدة 3..." />
+    </div>
+    <div class="form-group">
+      <label class="form-label">تاريخ التقييم <span style="font-weight:400;color:var(--text-muted)">(يُستخدم لحساب التحسّن والتراجع)</span></label>
+      <input class="input" id="m-assess-date" type="date" value="${todayISO()}" />
     </div>
     <div style="display:grid;grid-template-columns:2fr 2fr;gap:50px">
       <div class="form-group">
@@ -407,7 +411,8 @@ function confirmAddAssessment() {
   if (!name) return toast('أدخل اسم التقييم', '⚠️');
   const checked = [...document.querySelectorAll('#m-assess-classes input:checked')].map(el => parseInt(el.value));
   if (!checked.length) return toast('اختر صفاً على الأقل', '⚠️');
-  const assessment = { id: Date.now(), name, maxScore, pointsValue, classIds: checked, scores: {}, awardedPoints: {} };
+  const date = document.getElementById('m-assess-date')?.value || todayISO();
+  const assessment = { id: Date.now(), name, maxScore, pointsValue, date, classIds: checked, scores: {}, awardedPoints: {} };
   if (!state.assessments) state.assessments = [];
   state.assessments.push(assessment);
   activeAssessmentId = assessment.id;
@@ -460,6 +465,9 @@ function renderGradesContent() {
         <div>
           <div class="card-title">📝 ${assess.name}</div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--text-muted)">التاريخ:</span>
+            <input type="date" value="${assess.date || ''}" onchange="setAssessDate(${assess.id}, this.value)" title="تاريخ التقييم — لحساب التحسّن والتراجع"
+              style="font-family:inherit;font-size:12px;padding:3px 6px;border-radius:8px;border:1px solid var(--border-color);background:var(--surface2);color:var(--text)">
             <span style="font-size:12px;color:var(--text-muted)">الدرجة النهائية:</span>
             <span style="font-size:14px;font-weight:900;color:#5fd8e8">${assess.maxScore}</span>
             <span style="font-size:12px;color:var(--text-muted)">النقاط المخصصة:</span>
@@ -468,7 +476,8 @@ function renderGradesContent() {
             ${appliedClasses.map(c=>`<span style="background:rgba(162,155,254,0.15);border:1px solid rgba(162,155,254,0.3);border-radius:8px;padding:2px 10px;font-size:12px;font-weight:700;color:#a29bfe;backdrop-filter:blur(4px)">${c.name}</span>`).join('')}
           </div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="openQuickGrades(${assess.id})" class="btn btn-ghost btn-sm" title="لصق الدرجات من Excel أو كتابتها بسرعة">⚡ إدخال سريع</button>
           <button onclick="saveGrades()" class="btn btn-primary btn-sm">💾 حفظ الدرجات</button>
           <button onclick="deleteAssessment(${assess.id})" class="btn btn-ghost btn-sm" style="color:var(--absent)">🗑️</button>
         </div>
@@ -529,8 +538,9 @@ function renderGradesContent() {
                 </div>
                 <div style="width:120px;text-align:center">
                   <input type="number" min="0" max="${assess.maxScore}" value="${score}"
-                    id="gscore-${assess.id}-${s.id}"
+                    id="gscore-${assess.id}-${s.id}" class="gscore-in" data-sid="${s.id}" data-cls="${cls.id}"
                     oninput="updateGradePreview(${assess.id},${s.id},${assess.maxScore})"
+                    onkeydown="gradeKeyNav(event)" onpaste="gradePasteColumn(event, ${assess.id}, ${assess.maxScore})"
                     style="width:80px;text-align:center;background:var(--surface2);border:1.5px solid var(--border-color);border-radius:8px;padding:5px 8px;color:var(--accent);font-family:Tajawal,sans-serif;font-size:14px;font-weight:900;outline:none"
                     onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-color)'" />
                 </div>
@@ -624,3 +634,91 @@ function toggleGradeClassCollapse(id) {
   if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
+
+
+/* ===== تاريخ التقييم + الإدخال السريع ===== */
+function setAssessDate(id, v) {
+  const a = (state.assessments || []).find(x => x.id === id);
+  if (!a) return;
+  a.date = v || '';
+  save(); renderAssessmentTabs();
+  toast('تم حفظ تاريخ التقييم', '📅');
+}
+// Enter أو ↓ ينقل إلى الطالب التالي، ↑ إلى السابق
+function gradeKeyNav(e) {
+  if (!['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
+  e.preventDefault();
+  const all = [...document.querySelectorAll('#grades-content .gscore-in')];
+  const i = all.indexOf(e.target);
+  const n = all[i + (e.key === 'ArrowUp' ? -1 : 1)];
+  if (n) { n.focus(); n.select(); n.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  else if (e.key === 'Enter') saveGrades();
+}
+// لصق عمود درجات من Excel في أول خانة ⇐ يتوزع على الطلاب بالترتيب
+function gradePasteColumn(e, assessId, max) {
+  const txt = (e.clipboardData || window.clipboardData).getData('text');
+  const lines = txt.split(/\r?\n/).map(x => x.trim()).filter((x, i, a) => x !== '' || i < a.length - 1);
+  if (lines.length < 2) return;
+  e.preventDefault();
+  const all = [...document.querySelectorAll('#grades-content .gscore-in')].filter(x => x.dataset.cls === e.target.dataset.cls);
+  let i = all.indexOf(e.target), n = 0;
+  lines.forEach(l => {
+    if (i >= all.length) return;
+    const v = l.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).match(/-?\d+(\.\d+)?/);
+    all[i].value = v ? Math.min(max, Math.max(0, parseFloat(v[0]))) : '';
+    updateGradePreview(assessId, +all[i].dataset.sid, max);
+    i++; n++;
+  });
+  toast(`تم لصق ${n} درجة — راجعها ثم اضغط «حفظ الدرجات»`, '📋');
+}
+// إدخال سريع: لصق «رقم الطالب أو الاسم + الدرجة» أو عمود درجات بالترتيب
+function openQuickGrades(assessId) {
+  const a = (state.assessments || []).find(x => x.id === assessId); if (!a) return;
+  const classes = state.classes.filter(c => a.classIds.includes(c.id));
+  openModal(`
+    <div class="modal-title">⚡ إدخال سريع — ${a.name}</div>
+    <div style="font-size:12.5px;color:var(--text-muted);line-height:1.8;margin-bottom:8px">
+      الصق من Excel سطراً لكل طالب:<br>
+      • <b>رقم الطالب</b> أو <b>اسمه</b> ثم الدرجة (مثل: <code>20190012345	17</code>)، أو<br>
+      • <b>عمود درجات فقط</b> بنفس ترتيب الطلاب في الشعبة المختارة.<br>
+      💡 يمكنك أيضاً لصق عمود الدرجات مباشرة في خانة أول طالب، والتنقل بين الخانات بـ Enter.
+    </div>
+    <div class="form-group"><label class="form-label">الشعبة (للعمود بالترتيب)</label>
+      <select class="select" id="qg-cls">${classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
+    <textarea class="input" id="qg-text" rows="9" style="font-family:monospace;direction:ltr;text-align:left" placeholder="20190012345	17"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="applyQuickGrades(${a.id})">تطبيق وحفظ</button>
+      <button class="btn btn-ghost" onclick="closeModalForce()">إلغاء</button>
+    </div>`);
+  setTimeout(() => document.getElementById('qg-text')?.focus(), 100);
+}
+function applyQuickGrades(assessId) {
+  const a = (state.assessments || []).find(x => x.id === assessId); if (!a) return;
+  const digits = x => String(x).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const lines = digits(document.getElementById('qg-text').value).split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  if (!lines.length) return toast('الصق الدرجات أولاً', '⚠️');
+  const clsSel = state.classes.find(c => c.id === +document.getElementById('qg-cls').value);
+  const pool = state.classes.filter(c => a.classIds.includes(c.id)).flatMap(c => c.students.map(s => ({ c, s })));
+  const norm = t => String(t).replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/\s+/g, ' ').trim();
+  const sidOf = s => String(s.sid || (String(s.name).match(/\(([^()]+)\)\s*$/) || [])[1] || '');
+  const onlyNums = lines.every(l => /^-?\d+(\.\d+)?$/.test(l));
+  let ok = 0; const miss = [];
+  const setScore = (s, v) => { const el = document.getElementById(`gscore-${a.id}-${s.id}`); if (el) { el.value = Math.min(a.maxScore, Math.max(0, v)); ok++; } };
+  if (onlyNums) {
+    if (!clsSel) return;
+    lines.forEach((l, i) => { const s = clsSel.students[i]; if (s) setScore(s, parseFloat(l)); });
+  } else {
+    lines.forEach(l => {
+      const m = l.match(/^(.*?)[\s\t,;:،-]+(-?\d+(\.\d+)?)\s*$/);
+      if (!m) { miss.push(l); return; }
+      const key = m[1].trim(), v = parseFloat(m[2]);
+      let hit = pool.find(x => sidOf(x.s) && sidOf(x.s) === key.replace(/\D/g, '') && /\d{5,}/.test(key));
+      if (!hit) { const nk = norm(key); hit = pool.find(x => norm(String(x.s.name).replace(/\([^()]*\)\s*$/, '')) === nk) || pool.find(x => norm(x.s.name).includes(nk)); }
+      if (hit) setScore(hit.s, v); else miss.push(l);
+    });
+  }
+  closeModalForce();
+  saveGrades();
+  if (miss.length) toast(`لم يُطابَق ${miss.length} سطر: ${miss.slice(0, 2).join(' | ')}`, '⚠️');
+  else toast(`تم إدخال ${ok} درجة ✅`, '⚡');
+}

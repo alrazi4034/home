@@ -89,16 +89,18 @@ const MRS = (() => {
     { code: 'B09', t: '⚠️ لم يلتزم بالتعليمات' }
   ];
 
+  // التكرار يُقاس بمعدل الحدوث لكل حصة حضرها الطالب — وليس بالعدد — حتى تصح المقارنة بين فترة طويلة وأخرى قصيرة
   const DEF = {
-    noteSome: 1, noteAlways: 3,      // صافي الملاحظات السلبية للبند
+    noteSomeEvery: 20, noteAlwaysEvery: 6,   // «أحياناً» إذا تكرر مرة كل 20 حصة أو أكثر، «دائماً» مرة كل 6 حصص أو أكثر
+    noteAlwaysMin: 2,                        // «دائماً» يحتاج حادثتين على الأقل
+    lateSomeEvery: 15, lateAlwaysEvery: 6, lateSomeMin: 2,
     deductWeight: 0.5,               // سبب الخصم = نصف ملاحظة
     posOffset: 0.5,                  // كل ملاحظة إيجابية مرتبطة تخفّف نصف ملاحظة سلبية
-    minWeeks: 3,                     // أقل عدد أسابيع بيانات للاستنتاج من البيانات
+    minWeeks: 2,                     // أقل عدد أسابيع بيانات للاستنتاج من البيانات
     minAssess: 2,                    // أقل عدد تقييمات لاستنتاج A07
     testSome: 65, testAlways: 50,    // متوسط التقييمات (%)
     partSome: 0.5, partAlways: 0.25, // مشاركة الطالب لكل حصة ÷ متوسط الصف
-    absPctSome: 10, absPctAlways: 20,
-    lateSome: 2, lateAlways: 4
+    absPctSome: 10, absPctAlways: 20
   };
   const RANK = { never: 0, sometimes: 1, always: 2 };
   const LV = ['never', 'sometimes', 'always'];
@@ -121,6 +123,14 @@ const MRS = (() => {
   function studentKey(s) { return s.sid ? String(s.sid) : 'id:' + s.id; }
   function splitName(n) { const m = String(n || '').match(/^(.*?)\s*\(([^()]+)\)\s*$/); return m ? { name: m[1].trim(), sid: m[2].trim() } : { name: String(n || '').trim(), sid: '' }; }
   function lvByCount(x, some, always) { return x >= always ? 'always' : x >= some ? 'sometimes' : 'never'; }
+  // مستوى حسب المعدل: n حادثة في denom حصة
+  function lvByRate(n, denom, someEvery, alwaysEvery, minSome, minAlways) {
+    if (n < (minSome || 1) - 1e-9) return 'never';
+    const r = n / Math.max(denom, 1);
+    if (n >= (minAlways || 2) - 1e-9 && r >= 1 / alwaysEvery) return 'always';
+    return r >= 1 / someEvery ? 'sometimes' : 'never';
+  }
+  const everyTxt = (n, d) => n > 0 ? `مرة كل ${Math.max(1, Math.round(d / n))} حصة` : '';
 
   /* ---------- تحليل صف كامل ---------- */
   // cls: {id, name, _savedDates, students:[...نجوم مدرستي]}، assessments: state.assessments
@@ -133,7 +143,8 @@ const MRS = (() => {
     const savedSet = new Set(saved);
     const weeks = new Set(saved.map(weekKey));
     const enoughWeeks = weeks.size >= cfg.minWeeks;
-    const myAssess = (assessments || []).filter(a => (a.classIds || []).includes(cls.id) && a.maxScore);
+    // التقييم المؤرَّخ يُحسب في فترته فقط؛ غير المؤرَّخ (قديم) يُحسب في كل الفترات
+    const myAssess = (assessments || []).filter(a => (a.classIds || []).includes(cls.id) && a.maxScore && (!a.date || inR(toISO(a.date))));
 
     // 1) الأساسيات لكل طالب
     const base = (cls.students || []).map(s => {
@@ -205,12 +216,15 @@ const MRS = (() => {
         if (E > 0) {
           const O = cfg.posOffset * (b.pos[c] || 0);
           const net = Math.max(0, E - O);
-          const lv = lvByCount(net, cfg.noteSome, cfg.noteAlways);
+          const denom = b.attended || saved.length || 0;
+          const lv = denom ? lvByRate(net, denom, cfg.noteSomeEvery, cfg.noteAlwaysEvery, 1, cfg.noteAlwaysMin)
+                           : lvByCount(net, 1, 3);                 // لا توجد حصص محفوظة: بالعدد
           const parts = [];
           if (b.neg[c]) parts.push(`${b.neg[c]} ملاحظة`);
           if (b.dedReasons[c]) parts.push(`${b.dedReasons[c]} خصم بهذا السبب`);
           let t = parts.join(' + ');
           if (b.pos[c]) t += ` − ${b.pos[c]} إيجابية مرتبطة`;
+          if (denom) t += ` في ${denom} حصة${net > 0 ? ' (' + everyTxt(net, denom) + ')' : ''}`;
           why(c, t + ` ⇐ ${LABEL[lv]}`);
           if (lv !== 'never') { auto[c] = lv; kind[c] = 'note'; }
         }
@@ -229,7 +243,8 @@ const MRS = (() => {
       const pctAbs = absPct !== null && absPct !== undefined ? absPct : (saved.length ? b.absentN / saved.length * 100 : 0);
       if (saved.length >= 5 || absPct != null) setData('B05', lvByCount(pctAbs, cfg.absPctSome, cfg.absPctAlways), `غياب ${Math.round(pctAbs)}% من الأيام`);
       // B06 التأخر
-      setData('B06', lvByCount(b.lates + (b.neg.B06 || 0), cfg.lateSome, cfg.lateAlways), `تأخر ${b.lates + (b.neg.B06 || 0)} مرة`);
+      { const n = b.lates + (b.neg.B06 || 0), d = b.attended || saved.length;
+        setData('B06', d ? lvByRate(n, d, cfg.lateSomeEvery, cfg.lateAlwaysEvery, cfg.lateSomeMin, cfg.lateSomeMin + 1) : 'never', `تأخر ${n} مرة في ${d} حصة${n ? ' (' + everyTxt(n, d) + ')' : ''}`); }
 
       // A07 نتائج التقييمات
       let a07 = 'never';
@@ -263,6 +278,17 @@ const MRS = (() => {
       if (['A01', 'A02', 'A06'].some(c => RANK[auto[c]] >= 1 && kind[c] !== 'data')) ind.push('ملاحظات الأدوات/الواجب/الأنشطة');
       if (RANK[a07] >= 1) ind.push('تقييمات منخفضة');
       if (ind.length >= 2) setData('A08', ind.length >= 3 ? 'always' : 'sometimes', 'مؤشرات: ' + ind.join('، '));
+      // بنود لا يمكن تقييمها في هذه الفترة (بيانات غير كافية ولا توجد ملاحظات) ⇐ تُترك فارغة في ملف مرصاد
+      // حتى لا تُحسب «تحسّناً» وهمياً عند مقارنة فترة قصيرة بفترة طويلة
+      const na = {};
+      const noteEv = c => (b.neg[c] || 0) + (b.dedReasons[c] || 0) > 0;
+      const a07ok = b.scores.length >= cfg.minAssess, a04ok = enoughWeeks && tracksPart && b.attended >= 5;
+      const declOk = b.wk.length >= cfg.minWeeks + 2;
+      if (!a07ok && !noteEv('A07')) na.A07 = true;
+      if (!a04ok && !noteEv('A04')) na.A04 = true;
+      if ([a04ok, declOk, a07ok].filter(Boolean).length + 1 < 2 && !noteEv('A08')) na.A08 = true;
+      if (!a07ok && !noteEv('A03')) na.A03 = true;
+      if (!enoughWeeks && !noteEv('A05')) na.A05 = true;
       // A03 المهارات الأساسية: اقتراح فقط عند تدنٍّ شديد ومستمر — يحتاج تأكيد المعلم
       const needsConfirm = {};
       if (a07 === 'always' && !b.neg.A03) { setData('A03', 'sometimes', 'اقتراح: تقييمات متدنية جداً — يحتاج تأكيد المعلم'); needsConfirm.A03 = true; }
@@ -271,12 +297,12 @@ const MRS = (() => {
       const rv = (opt.review && opt.review[key]) || {};
       const answers = {}, overridden = {};
       CODES.forEach(c => {
-        if (rv[c] && RANK[rv[c]] !== undefined) { answers[c] = rv[c]; overridden[c] = rv[c] !== auto[c]; }
+        if (rv[c] && RANK[rv[c]] !== undefined) { answers[c] = rv[c]; overridden[c] = rv[c] !== auto[c]; delete na[c]; }
         else answers[c] = auto[c];
       });
       const p = splitName(s.name);
       return {
-        key, sid: s.sid || p.sid || '', name: p.name, auto, answers, overridden, reasons, kind, needsConfirm,
+        key, sid: s.sid || p.sid || '', name: p.name, auto, answers, overridden, reasons, kind, needsConfirm, na,
         strengths: Object.entries(b.strengths).map(([x, n]) => n > 1 ? `${x} (${n})` : x).join('، '),
         additionalNotes: b.other.join('، '),
         posCount: Object.values(b.strengths).reduce((a, n) => a + n, 0),
@@ -285,6 +311,7 @@ const MRS = (() => {
     });
   }
 
+  const packAnswers = r => { const o = {}; CODES.forEach(c => { if (!(r.na && r.na[c])) o[c] = r.answers[c]; }); return o; };
   /* ---------- ملف classBatch بصيغة مرصاد ---------- */
   function buildBatch(o) {
     const m = String(o.className || '').match(/^(\d+)\s*\/\s*(\d+)$/);
@@ -292,7 +319,7 @@ const MRS = (() => {
     const [, grade, section] = m;
     const subject = String(o.subject || '').split('،')[0].trim();
     const code = SUBJECT_CODES[subject] || 'SUBJ';
-    const now = new Date();
+    const now = o.stamp ? new Date(o.stamp) : new Date();
     const statements = {};
     CODES.forEach(c => statements[c] = { ar: STATEMENTS[c][0], en: STATEMENTS[c][1] });
     const batch = {
@@ -300,6 +327,7 @@ const MRS = (() => {
       batchId: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'nj-' + Date.now() + Math.random()),
       exportedAt: now.toISOString(), exportedAtLocal: now.toLocaleString('en-GB', { hour12: false }), formLanguage: 'ar',
       source: { app: 'nojoom', note: 'مولّد من نجوم مدرستي (ملاحظات + استنتاج من البيانات + مراجعة المعلم)', from: o.from || '', to: o.to || '', file: o.file || '', reviewed: !!o.reviewed },
+      period: { from: o.from || '', to: o.to || '' },
       teacher: { name: o.teacherName || '' }, subject: { name: subject, code },
       class: { grade, section, classCode: grade + '-' + section },
       scale: { note: 'answers are observation-frequency choices (never / sometimes / always), not a grade or a diagnosis.',
@@ -307,13 +335,54 @@ const MRS = (() => {
       statements,
       students: o.rows.map(r => ({
         id: r.sid || '', name: r.name, sourceEntry: r.sid ? `${r.name} (${r.sid})` : r.name,
-        status: 'done', updatedAt: now.toISOString(), answers: r.answers, followUp: {},
+        status: 'done', updatedAt: now.toISOString(), answers: packAnswers(r), followUp: {},
         strengths: r.strengths || '', additionalNotes: r.additionalNotes || ''
       })),
       totals: { roster: o.rows.length, enteredStudents: o.rows.length, notObserved: 0, incomplete: 0, missingNames: [] }
     };
     const safeT = String(o.teacherName || 'teacher').replace(/[\\/:*?"<>|\s]+/g, '_');
     return { name: `${grade}${section}_${code}_${safeT}.json`, text: JSON.stringify(batch, null, 2), batch };
+  }
+
+  /* ---------- المقارنة بالتقييم الأساسي (لإعادة التقييم) ---------- */
+  function compareAnswers(old, cur, naOld, naCur) {
+    if (!old) return { verdict: 'nobase', change: 'better', reason: 'لا يوجد تقييم أساسي لهذا الطالب' };
+    const better = [], worse = [];
+    let d = 0;
+    CODES.forEach(c => {
+      if ((naOld && naOld[c]) || (naCur && naCur[c])) return;
+      const a = RANK[old[c]] || 0, b = RANK[cur[c]] || 0;
+      if (b < a) better.push(SHORT[c]); else if (b > a) worse.push(SHORT[c]);
+      d += b - a;
+    });
+    const verdict = d < 0 ? 'better' : d > 0 ? 'worse' : 'same';
+    const parts = [];
+    if (better.length) parts.push('تحسّن في: ' + better.join('، '));
+    if (worse.length) parts.push('تراجع في: ' + worse.join('، '));
+    return { verdict, change: verdict === 'worse' ? 'worse' : 'better', reason: (parts.join(' — ') || 'لا تغيّر في البنود') + ' (محسوب من نجوم مدرستي)' };
+  }
+  // ملف إعادة تقييم (type: reeval) — يقرؤه مرصاد في «متابعة التغيّر»
+  function buildReeval(o) {
+    const m = String(o.className || '').match(/^(\d+)\s*\/\s*(\d+)$/);
+    if (!m || !o.rows || !o.rows.length) return null;
+    const [, grade, section] = m;
+    const subject = String(o.subject || '').split('،')[0].trim();
+    const code = SUBJECT_CODES[subject] || 'SUBJ';
+    const now = o.stamp ? new Date(o.stamp) : new Date();
+    const j = {
+      schemaVersion: '2.0', app: 'Marsad', type: 'reeval',
+      period: { from: o.from || '', to: o.to || '', baseFrom: o.baseFrom || '', baseTo: o.baseTo || '' },
+      exportedAt: now.toISOString(), exportedAtLocal: now.toLocaleString('en-GB', { hour12: false }), formLanguage: 'ar',
+      source: { app: 'nojoom', note: 'إعادة تقييم محسوبة من نجوم مدرستي ومقارنة بالتقييم الأساسي', from: o.from || '', to: o.to || '', baseFrom: o.baseFrom || '', baseTo: o.baseTo || '', file: o.file || '' },
+      teacher: { name: o.teacherName || '' }, subject: { name: subject, code },
+      class: { grade, section, classCode: grade + '-' + section },
+      students: o.rows.map(r => ({
+        id: r.sid || '', name: r.name, status: 'done', updatedAt: now.toISOString(), answers: packAnswers(r),
+        change: r.change || 'better', reason: r.reason || ''
+      }))
+    };
+    const safeT = String(o.teacherName || 'teacher').replace(/[\\/:*?"<>|\s]+/g, '_');
+    return { name: `reeval_${grade}${section}_${code}_${safeT}_${o.to || ''}.json`, text: JSON.stringify(j, null, 2) };
   }
 
   /* ---------- ZIP بدون ضغط (أسماء عربية UTF-8) ---------- */
@@ -353,5 +422,5 @@ const MRS = (() => {
   }
 
   return { STATEMENTS, CODES, SHORT, SUBJECT_CODES, TEXT_CODE, POS_GROUPS, DEDUCT_REASONS, DEF, LABEL, RANK, LV,
-           posGroupOf, noteCode, toISO, studentKey, analyzeClass, buildBatch, makeZip, download };
+           posGroupOf, noteCode, toISO, studentKey, analyzeClass, buildBatch, buildReeval, compareAnswers, makeZip, download };
 })();

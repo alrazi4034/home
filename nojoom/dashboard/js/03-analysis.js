@@ -28,6 +28,8 @@ function schoolDays(from, to) {
     const wd = weekday(d);
     if (!(SETTINGS.periods[wd] > 0) || !inTerm(d)) continue;
     const n = activity[d] || 0;
+    const hol = (MODEL.central.holidays || []).find(h => d >= h.from && d <= (h.to || h.from));
+    if (hol) { excluded.push({ date: d, records: n, manual: false, holiday: hol.name || 'إجازة' }); continue; }   // إجازة من بيانات المدرسة
     const auto = n < SETTINGS.minDayRecords;
     const off = SETTINGS.forceExclude.includes(d) || (auto && !SETTINGS.forceInclude.includes(d));
     if (off) excluded.push({ date: d, records: n, manual: SETTINGS.forceExclude.includes(d) });

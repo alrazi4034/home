@@ -675,7 +675,8 @@ function expandBatch(j, fileName) {
     const fv = x => x && (typeof x === "object" ? x.answer : x) || "";
     out.push({ label: label, rec: { responseId: "b|" + tn + "|" + sn + "|" + gr + "-" + sc + "|" + (st.id || st.name) + "|" + sub, submittedAt: sub, exp: at, lang: j.formLanguage || "",
       teacher: tn, subject: sn, student: st, lv: lv, na: s.status === "na", parent: fv(fu.parentContacted), social: fv(fu.needsSocialWorker),
-      strengths: String(s.strengths || "").trim(), notes: String(s.additionalNotes || "").trim(), fileName: fileName } });
+      strengths: String(s.strengths || "").trim(), notes: String(s.additionalNotes || "").trim(), fileName: fileName,
+      pFrom: String((j.period || {}).from || ""), pTo: String((j.period || {}).to || "") } });
   });
   return out;
 }
@@ -690,12 +691,42 @@ function expandRe(j, fileName) {
     if (s.status !== "done" && s.status !== "partial" || !BEH.some(c => lv[c] !== undefined) || !ACA.some(c => lv[c] !== undefined)) { out.push({ label: label, errors: [["r_partial"]] }); return; }
     const sub = Date.parse(s.updatedAt) || at;
     out.push({ label: label + " 🔄", re: { id: "re|" + tn + "|" + sn + "|" + gr + "-" + sc + "|" + (st.id || st.name) + "|" + sub, teacher: tn, subject: sn, student: st, lv: lv, at: sub, exp: at,
-      change: s.change === "worse" ? "worse" : "better", reason: String(s.reason || "").trim(), fileName: fileName } });
+      change: s.change === "worse" ? "worse" : "better", reason: String(s.reason || "").trim(), fileName: fileName,
+      pFrom: String((j.period || {}).from || ""), pTo: String((j.period || {}).to || "") } });
   });
   return out;
 }
+/* قراءة ملفات ZIP (مخزّنة أو مضغوطة deflate) — كل ملف JSON بداخلها يُعامل كملف مستقل */
+async function unzipJsonFiles(file) {
+  const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer);
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw ["r_read"];
+  const n = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const out = [], u8 = new TextDecoder("utf-8");
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = u8.decode(buf.subarray(p + 46, p + 46 + nl));
+    p += 46 + nl + xl + cl;
+    if (!/\.json$/i.test(name) || /(^|\/)__MACOSX\//.test(name)) continue;
+    const ds = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    let data = buf.subarray(ds, ds + csize);
+    if (method === 8) data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+    else if (method !== 0) continue;
+    const f = new File([data], name.split("/").pop(), { type: "application/json" });
+    f._path = file.name + " › " + name;
+    out.push(f);
+  }
+  return out;
+}
 async function handleFiles(list) {
-  const files = Array.from(list || []);
+  let files = [];
+  for (const f of Array.from(list || [])) {
+    if (/\.zip$/i.test(f.name)) { try { files.push(...await unzipJsonFiles(f)); } catch (x) { files.push(f); } }
+    else files.push(f);
+  }
   const log = []; let nonJson = 0;
   const byKey = {}; Object.values(STORE).forEach(r => byKey[respKey(r)] = r);
   for (const f of files) {
@@ -993,7 +1024,7 @@ function snapsOf(k) {
   const rs = reGroups().get(k); if (!rs) return []; const orig = origOf(k); if (!orig.length) return [];
   const u = updInfo(rs), oldU = orig.filter(x => u.US.has(x.subject)), keep = orig.filter(x => !u.US.has(x.subject));
   const upd = keep.concat(u.L.map(r => Object.assign({}, orig.find(x => x.subject === r.subject) || { student: r.student, na: false }, { teacher: r.teacher, subject: r.subject, lv: r.lv, submittedAt: r.at, reeval: true })));
-  const d0 = Math.max.apply(null, (oldU.length ? oldU : orig).map(x => x.submittedAt || 0)), d1 = Math.max.apply(null, u.L.map(r => r.at));
+  const d0 = Math.max.apply(null, (oldU.length ? oldU : orig).map(pDate)), d1 = Math.max.apply(null, u.L.map(pDate));
   return [{ ids: ["orig|" + k], date: SNAPD["orig|" + k] || d0, resp: orig, label: "التقييم الأصلي" }, { ids: ["upd|" + k], date: SNAPD["upd|" + k] || d1, resp: upd, label: "التقييم المحدَّث" }];
 }
 function snapIdx(k, sn) { const sel = SNAPSEL[k]; const i = sel ? sn.findIndex(x => x.ids.includes(sel)) : -1; return i >= 0 ? i : sn.length - 1; }
@@ -1017,6 +1048,8 @@ const cntT = n => n === 1 ? "معلم واحد" : n === 2 ? "معلمَين" : n
 function diagList(resp) { const m = new Map(); resp.forEach(r => m.set(r.teacher + "|" + r.subject, r)); const a = Array.from(m.values()).sort((x, y) => String(x.subject).localeCompare(String(y.subject), "ar")); return { n: new Set(a.map(r => r.teacher)).size, txt: a.map(r => r.teacher + " (" + r.subject + ")").join("، ") }; }
 const diagLine = (s, extra) => { const d = diagList(s.resp); return d.n ? `<div class="diagline">التقرير مستند على تشخيص ${cntT(d.n)} وهم: ${esc(d.txt)}${extra ? " — " + esc(extra) : ""}.</div>` : ""; };
 const UPDSET = new Set();
+const pDate = x => x && x.pTo ? Date.parse(x.pTo + "T12:00:00") : (x && (x.submittedAt || x.at) || 0);
+const pRange = list => { const x = (list || []).find(y => y && y.pFrom && y.pTo); return x ? { from: x.pFrom, to: x.pTo } : null; };
 function computeImpact() {
   IMP = [];
   reGroups().forEach((rs, k) => {
@@ -1032,11 +1065,12 @@ function computeImpact() {
         const f = Math.round(mean(o)), to = Math.round(mean(n)), d = f - to; (d > 0 ? better : d < 0 ? worse : same).push({ code: c, from: f, to: to, d: d, subject: sj, teacher: news.map(x => x.teacher).join("، ") }); }); });
     const df = (a, b) => (a == null || b == null) ? null : r1(b - a);
     const dComb = before ? df(before.comb, after.comb) : null;
-    const d0 = Math.max.apply(null, (oldU.length ? oldU : baseResp).map(x => x.submittedAt || 0)), d1 = Math.max.apply(null, L.map(r => r.at));
+    const d0 = Math.max.apply(null, (oldU.length ? oldU : baseResp).map(pDate)), d1 = Math.max.apply(null, L.map(pDate));
+    const pB = pRange(oldU.length ? oldU : baseResp), pA = pRange(L);
     const verdict = dComb == null ? "nobase" : dComb >= 0.3 ? "up" : dComb <= -0.3 ? "down" : "same", last = L[L.length - 1];
     IMP.push({ key: k, name: after.name, id: after.id, grade: after.grade, section: after.section, evals: L.map(r => ({ teacher: r.teacher, subject: r.subject, at: r.at, change: r.change, reason: r.reason })),
       nT: new Set(L.map(r => r.teacher)).size, nS: u.US.size, before: before, after: after, dComb: dComb, dBeh: before ? df(before.behScore, after.behScore) : null, dAca: before ? df(before.acaScore, after.acaScore) : null,
-      dateBefore: SNAPD["orig|" + k] || d0, dateAfter: SNAPD["upd|" + k] || d1, better: better, worse: worse, same: same, declared: last.change, reasons: Array.from(new Set(L.map(r => r.reason).filter(Boolean))), verdict: verdict,
+      dateBefore: SNAPD["orig|" + k] || d0, dateAfter: SNAPD["upd|" + k] || d1, pBefore: pB, pAfter: pA, better: better, worse: worse, same: same, declared: last.change, reasons: Array.from(new Set(L.map(r => r.reason).filter(Boolean))), verdict: verdict,
       match: verdict === "nobase" || verdict === "same" ? null : (verdict === "up") === (last.change === "better") });
   });
   IMP.sort((a, b) => String(a.name).localeCompare(String(b.name), "ar"));
@@ -1070,7 +1104,9 @@ function impReport(e, R) {
   const hdr = `<header class="rh"><div class="rh-top"><div class="rh-school">${esc(R.school)}</div><div class="rh-title">${{ up: "تقرير تقدّم الطالب", down: "تقرير متابعة تراجع طالب" }[e.verdict] || "تقرير تغيّر مستوى الطالب"}<small>مقارنة التقييم السابق بالحالي — العام الدراسي ${esc(R.year)} — ${esc(R.term)}</small></div><div class="rh-date">التاريخ: ${todayStr()}</div></div></header>`;
   return `<section class="page ipage">${hdr}
     <div class="ri"><div><small>اسم الطالب</small><b>${esc(e.name)}</b></div><div><small>رقم الطالب</small><b>${esc(e.id || "—")}</b></div><div><small>الصف</small><b>${esc(e.grade)}</b></div><div><small>الشعبة</small><b>${esc(e.section)}</b></div></div>
-    <div class="idates"><span>تاريخ التقييم السابق: <b>${esc(fmtY(e.dateBefore))}</b></span><span>تاريخ إعادة التقييم: <b>${esc(fmtY(e.dateAfter))}</b></span><span>المدة بين التقييمين: <b>${days == null ? "—" : days + " يوم"}</b></span></div>
+    <div class="idates">${e.pBefore && e.pAfter
+      ? `<span>فترة التقييم السابق: <b>${esc(fmtY(Date.parse(e.pBefore.from + "T12:00:00")))} – ${esc(fmtY(Date.parse(e.pBefore.to + "T12:00:00")))}</b></span><span>فترة إعادة التقييم: <b>${esc(fmtY(Date.parse(e.pAfter.from + "T12:00:00")))} – ${esc(fmtY(Date.parse(e.pAfter.to + "T12:00:00")))}</b></span><span>المقارنة بمعدل الحدوث لكل حصة</span>`
+      : `<span>تاريخ التقييم السابق: <b>${esc(fmtY(e.dateBefore))}</b></span><span>تاريخ إعادة التقييم: <b>${esc(fmtY(e.dateAfter))}</b></span><span>المدة بين التقييمين: <b>${days == null ? "—" : days + " يوم"}</b></span>`}</div>
     <div class="icmps">${box("الجانب السلوكي", b && b.behScore, a.behScore, e.dBeh)}${box("الجانب الأكاديمي", b && b.acaScore, a.acaScore, e.dAca)}${box("الإجمالي", b && b.comb, a.comb, e.dComb)}</div>
     <div class="iverd ${e.verdict}"><b>${vtxt}</b><span>عدد المعلمين الذين أجروا إعادة التقييم: <b>${e.nT}</b> في <b>${e.nS}</b> ${e.nS === 1 ? "مادة" : "مواد"}${evs}</span></div>
     <div class="rs">العناصر التي تغيّرت${IMPSAME ? ' <small style="font-weight:400;color:#555">(مقارنة نفس المواد المحدَّثة فقط: ' + e.nS + ")</small>" : ""}  <small style="font-weight:400;color:#555">(${e.better.length} تحسّن · ${e.worse.length} تراجع · ${e.same.length} دون تغيير)</small></div>
@@ -1215,7 +1251,7 @@ function vImport() {
   let h = `<h2 class="pt">${esc(t("imp_t"))}</h2><p class="ps">${esc(t("imp_s"))}</p>
   <div class="drop" id="drop"><div style="font-size:34px">📂</div>
     <input type="file" id="inDir" webkitdirectory directory multiple hidden>
-    <input type="file" id="inFiles" accept=".json,application/json" multiple hidden>
+    <input type="file" id="inFiles" accept=".json,application/json,.zip,application/zip" multiple hidden>
     <div class="row"><button class="btn" id="btnDir" ${supportsDir ? "" : "disabled"}>${esc(t("imp_btn"))}</button><button class="btn ghost" id="btnFiles">${esc(t("imp_files"))}</button></div>
     <p style="margin:12px 0 0;color:var(--muted)">${esc(t("imp_drop"))}</p>
     ${supportsDir ? "" : `<div class="note warn">${esc(t("imp_nofolder"))}</div>`}
@@ -1528,7 +1564,7 @@ function vStudent() {
   if (!A.recs.length) return empty();
   const S = Array.from(A.students.values()).sort((a, b) => sName(a).localeCompare(sName(b), "ar"));
   const pick = `<div class="tb no-print"><select id="pickStu"><option value="">${esc(t("rp_pick"))}</option>${S.map(s => `<option value="${SK.indexOf(s.key)}" ${s.key === CUR ? "selected" : ""}>${esc(sName(s))} (${esc(clsName(s.grade, s.section))})</option>`).join("")}</select>
-    ${CUR ? `<button class="btn sm" data-view="parent">${esc(t("rp_parent"))}</button><button class="btn sm" data-prev="1">🖨️ معاينة وطباعة</button>` : ""}<button class="btn ghost sm" data-view="students">${esc(t("rp_back"))}</button></div>`;
+    ${CUR ? `<button class="btn sm" data-view="parent">${esc(t("rp_parent"))}</button><button class="btn sm" data-prev="1">🖨️ معاينة وطباعة</button><button class="btn sm ghost" onclick="mxEditOpen()">✏️ تعديل تقييم البنود</button>` : ""}<button class="btn ghost sm" data-view="students">${esc(t("rp_back"))}</button></div>`;
   const s = CUR && viewOf(A.students.get(CUR));
   if (!s) return `<h2 class="pt">${esc(t("rp_t"))}</h2><div class="card">${pick}</div>`;
   const subs = orderSubs(Array.from(new Set(s.resp.map(r => r.subject))));
@@ -1561,7 +1597,7 @@ function vStudent() {
     }
     return `<tr><td>${esc(itemTxt(c))}</td>${cols.map(col => cellFor(c, col)).join("")}</tr>`;
   };
-  const rel = s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "";
+  const rel = (s.lowRel ? `<div class="note warn">${esc(t("low_rel"))}</div>` : "") + (s.resp.some(r => mxSrc(r) && mxSrc(r).manual) ? `<div class="note no-print">✏️ بعض تقييمات هذا الطالب معدّلة يدوياً.</div>` : "");
   const R = repCfg();
   if (STUPREV) return `<div class="tb no-print"><button class="btn ghost" data-prevback="1">→ رجوع للتعديل</button><button class="btn" id="btnPrint">🖨️ طباعة</button></div><div class="rwrap" id="reports" dir="rtl">${studentReport(s, R)}</div>`;
   const ax = actOf(s.key), sug = suggestActions(s);
@@ -1854,6 +1890,47 @@ function render() {
   $("#nav").innerHTML = Object.keys(VIEWS).filter(k => k !== "creport").map(k => `<button data-view="${k}" class="${VIEW === k ? "on" : ""}" ${(!has && k !== "import") ? "disabled" : ""}><span class="ic">${VIEWS[k][0]}</span>${esc(t("v_" + k))}</button>`).join("");
   $("#main").innerHTML = VIEWS[VIEW][1]();
   bindView();
+}
+
+/* ===== تعديل يدوي لتقييمات البنود (لكل مادة/معلم) ===== */
+// السجل الأصلي الذي يُعدَّل: إعادة التقييم الأحدث للمادة، أو الاستجابة الأصلية
+function mxSrc(r) {
+  if (!r) return null;
+  if (r.reeval) {
+    const rs = (reGroups().get(skeyOf(r.student)) || []).filter(x => x.subject === r.subject && x.teacher === r.teacher);
+    return rs.sort((a, b) => b.at - a.at)[0] || null;
+  }
+  return STORE[r.responseId] || null;
+}
+let MXE = null;
+function mxEditOpen() {
+  const s = CUR && viewOf(A.students.get(CUR)); if (!s) return;
+  const resp = s.resp.slice().sort((a, b) => String(a.subject).localeCompare(String(b.subject), "ar"));
+  MXE = { key: CUR, resp: resp.map(r => ({ r, src: mxSrc(r), lv: Object.assign({}, r.lv) })) };
+  const opts = l => [0, 1, 2, 3, 4].map(v => `<option value="${v}" ${l === v ? "selected" : ""}>${esc(lvlTxt(v))}</option>`).join("") + `<option value="" ${l === undefined ? "selected" : ""}>—</option>`;
+  const head = MXE.resp.map(x => `<th class="rot"><div><span class="rl1">${esc(x.r.subject)}</span><span class="rl2">${esc(x.r.teacher)}${x.r.reeval ? " 🔄" : ""}</span></div></th>`).join("");
+  const rows = CODES.map(c => `<tr><td style="min-width:260px">${esc(itemTxt(c))}</td>${MXE.resp.map((x, i) => `<td class="c"><select data-mx="${i}|${c}" style="font-size:12px;padding:2px">${opts(x.lv[c])}</select></td>`).join("")}</tr>`).join("");
+  const m = document.createElement("div"); m.className = "modal"; m.id = "mxModal";
+  m.innerHTML = `<div class="box" style="max-width:1100px"><h3 style="margin-top:0">✏️ تعديل تقييم البنود — ${esc(sName(s))}</h3>
+    <p class="hint">غيّر مستوى أي بند في أي مادة. يُحفظ التعديل على هذا الجهاز ويظهر في كل التقارير.${MXE.resp.some(x => x.r.reeval) ? " المواد المعلَّمة 🔄 يُعدَّل فيها التقييم الأحدث (إعادة التقييم)." : ""} إعادة استيراد ملف أحدث لنفس المعلم والمادة تستبدل التعديل.</p>
+    <div style="overflow:auto;max-height:60vh"><table class="t"><thead><tr><th>البند</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="mxEditSave()">💾 حفظ التعديل</button><button class="btn ghost" onclick="document.getElementById('mxModal').remove()">إلغاء</button></div></div>`;
+  document.body.appendChild(m);
+}
+function mxEditSave() {
+  if (!MXE) return;
+  let changed = 0;
+  document.querySelectorAll("#mxModal select[data-mx]").forEach(sel => {
+    const [i, c] = sel.dataset.mx.split("|"), x = MXE.resp[+i];
+    if (!x || !x.src) return;
+    const v = sel.value === "" ? undefined : +sel.value;
+    if (x.src.lv[c] === v) return;
+    if (v === undefined) delete x.src.lv[c]; else x.src.lv[c] = v;
+    x.src.manual = true; x.src.editedAt = Date.now(); changed++;
+  });
+  document.getElementById("mxModal").remove();
+  if (!changed) return;
+  analyze(); persist(); if (typeof computeImpact === "function") computeImpact(); render();
 }
 function go(v) { if (v === "impact") IMPCUR = null; VIEW = v; STUPREV = false; render(); window.scrollTo({ top: 0 }); }
 

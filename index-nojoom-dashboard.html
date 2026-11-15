@@ -46,10 +46,11 @@
   <div class="src-card" id="src-folder">
     <div class="src-icon">⭐</div>
     <div class="src-body">
-      <div class="src-title">مجلد ملفات المعلمين (نجوم مدرستي)</div>
+      <div class="src-title">مجلدات المعلمين (نجوم مدرستي) <span class="muted" style="font-size:11px">— يمكن أكثر من مجلد، ومشتركة مع البوابة</span></div>
       <div class="src-status" id="st-folder">غير مرتبط</div>
     </div>
-    <button class="btn sm" onclick="linkSource('folder')">🔗 ربط</button>
+    <button class="btn sm" onclick="linkSource('folder')">➕ إضافة مجلد</button>
+    <button class="btn sm" onclick="dshManageFolders()" title="المجلدات المربوطة">📁</button>
   </div>
   <input type="file" id="fb-central" accept=".xlsx,.xls" hidden onchange="fallbackPicked('central', this)">
   <input type="file" id="fb-form" accept=".xlsx,.xls,.csv" hidden onchange="fallbackPicked('form', this)">
@@ -90,6 +91,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- ترتيب الملفات مهم -->
+<script src="nojoom/shared/folder-link.js"></script>
 <script src="nojoom/dashboard/js/01-sources.js"></script>
 <script src="nojoom/dashboard/js/02-model.js"></script>
 <script src="nojoom/dashboard/js/03-analysis.js"></script>

@@ -109,12 +109,31 @@ function parseRosterWorkbook(wb) {
     byClass, count,
     teachers: parseTeacherSheet(wb),
     bell: parseBellSheet(wb),
+    holidays: parseHolidaySheet(wb),
     info: (typeof readSchoolInfoFromWorkbook === 'function') ? readSchoolInfoFromWorkbook(wb) : null
   };
 }
 
 // صفحة المعلمين ("المعلمين والجداول"): اسم المعلم | مادة التدريس | البريد الالكتروني | الصفوف (51-52-53)
 // ترجع null إذا لم توجد الصفحة
+/* ورقة «الإجازات والعطل»: [{name, from, to}] */
+function parseHolidaySheet(wb) {
+  const sn = wb.SheetNames.find(n => n.trim() === 'الإجازات والعطل') || wb.SheetNames.find(n => n.includes('الإجازات'));
+  if (!sn) return [];
+  const iso = v => {
+    if (v instanceof Date && !isNaN(v)) return new Date(v.getTime() - v.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (typeof v === 'number') return new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10);
+    const m = String(v || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    return m ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : '';
+  };
+  return XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' }).slice(1)
+    .map(r => ({ name: String(r[0] || '').trim(), from: iso(r[1]), to: iso(r[2]) || iso(r[1]) }))
+    .filter(h => h.from);
+}
+function holidayOn(date) {
+  const H = (state.rosterMeta && state.rosterMeta.holidays) || [];
+  return H.find(h => h.from <= date && date <= (h.to || h.from)) || null;
+}
 function parseTeacherSheet(wb) {
   const sheetName = wb.SheetNames.find(n => n.trim() === 'المعلمين والجداول')
                  || wb.SheetNames.find(n => n.includes('المعلمين'))
@@ -420,7 +439,7 @@ function rosterPlan(roster, teacherKey, myClasses) {
     work.archived.forEach(a => { if (a.student && !hrSet.has(a.fromClass)) { a.student.govAccount = null; a.student.alifAccount = null; } });
     work.archivedClasses.forEach(a => { if (a.cls && !hrSet.has(a.cls.name)) (a.cls.students || []).forEach(s => { s.govAccount = null; s.alifAccount = null; }); });
   }
-  return { work, rep, teacher, info: roster.info, bell: roster.bell, homeroomEnforced: enforceHR };
+  return { work, rep, teacher, info: roster.info, bell: roster.bell, holidays: roster.holidays || [], homeroomEnforced: enforceHR };
 }
 
 function rosterCommit(plan, meta) {
@@ -458,6 +477,7 @@ function rosterCommit(plan, meta) {
   state.rosterMeta = {
     managed: true, teacherKey: prev.teacherKey || null,
     bell: plan.bell || null,                                  // توقيت الحصص من الملف المركزي
+    holidays: plan.holidays || [],                            // الإجازات والعطل خلال الفصل
     timetable: teacher && teacher.timetable && Object.keys(teacher.timetable).length ? teacher.timetable : null,
     myClasses: Array.isArray(prev.myClasses) ? prev.myClasses : null,
     homeroom: teacher && teacher.homeroom ? teacher.homeroom : [],      // الصفوف التي المعلم رائدها
