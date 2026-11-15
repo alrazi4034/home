@@ -83,6 +83,7 @@ function renderStudentList() {
           <button class="part-btn" onclick="addParticipation(${cls.id},${s.id})">✋ +1</button>
           <button class="part-btn deduct" onclick="subtractPoint(${cls.id},${s.id})">➖</button>
           <button class="part-btn note" onclick="showAddNoteFromAttendance(${s.id},'${s.name.replace(/'/g,"\\'")}',' ${(s.parentPhone||'').replace(/'/g,"\\'")}')\ " title="إضافة ملاحظة سلوكية">📝 ملاحظة</button>
+          <button class="part-btn" onclick="goStudentReport(${cls.id},${s.id})" title="تقرير الطالب" style="padding-inline:8px">📄</button>
         </div>
       </div>`;
   }).join('');
@@ -530,3 +531,11 @@ function confirmClearSelected() {
   toast(`تم تصفير: ${cleared} ✅`, '🗑️');
 }
 
+
+// الانتقال السريع إلى تقرير الطالب (الحصة الحالية تبقى كما هي بدون حفظ تلقائي)
+function goStudentReport(clsId, sid) {
+  showPage('report', document.querySelector('.tab-btn[onclick*="\'report\'"]'));
+  if (typeof setReportClass === 'function') setReportClass(clsId);
+  if (typeof selectReportStudent === 'function') selectReportStudent(sid);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}

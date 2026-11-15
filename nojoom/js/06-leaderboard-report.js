@@ -557,6 +557,7 @@ function showStudentReport() {
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <div class="points-badge" style="font-size:15px">⭐ ${s.points}</div>
+          <button onclick="printParentReport(${cls.id},${s.id})" class="btn btn-primary btn-sm" title="تقرير A4 جاهز للطباعة والعرض على ولي الأمر">🖨️ تقرير ولي الأمر</button>
           ${s.parentPhone ? `<button onclick="showReportSummaryQR(${reportActiveStudent},'${s.name}','${s.parentPhone}')" class="btn btn-success btn-sm">📊 ملخص لولي الأمر</button>
           <button onclick="showCallQR('${s.parentPhone}','${s.name}')" class="btn btn-ghost btn-sm" style="color:#a29bfe;border-color:#a29bfe" title="QR Code للاتصال السريع">📲 QR اتصال</button>` : ''}
         </div>
@@ -861,3 +862,13 @@ function switchReportTimeline(mode) {
   </div>`;
 }
 
+
+// تقرير ولي الأمر (A4) — مادة المعلم، من بداية الفصل حتى اليوم
+function printParentReport(clsId, sid) {
+  const cls = state.classes.find(c => c.id === clsId), st = cls && cls.students.find(x => x.id === sid);
+  if (!st || typeof SRPT === 'undefined') return;
+  const si = getSchoolInfo(), to = _today(), from = si.termStart && si.termStart <= to ? si.termStart : '';
+  const subj = SRPT.fromNojoom(cls, st, state.assessments || [], { from, to, subject: si.subject || '', teacher: si.teacher || '' });
+  SRPT.open({ student: { name: st.name, sid: st.sid || (String(st.name).match(/\(([^()]+)\)\s*$/) || [])[1] || '', cls: cls.name },
+              school: { name: si.schoolName || '' }, from, to, subjects: [subj], single: true });
+}

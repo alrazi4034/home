@@ -69,6 +69,7 @@
 <nav class="tabs" id="tabs">
   <button class="tab active" data-tab="teachers" onclick="showTab('teachers')">👩‍🏫 المعلمون</button>
   <button class="tab" data-tab="sessions" onclick="showTab('sessions')">🗓️ الحصص والإدخالات</button>
+  <button class="tab" data-tab="students" onclick="showTab('students')">👨‍🎓 الطلاب</button>
   <button class="tab" data-tab="stars" onclick="showTab('stars')">⭐ نجوم مدرستي</button>
   <button class="tab" data-tab="quality" onclick="showTab('quality')">🧹 جودة البيانات <span class="badge" id="qBadge"></span></button>
   <a class="tab tab-link" href="attendance.html" title="متابعة الغياب ونواقص الإدخال — يقرأ الفورم وملفات نجوم مدرستي وسجل الغياب">📋 برنامج متابعة الغياب ↗</a>
@@ -79,6 +80,7 @@
   <section class="page" id="page-absence" hidden></section>
   <section class="page active" id="page-teachers"></section>
   <section class="page" id="page-sessions"></section>
+  <section class="page" id="page-students"></section>
   <section class="page" id="page-stars"></section>
   <section class="page" id="page-quality"></section>
   <div class="empty" id="emptyState">
@@ -103,6 +105,8 @@
 <script src="nojoom/dashboard/js/07-remind.js"></script>
 <script src="nojoom/shared/teacher-sessions.js"></script>
 <script src="nojoom/dashboard/js/08-sessions.js"></script>
+<script src="nojoom/shared/student-report.js"></script>
+<script src="nojoom/dashboard/js/09-students.js"></script>
 <script src="nojoom/shared/stars-lists.js"></script>
 <script src="nojoom/dashboard/js/05-main.js"></script>
 </body>

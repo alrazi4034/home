@@ -14,6 +14,9 @@ function showImportExportMenu() {
       <button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();document.getElementById('importAccountsJSONFile').click()">
         🧾 استيراد من JSON<br><span style="font-size:11px;font-weight:400;opacity:.8">حسابات وزاري/ألف بصيغة JSON</span>
       </button>
+      <button class="btn btn-import" style="width:100%;justify-content:flex-start;gap:10px" onclick="closeModalForce();mergeOldPick()">
+        📥 دمج بيانات قديمة (ملف نجوم مدرستي سابق أو نسخة احتياطية)
+      </button>
       <button class="btn btn-success" style="width:100%;justify-content:flex-start;gap:10px" onclick="doExportStudentData();closeModalForce()">
         📤 تصدير ملف إكسل<br><span style="font-size:11px;font-weight:400;opacity:.8">بيانات الطلاب الأساسية (CSV)</span>
       </button>

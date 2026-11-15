@@ -136,6 +136,7 @@ async function flUnlockExisting() {
         ${locked ? '<button class="btn btn-primary" onclick="closeModalForce();flContinue()">🔓 متابعة</button>' : ''}
         <button class="btn btn-ghost" onclick="closeModalForce();rosterSyncNow({interactive:true})">🔄 مزامنة الآن</button>
         <button class="btn btn-ghost" onclick="closeModalForce();rosterOpenClassPicker()">🏫 صفوفي</button>
+        <button class="btn btn-ghost" onclick="closeModalForce();mergeOldPick()" title="ملف نجوم مدرستي قديم أو نسخة احتياطية تُضاف بياناته إلى ملفك">📥 دمج بيانات قديمة</button>
         <button class="btn btn-ghost" onclick="closeModalForce();startTour()">🎓 جولة</button>
         <button class="btn btn-ghost" onclick="closeModalForce();openSetup(false, true)" style="font-size:11px;opacity:.7">⚙️ متقدم</button>
         <button class="btn btn-ghost" onclick="closeModalForce()">إغلاق</button>

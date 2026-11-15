@@ -89,6 +89,7 @@ function render() {
   renderStars(stars);
   renderQuality(quality);
   if (typeof renderSessions === 'function') renderSessions(from, to, cls);
+  if (typeof renderStudents === 'function') renderStudents(from, to, cls);
 }
 
 /* ---------- الإعدادات ---------- */
