@@ -1195,14 +1195,23 @@ async function plCentralTeachers(interactive) {
 /* زر الربط في الترويسة: يوضح الحالة (مربوط باسم المعلم / غير مربوط) */
 async function plHdrRefresh() {
   const b = document.getElementById('plHdrBtn'); if (!b) return;
-  if (!FL.supported()) { b.style.display = 'none'; return; }
-  const [f, me] = await Promise.all([FL.folders(), FL.me()]);
-  if (!f.length) { b.innerHTML = '📁 ربط المجلدات'; b.title = 'اربط مجلد «بيانات المدرسة» ومجلدك على OneDrive — مرة واحدة لكل البرامج'; b.classList.add('btn-primary'); return; }
-  b.classList.remove('btn-primary');
-  b.innerHTML = '📁 ' + (me && me.name ? plEsc(me.name.split(' ').slice(0, 2).join(' ')) : 'المجلدات') + ' <span style="color:#16a34a">●</span>';
-  b.title = 'مربوط: ' + f.map(x => x.name).join('، ') + (me ? ' — ' + me.name : '');
+  const st = await plLinkState();
+  const me = FL.supported() ? await FL.me() : null;
+  b.classList.toggle('btn-primary', !st.ok);
+  b.innerHTML = '🔗 ' + (st.ok ? 'متصل' : 'غير متصل') + ` <span style="color:${st.ok ? '#16a34a' : '#dc2626'}">●</span>`;
+  b.title = st.ok ? ('مرتبط' + (me && !st.admin ? ' — ' + me.name : '') + (st.admin ? ` — ${st.cmp} من ملفات البرامج` : '')) : 'اضغط لربط ملفاتك (مرة واحدة على هذا الجهاز)';
 }
-document.addEventListener('DOMContentLoaded', plHdrRefresh); setTimeout(plHdrRefresh, 300);
+document.addEventListener('DOMContentLoaded', plHdrRefresh); setTimeout(plHdrRefresh, 300); setInterval(plHdrRefresh, 15000);
+// عند فتح البوابة: إن كانت المجلدات مرتبطة ولها صلاحية ⇐ اربط «بيانات المدرسة» تلقائياً (بدون نوافذ)
+setTimeout(async () => {
+  try {
+    if (!FL.supported() || !(await FL.folders()).length) return;
+    if (typeof linkedHandle !== 'undefined' && linkedHandle) return;
+    const c = await FL.findCentral(false);
+    if (c) await plAutoLinkCentral(c);
+    plHdrRefresh();
+  } catch (e) {}
+}, 1500);
 
 let _plFiles = [], _plTeachers = [];
 async function portalFolders(interactive) {
@@ -1213,6 +1222,8 @@ async function portalFolders(interactive) {
   plModal('<div style="padding:20px;text-align:center">⏳ جاري قراءة المجلدات…</div>');
   const { central, teachers } = await plCentralTeachers(false);
   _plTeachers = teachers;
+  const linkedCentral = await plAutoLinkCentral(central);
+  if (plRole() === 'admin') await plAutoLinkCompanions(await plWalkFiles(3));
   _plFiles = await FL.scanTeacherFiles(teachers, false);
   let me = await FL.me();
   const admin = plRole() === 'admin';
@@ -1229,7 +1240,7 @@ async function portalFolders(interactive) {
   plHdrRefresh();
   const tf = await FL.teacherFile();
   const ask = admin ? false : (!me || mine.length > 1 || !mine.length);
-  plModal(`<h3 style="margin:0 0 6px">📁 ربط المجلدات</h3>
+  plModal(`<h3 style="margin:0 0 6px">🔗 الربط — ${admin ? "ملفات الإدارة" : "ملفاتي"}</h3>
     <div style="font-size:12.5px;color:var(--ink-soft,#666);margin-bottom:10px">${admin
       ? 'اربط مجلد <b>«بيانات المدرسة»</b> والمجلد الذي يضم <b>مجلدات المعلمين</b> (أو المجلد الأب الذي يضمهما). الربط مرة واحدة ويُستخدم في نجوم مدرستي ولوحة التحكم وبرنامج الغياب.'
       : 'اربط مجلد <b>«بيانات المدرسة»</b> و<b>مجلدك</b> (يمكن أكثر من مجلد). بعدها يفتح «نجوم مدرستي» جاهزاً بملفك دون أي إعداد.'}</div>
@@ -1239,8 +1250,7 @@ async function portalFolders(interactive) {
       <button class="btn" onclick="plAdd()">➕ إضافة مجلد</button>
       <button class="btn" onclick="plGuide(true)">❔ كيف أجهّز المجلدات؟</button>
     </div>
-    <div>📗 بيانات المدرسة: ${central ? '<b>' + plEsc(central.path) + '</b> ✅' : '<span style="color:#b33">لم يُعثر عليه — أضف مجلد «بيانات المدرسة»</span>'}</div>
-    ${!admin && me && tf ? `<div>📄 ملفي: <b>${plEsc(tf.name)}</b> ✅</div>` : ''}
+    ${plStatusHTML(admin, central, linkedCentral, tf, me)}
     ${autoMsg ? `<div style="margin-top:8px;background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:6px 10px">${autoMsg}</div>` : ''}
     ${teachers.length ? `<div style="margin-top:10px">👤 من أنا؟ ${admin ? '<span style="font-size:12px;color:#777">(اختياري — إذا كنت تستخدم نجوم مدرستي كمعلم)</span>' : ask ? '<span style="font-size:12px;color:#b7791f">اختر اسمك</span>' : ''}<br>
       <select id="plMe" style="width:100%;padding:8px;border-radius:8px;margin-top:4px"><option value="">— اختر اسمك —</option>
@@ -1248,9 +1258,22 @@ async function portalFolders(interactive) {
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       ${teachers.length ? '<button class="btn btn-primary" onclick="portalSaveMe()">💾 حفظ</button>' : ''}
       ${admin && central ? '<button class="btn" onclick="portalTeacherFiles()">🗂️ ملفات المعلمين</button>' : ''}
-      <button class="btn" onclick="FL.clear().then(()=>FL.setMe(null)).then(()=>FL.setTeacherFile(null)).then(()=>{document.getElementById('plModal').remove();plHdrRefresh();})" title="إلغاء كل الروابط على هذا الجهاز">🗑️ فك الربط</button>
+      ${admin ? '<button class="btn" onclick="plPickFiles()" title="لملفات خارج المجلدات المرتبطة">📎 ربط ملفات يدوياً</button>' : ''}
+      <button class="btn" onclick="plUnlinkAll()" title="إلغاء كل الروابط على هذا الجهاز">🗑️ فك الربط</button>
       <button class="btn" onclick="document.getElementById('plModal').remove()">إغلاق</button>
     </div>`);
+}
+// حالة كل ملف مرتبط (✅ متصل / ❌ غير متصل)
+function plStatusHTML(admin, central, linkedCentral, tf, me) {
+  const row = (ok, label, detail) => `<div style="display:flex;gap:8px;padding:2px 0">${ok ? '✅' : '❌'} <b>${label}</b> <span style="color:${ok ? '#555' : '#b33'};font-size:12.5px">${detail}</span></div>`;
+  let h = row(!!central, 'بيانات المدرسة', central ? plEsc(central.path) + (linkedCentral ? ' — مرتبط بالبوابة ونجوم مدرستي' : '') : 'لم يُعثر عليه في المجلدات المرتبطة');
+  if (!admin) h += row(!!(me && tf), 'ملفي في نجوم مدرستي', me && tf ? plEsc(tf.name) : 'اختر اسمك ثم 💾 حفظ');
+  else {
+    const n = (_plFiles || []).filter(f => f.teacher).length;
+    h += row(n > 0, 'ملفات المعلمين', n ? n + ' ملف' : 'لم يُعثر على ملفات — أضف المجلد الذي يضم مجلدات المعلمين');
+    (typeof COMPANION_FILES !== 'undefined' ? COMPANION_FILES : []).forEach(c => { const hd = companionHandles[c.key]; h += row(!!hd, c.label, hd ? plEsc(hd.name) : 'غير مرتبط — ضعه داخل أحد المجلدات المرتبطة أو استخدم «📎 ربط ملفات يدوياً»'); });
+  }
+  return `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 12px;margin:6px 0">${h}</div>`;
 }
 // إضافة مجلد (يمكن تكرارها لأكثر من مجلد) ثم الرجوع لنافذة الربط
 function plAdd() {
@@ -1266,6 +1289,15 @@ function plChecklist(central, st, tf) {
 }
 // شرح خطوات تجهيز المجلدات (اختصار OneDrive + مزامنة) ثم اختيار المجلدين
 function plGuide(fromMain) {
+  if (plRole() === 'admin') return plModal(`<h3 style="margin:0 0 6px">🔗 ربط ملفات الإدارة — مرة واحدة على هذا الجهاز</h3>
+    <div style="font-size:13px;line-height:1.9">اربط المجلد الرئيسي على OneDrive (المزامَن على جهازك) الذي يضم:
+      <ul style="margin:4px 0;padding-inline-start:22px"><li>مجلد <b>«بيانات المدرسة»</b></li><li>مجلدات <b>المعلمين</b> (ملفات نجوم مدرستي)</li><li><b>سجل الحضور</b> و<b>سجل الغياب</b> و<b>سجل المخالفات</b> و<b>ملف التقويم</b></li></ul>
+      يمكنك ربط أكثر من مجلد. البوابة تتعرّف على كل ملف من اسمه وتربطه تلقائياً، وأي ملف خارج المجلدات تربطه من «📎 ربط ملفات يدوياً».</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-primary" onclick="plAdd()">📂 اختيار مجلد</button>
+      <button class="btn" onclick="plPickFiles()">📎 ربط ملفات يدوياً</button>
+      ${fromMain ? '<button class="btn" onclick="portalFolders()">↩ رجوع</button>' : ''}
+      <button class="btn" onclick="document.getElementById('plModal').remove()">إغلاق</button></div>`);
   plModal(`<h3 style="margin:0 0 6px">📁 ربط مجلداتك — مرة واحدة على هذا الجهاز</h3>
     <div style="font-size:13px;color:var(--ink-soft,#555);margin-bottom:8px">ستربط <b>مجلدين</b>: مجلد <b>«بيانات المدرسة»</b> و<b>المجلد الذي يحمل اسمك</b>. بعدها تعمل كل البرامج (نجوم مدرستي، برنامج الحضور) بملفك مباشرة.</div>
     <div style="border:1px solid #e2e8f0;border-radius:10px;padding:8px 14px;background:rgba(148,163,184,.07)">
@@ -1311,6 +1343,7 @@ async function portalSaveMe() {
   await FL.setMe(t); await FL.setTeacherFile(h);
   const ov = document.getElementById('plModal'); if (ov) ov.remove();
   plHdrRefresh();
+  try { const c = await FL.findCentral(false); if (c) await plAutoLinkCentral(c); } catch (e) {}
   alert(`تم الربط ✅\n👤 ${t.name}\n📄 ${h.name}\n\nافتح «نجوم مدرستي» — سيعمل مباشرة بملفك.`);
 }
 
@@ -1378,6 +1411,90 @@ function portalZipFiles() {
   const sc = window._plScan; if (!sc) return;
   const files = sc.rows.map(r => ({ name: FL.safeName(r.t.name) + '/' + FL.fileNameFor(r.t), text: JSON.stringify(FL.starterData(r.t, sc.info), null, 2) }));
   MRS.download(MRS.makeZip(files), 'ملفات_نجوم_مدرستي_للمعلمين.zip');
+}
+
+/* =====================================================================
+   زر ربط واحد «🔗» للمعلم والإداري — يجمع ربط المجلدات (نجوم مدرستي) وربط ملفات البوابة
+   - المعلم: مجلد «بيانات المدرسة» + ملفه في نجوم مدرستي.
+   - الإداري: بيانات المدرسة + ملفات المعلمين + سجل الحضور + سجل الغياب + سجل المخالفات + التقويم.
+   ملف «بيانات المدرسة» الموجود في المجلدات يُربط تلقائياً بالبوابة، وملفات البرامج الأخرى تُكتشف بأسمائها.
+   ===================================================================== */
+async function plWalkFiles(maxDepth) {
+  const out = [];
+  for (const s of await FL.status(false)) {
+    if (!s.ok) continue;
+    const walk = async (dir, depth, prefix) => {
+      if (depth > maxDepth) return;
+      try {
+        for await (const [name, h] of dir.entries()) {
+          if (h.kind === 'file') { if (!name.startsWith('~$') && /\.(xlsx|json)$/i.test(name)) out.push({ name, h, path: prefix + name }); }
+          else await walk(h, depth + 1, prefix + name + '/');
+        }
+      } catch (e) {}
+    };
+    await walk(s.h, 1, s.name + '/');
+  }
+  return out;
+}
+async function plSame(a, b) { try { return !!(a && b && await a.isSameEntry(b)); } catch (e) { return false; } }
+// يربط ملف «بيانات المدرسة» الموجود في المجلدات بالبوابة (إدارة البيانات/بيانات المدرسة) دون منتقي ملفات
+async function plAutoLinkCentral(central) {
+  if (!central || typeof linkedHandle === 'undefined') return false;
+  if (await plSame(linkedHandle, central.handle)) return true;
+  try {
+    const mode = plRole() === 'admin' ? 'readwrite' : 'read';
+    if ((await central.handle.queryPermission({ mode })) !== 'granted') return false;
+    linkedHandle = central.handle;
+    await idxSaveHandle(central.handle);
+    await readHandleAndLoad(central.handle);
+    if (typeof startAutoRefreshTimer === 'function') startAutoRefreshTimer();
+    return true;
+  } catch (e) { console.warn('auto link central', e); return false; }
+}
+// الإداري: ملفات البرامج الأخرى (حضور/غياب/مخالفات/تقويم) تُكتشف من المجلدات بأسمائها
+async function plAutoLinkCompanions(files) {
+  if (typeof COMPANION_FILES === 'undefined') return;
+  for (const cfg of COMPANION_FILES) {
+    if (companionHandles[cfg.key]) continue;
+    const f = files.find(x => (cfg.kind === 'json' ? /\.json$/i : /\.xlsx$/i).test(x.name) && !/^nojoom/i.test(x.name) && classifyPickedFile(x.h) === cfg);
+    if (!f) continue;
+    try { if ((await f.h.queryPermission({ mode: 'read' })) !== 'granted') continue; companionHandles[cfg.key] = f.h; await cmpSaveHandle(cfg.key, f.h); await cmpReadAndShare(cfg, f.h); } catch (e) {}
+  }
+}
+// اختيار ملفات يدوياً (ملفات خارج المجلدات المرتبطة) — نفس منطق زر الربط القديم
+async function plPickFiles() {
+  try {
+    const handles = await window.showOpenFilePicker({ multiple: true, types: [
+      { description: 'بيانات المدرسة / سجل الحضور / سجل الغياب / سجل المخالفات (Excel)', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } },
+      { description: 'ملف التقويم المشترك (JSON)', accept: { 'application/json': ['.json'] } }] });
+    for (const h of handles) {
+      const cfg = classifyPickedFile(h);
+      if (cfg) await linkCompanionHandle(cfg, h);
+      else if (/\.xlsx$/i.test(h.name)) {
+        if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') continue;
+        linkedHandle = h; await idxSaveHandle(h); await readHandleAndLoad(h);
+        if (typeof startAutoRefreshTimer === 'function') startAutoRefreshTimer();
+      }
+    }
+  } catch (e) { if (!(e && e.name === 'AbortError')) alert('تعذّر الربط: ' + e.message); }
+  portalFolders();
+}
+async function plUnlinkAll() {
+  if (!confirm('فك كل الروابط على هذا الجهاز؟\n(الملفات نفسها لا تتأثر — فقط تحتاج إعادة الربط)')) return;
+  await FL.clear(); await FL.setMe(null); await FL.setTeacherFile(null);
+  try { await onUnlinkBtnClick(); } catch (e) {}
+  const ov = document.getElementById('plModal'); if (ov) ov.remove();
+  plHdrRefresh();
+}
+// حالة الربط للزر الموحّد
+async function plLinkState() {
+  const admin = plRole() === 'admin';
+  const f = FL.supported() ? await FL.folders() : [];
+  const tf = FL.supported() ? await FL.teacherFile() : null;
+  const central = typeof linkedHandle !== 'undefined' && !!linkedHandle;
+  const cmp = typeof COMPANION_FILES !== 'undefined' ? COMPANION_FILES.filter(c => companionHandles[c.key]).length : 0;
+  const ok = admin ? central && f.length > 0 : central && !!tf;
+  return { admin, folders: f.length, tf, central, cmp, ok };
 }
 
 /* timetable_pdf.js — قراءة «جدول المعلمين» من ملف PDF (مصدّر من Excel) وتحويله إلى جداول المعلمين في البوابة
@@ -1693,12 +1810,12 @@ function ttpApply() {
     <div class="h-actions">
       <button class="btn" id="switchAdminBtn" onclick="showAdminLoginPrompt()" style="display:none;">🧑‍💼 دخول كإداري</button>
       <button class="btn" id="switchTeacherBtn" onclick="showTeacherLoginPrompt()" style="display:none;">🧑‍🏫 دخول كمعلم</button>
-      <button class="link-btn" id="linkBtn" title="ربط ملف بيانات المدرسة + سجل الحضور + سجل المخالفات + ملف التقويم (دفعة واحدة، اختر عدة ملفات معاً)" onclick="onLinkBtnClick()">🔗</button>
-      <button class="link-btn" id="unlinkBtn" title="فك الربط التلقائي" onclick="onUnlinkBtnClick()" style="display:none;">✖</button>
+      <button class="link-btn" id="linkBtn" style="display:none!important" title="ربط ملف بيانات المدرسة + سجل الحضور + سجل المخالفات + ملف التقويم (دفعة واحدة، اختر عدة ملفات معاً)" onclick="onLinkBtnClick()">🔗</button>
+      <button class="link-btn" id="unlinkBtn" title="فك الربط التلقائي" onclick="onUnlinkBtnClick()" style="display:none!important;">✖</button>
       <input type="file" id="fileInput" accept=".xlsx" onchange="handleFile(event)" style="display:none;">
       <button class="btn btn-primary" id="saveToLinkBtn" title="حفظ التعديلات في الملف المرتبط" onclick="saveToLinkedFile(true)" style="display:none;">💾 حفظ</button>
       <button class="btn btn-accent" id="exportBtn" disabled onclick="exportWorkbook()" style="display:none;">⬇ تنزيل نسخة محدثة</button>
-      <button class="btn" id="plHdrBtn" onclick="portalFolders()" title="ربط المجلدات">📁 ربط المجلدات</button>
+      <button class="btn" id="plHdrBtn" onclick="portalFolders()" title="ربط الملفات">🔗 الربط</button>
       <button class="btn" title="دليل الاستخدام" onclick="showView('guide')" style="padding:8px 12px;border-radius:50%;font-weight:800;">ℹ️</button>
     </div>
   </header>
@@ -1836,7 +1953,7 @@ function ttpApply() {
 
       <a class="card utility" href="javascript:void(0)" onclick="showView('management')">
         <span class="icon">🔧</span>
-        <h3>إدارة البيانات <span class="teacher-only" style="font-size:11px;font-weight:400;">(بيانات المدرسة - عرض فقط)</span></h3>
+        <h3><span class="admin-only">إدارة البيانات</span><span class="teacher-only">بيانات المدرسة</span> <span class="teacher-only" style="font-size:11px;font-weight:400;">(عرض فقط)</span></h3>
         <p>التحكم الكامل ببيانات المدرسة: الطلاب، الإداريون، المعلمون والجداول، والتقويم — من ملف إكسل واحد قابل للتعديل والتصدير</p>
       </a>
 
@@ -2444,6 +2561,7 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
       if(row.includes('اسم المدرسة')) infoHeaderRow = i;
       if(row.some(c => String(c).includes('الفصل الدراسي الأول'))) termHeaderRow = i;
     });
+    if(termHeaderRow < 0){ const w1 = aoa.findIndex(r => /^\s*الأسبوع\s*0*1\s*$/.test(String(r[0] || ''))); if(w1 > 0) termHeaderRow = w1 - 1; }
     if(infoHeaderRow >= 0){
       state.infoHeaders = aoa[infoHeaderRow].filter(h => h);
       const valRow = aoa[infoHeaderRow+1] || [];
@@ -2452,7 +2570,8 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
       state.schoolClasses = classesFromString(state.schoolInfo['صفوف المدرسة']||'').sort();
     }
     if(termHeaderRow >= 0){
-      state.termHeaders = aoa[termHeaderRow];
+      state.termHeaders = aoa[termHeaderRow].some(c => String(c).includes('الفصل الدراسي')) ? aoa[termHeaderRow]
+        : [' الفصل الدراسي الأول','تاريخ البداية1',' الفصل الدراسي الثاني','تاريخ البداية2',' الفصل الدراسي الثالث','تاريخ البداية3'];   // إصلاح صف العناوين
       const rawRows = [];
       const holRow = aoa.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
       for(let i = termHeaderRow+1; i < (holRow > termHeaderRow ? holRow : aoa.length); i++){
