@@ -4364,7 +4364,7 @@ const FL = (() => {
     list.push(h); await saveFolders(list); return list;
   }
   async function add() {                       // يفتح اختيار مجلد (يمكن تكراره لأكثر من مجلد)
-    const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const h = await window.showDirectoryPicker({ id: 'razi-folders', mode: 'readwrite' });   // يتذكر آخر مكان (مجلد OneDrive)
     return addHandle(h);
   }
   async function remove(i) { const list = await folders(); list.splice(i, 1); await saveFolders(list); return list; }
@@ -4694,6 +4694,14 @@ function teacherLabel(t){ return (t.subjects.length ? t.subjects.join('، ') + '
 
 /* اسم المعلم: الاسم العربي من بيانات المدرسة (بالبريد)، وإلا من البريد بدون البادئة TID- */
 const _origDeriveTeacherName = deriveTeacherNameFromEmail;
+/* اسم من أدخل الحصة (المُرسِل الفعلي للفورم/نجوم مدرستي — وليس صاحب الحصة في الجدول).
+   إن حُفظ الاسم بالإنجليزية من البريد قبل تحميل بيانات المدرسة ⇐ نحوّله للاسم العربي من نفس البريد. */
+function entrySubmitterName(info){
+  const n = String((info && info.teacherName) || '').trim();
+  if(!n || !SHARED_TEACHERS.list.length || /[\u0600-\u06FF]/.test(n)) return n;
+  for(const [email, t] of SHARED_TEACHERS.byEmail){ if(_origDeriveTeacherName(email.replace(/^tid-/i, '')) === n) return t.name; }
+  return n;
+}
 deriveTeacherNameFromEmail = function(email){
   const t = SHARED_TEACHERS.byEmail.get(normTeacherEmail(email));
   if(t && t.name) return t.name;
@@ -5210,8 +5218,8 @@ renderEntryReport = function(){
         if(isNj) nojoomCount++;
         body += `<td class="entry-cell recorded entry-cell-clickable${isNj ? ' entry-cell-nj' : ''}" data-cls="${escapeHtml(c.className)}" data-period="${escapeHtml(p)}">
             <div class="ec-line1 ec-fit">تم ✓ (الغياب: ${fmt(info.count)})${isNj ? '' : ' <span class="ec-time">' + escapeHtml(fmtTime24(info.date)) + '</span>'}</div>
-            <div class="ec-tname ec-fit" title="${escapeHtml(info.teacherName||'')}">${isNj ? '<span class="nj-star" title="من نجوم مدرستي">⭐</span>' : ''}${escapeHtml(info.teacherName||'')}</div>
-            <div class="ec-subj ec-fit">${escapeHtml(entrySubjectOf(info.teacherName))}</div>
+            <div class="ec-tname ec-fit" title="أدخلها: ${escapeHtml(entrySubmitterName(info))}">${isNj ? '<span class="nj-star" title="من نجوم مدرستي">⭐</span>' : ''}${escapeHtml(entrySubmitterName(info))}</div>
+            <div class="ec-subj ec-fit">${escapeHtml(entrySubjectOf(entrySubmitterName(info)))}</div>
           </td>`;
       } else {
         const exp = expectedTeachers(jsDay, p, c.className);
@@ -5250,7 +5258,8 @@ buildEntryReportPrintHTML = function(date){
     }
     const cells = periods.map(p => {
       const has = byPeriod && byPeriod.has(p);
-      if(has){ recordedCount++; const info = byPeriod.get(p); return `<td class="recorded">✔ ${fmt(info.count)}${info.src === 'nojoom' ? ' <span style="font-size:6pt">⭐</span>' : ''}</td>`; }
+      if(has){ recordedCount++; const info = byPeriod.get(p); const who = entrySubmitterName(info), sub = entrySubjectOf(who);
+        return `<td class="recorded">✔ ${fmt(info.count)}${info.src === 'nojoom' ? ' <span style="font-size:6pt">⭐</span>' : ''}${who ? `<div style="font-size:7.5pt;font-weight:600;line-height:1.3;">${escapeHtml((sub ? sub + ' — ' : '') + who)}</div>` : ''}</td>`; }
       const exp = expectedTeachers(jsDay, p, c.className);
       return `<td class="missing">✘${exp.length ? `<div style="font-size:7.5pt;font-weight:600;line-height:1.3;">${exp.map(t => escapeHtml(teacherLabel(t))).join('<br>')}</div>` : ''}</td>`;
     }).join('');
