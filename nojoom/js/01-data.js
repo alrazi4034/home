@@ -116,6 +116,8 @@ function load() {
         if (ss._dailyPart)   st._dailyPart   = ss._dailyPart;
         if (ss._dailyDeduct) st._dailyDeduct = ss._dailyDeduct;
         if (ss.deductReasons) st.deductReasons = ss.deductReasons;     // أسباب الخصم (لمرصاد)
+        if (Array.isArray(ss._mPart)) st._mPart = ss._mPart;            // علامات الدمج
+        if (Array.isArray(ss._mBonus)) st._mBonus = ss._mBonus;
         if (ss.sid) st.sid = ss.sid;
         if (ss.phoneVerified !== undefined) st.phoneVerified = ss.phoneVerified;
       });
@@ -174,6 +176,8 @@ function load() {
               pointsLog: ss.pointsLog||[],
               _dailyPart: ss._dailyPart||{},
               _dailyDeduct: ss._dailyDeduct||{},
+              deductReasons: ss.deductReasons||[],
+              _mPart: ss._mPart||[], _mBonus: ss._mBonus||[],
               _manualBonus: ss._manualBonus !== undefined ? ss._manualBonus
                 : (ss._bonusPoints !== undefined
                     ? (ss._bonusPoints||0) - (ss.behaviorNotes||[]).reduce((s,n)=>s+(n.points||0),0)
