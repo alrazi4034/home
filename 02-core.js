@@ -101,15 +101,48 @@ function isWeekend(dateStr) {
   return day === 0 || day === 6;
 }
 
-// حساب نقاط الطالب في أسابيع محددة من pointsLog
-// weeks = Set أو Array من أرقام الأسابيع، أو null = كل الأسابيع
+// =================================================================
+// نقاط الطالب حسب التاريخ — من نفس مصادر النقاط الإجمالية (وليس من pointsLog وحده)
+//   حضور: كل حصة محفوظة لم يغب فيها = +2 · مشاركات/خصم: سجل اليوم (+ غير المحفوظ بعد)
+//   ملاحظات: بتاريخ الملاحظة · تقييمات: بتاريخ التقييم
+// الأسبوع يُحسب من التاريخ مباشرة (لا يعتمد على termWeek المخزّن الذي قد يكون قديماً بعد الدمج/تغيير بداية الفصل)
+// ما لا تاريخ له (مكافآت يدوية قديمة/مشاركات قديمة بلا سجل) يظهر فقط في «كل الأسابيع».
+// =================================================================
+function _isoOf(v) {
+  const t = String(v || ''); let m = t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+}
+function _clsOfStudent(s) { return state.classes.find(c => c.students.includes(s)) || null; }
+function datedPoints(s, cls) {
+  cls = cls || _clsOfStudent(s);
+  const out = [];
+  if (!cls) return out;
+  const abs = new Set((s.absenceDates || []).map(_isoOf));
+  (cls._savedDates || []).forEach(d => { const k = _isoOf(d); if (k && !abs.has(k)) out.push({ date: k, pts: 2, type: 'attendance' }); });
+  (s.pointsLog || []).forEach(e => { if ((e.type === 'participation' || e.type === 'deduct') && e.date) out.push({ date: _isoOf(e.date), pts: +e.pts || 0, type: e.type }); });
+  Object.entries(s._dailyPart || {}).forEach(([d, n]) => { if (n) out.push({ date: d, pts: +n, type: 'participation' }); });      // لم تُحفظ بعد
+  Object.entries(s._dailyDeduct || {}).forEach(([d, n]) => { if (n) out.push({ date: d, pts: -n, type: 'deduct' }); });
+  (s.behaviorNotes || []).forEach(n => { const d = _isoOf(n.isoDate || n.date); if (d && n.points) out.push({ date: d, pts: +n.points, type: 'note' }); });
+  (state.assessments || []).forEach(a => {
+    if (!(a.classIds || []).includes(cls.id)) return;
+    const v = (a.awardedPoints || {})[s.id]; if (!v) return;
+    const lg = (s.pointsLog || []).find(e => e.type === 'assessment' && e.assessId === a.id);
+    const d = _isoOf(a.date) || (lg && _isoOf(lg.date)); if (d) out.push({ date: d, pts: +v, type: 'assessment' });
+  });
+  return out;
+}
+// weeks = Set أو Array من أرقام الأسابيع، أو null = كل الأسابيع (= النقاط الإجمالية)
 function getPointsForWeeks(student, weeks) {
   if (!weeks || weeks.size === 0) return student.points || 0;
-  const log = student.pointsLog || [];
-  if (!log.length) return 0;
-  return log
-    .filter(e => e.termWeek !== undefined && weeks.has(e.termWeek))
-    .reduce((sum, e) => sum + e.pts, 0);
+  const W = weeks instanceof Set ? weeks : new Set(weeks);
+  return datedPoints(student).reduce((sum, e) => { const w = getTermWeek(e.date); return w !== null && W.has(w) ? sum + e.pts : sum; }, 0);
+}
+// نقاط كل أسبوع لطالب: {أسبوع: نقاط}
+function weeklyPointsMap(student, cls) {
+  const m = {};
+  datedPoints(student, cls).forEach(e => { const w = getTermWeek(e.date); if (w !== null) m[w] = (m[w] || 0) + e.pts; });
+  return m;
 }
 
 // استخراج كل الأسابيع المتاحة في صف معين
@@ -119,10 +152,8 @@ function getAvailableWeeks(classIds) {
   state.classes
     .filter(cls => !classIds || classIds.includes(cls.id))
     .forEach(cls => {
-      // استخراج الأسابيع من pointsLog
-      cls.students.forEach(s =>
-        (s.pointsLog||[]).forEach(e => { if (e.termWeek) weeks.add(e.termWeek); })
-      );
+      // الأسابيع من كل مصادر النقاط (بالتاريخ)
+      cls.students.forEach(s => Object.keys(weeklyPointsMap(s, cls)).forEach(w => weeks.add(+w)));
       // استخراج الأسابيع من _savedDates (الحضور والغياب)
       if (info.termStart) {
         (cls._savedDates||[]).forEach(d => {

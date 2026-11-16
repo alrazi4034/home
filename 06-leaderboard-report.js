@@ -723,18 +723,12 @@ function renderWeeklyChart() {
   var cls = state.classes.find(function(c) { return c.id === reportActiveClass; });
   var s = cls && cls.students.find(function(st) { return st.id === reportActiveStudent; });
   if (!s) return;
-  var log = s.pointsLog || [];
-  var hasWeeks = log.some(function(e) { return e.termWeek !== undefined && e.termWeek !== null; });
+  var weekMap = weeklyPointsMap(s, cls);
+  var hasWeeks = Object.keys(weekMap).length > 0;
   if (!hasWeeks) {
     container.innerHTML = '<div style="text-align:center;padding:16px;color:rgba(255,255,255,0.4);font-size:13px">📊 أدخل تاريخ بداية الفصل لعرض الرسم البياني</div>';
     return;
   }
-  var weekMap = {};
-  log.forEach(function(e) {
-    if (e.termWeek !== undefined && e.termWeek !== null) {
-      weekMap[e.termWeek] = (weekMap[e.termWeek] || 0) + (e.pts || 0);
-    }
-  });
   var weeks = Object.keys(weekMap).map(Number).sort(function(a, b) { return a - b; });
   var values = weeks.map(function(w) { return weekMap[w]; });
   var maxVal = Math.max.apply(null, values.concat([1]));

@@ -145,7 +145,7 @@ function readSchoolInfoFromWorkbook(wb) {
     if (row.some(c => String(c).includes('الفصل الدراسي الأول'))) termHeaderRow = i;
   });
   // صف العناوين قد يكون تالفاً ⇐ نستدل عليه من صف «الأسبوع 1»
-  if (termHeaderRow < 0) { const w1 = grid.findIndex(r => /^\s*الأسبوع\s*0*1\s*$/.test(String(r[0] || ''))); if (w1 > 0) termHeaderRow = w1 - 1; }
+  { const w1 = grid.findIndex(r => /^\s*الأسبوع\s*0*1\s*$/.test(String(r[0] || ''))); if (w1 > 0) termHeaderRow = w1 - 1; }   // (اسم إجازة قد يحتوي «الفصل الدراسي الأول»)
   if (infoHeaderRow >= 0) {
     const headers = grid[infoHeaderRow].filter(h => h);
     const vals = grid[infoHeaderRow+1] || [];

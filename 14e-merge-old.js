@@ -48,7 +48,8 @@ function mergeOldPreview(text, fname) {
   let d; try { d = JSON.parse(text); } catch (e) { return alert('الملف ليس ملف نجوم مدرستي صالحاً.'); }
   if (!d || !Array.isArray(d.classes)) return alert('الملف ليس ملف نجوم مدرستي (لا يحتوي صفوفاً).');
   const h = moHash(text);
-  if ((state.rosterMeta && state.rosterMeta.mergedFrom || []).includes(h)) return alert('هذا الملف دُمج سابقاً في ملفك — لا حاجة لدمجه مرة أخرى.');
+  const again = (state.rosterMeta && state.rosterMeta.mergedFrom || []).includes(h);
+  if (again && !confirm('هذا الملف دُمج سابقاً في ملفك.\n\nإعادة الدمج آمنة: لا تكرر أي بيانات، وتُصلح ما لم يُدمج سابقاً (أيام الحضور ونقاط التقييمات والمكافآت) ثم تعيد احتساب النقاط.\n\nمتابعة؟')) return;
   const all = moAllStudents();
   const idIndex = new Map(); all.forEach(x => moIds(x.st).forEach(id => idIndex.set(id, x)));
   const used = new Set();
@@ -74,7 +75,7 @@ function mergeOldPreview(text, fname) {
   });
   const notes = plan.reduce((n, x) => n + (x.os.behaviorNotes || []).length, 0);
   const days = new Set(d.classes.flatMap(c => c._savedDates || [])).size;
-  MO = { d, h, fname, plan, unmatched };
+  MO = { d, h, fname, plan, unmatched, again };
   // المطابقة اليدوية للباقي: قائمة بطلاب نفس الشعبة (الأقرب اسماً أولاً) أو كل الطلاب
   const opts = u => {
     const pool = (u.cls ? u.cls.students.map(st => ({ cls: u.cls, st })) : all).filter(x => !used.has(x.st))
@@ -113,23 +114,36 @@ function mergeOldApply() {
     taken.add(st); plan.push({ cls, oc: u.oc, st, os: u.os, sameCls: cls.name === u.oc.name, how: 'manual' });
   });
   const uni = (a, b) => [...new Set([...(a || []), ...(b || [])])].sort();
-  const touchedCls = new Set();
-  plan.forEach(({ cls, oc, st, os, sameCls }) => {
-    if (sameCls && !touchedCls.has(cls)) {
-      touchedCls.add(cls);
-      cls._savedDates = uni(cls._savedDates, oc._savedDates);
-      cls._savedPeriods = Object.assign({}, cls._savedPeriods || {});
-      Object.entries(oc._savedPeriods || {}).forEach(([dt, ps]) => { cls._savedPeriods[dt] = uni((cls._savedPeriods[dt] || []).map(Number), (ps || []).map(Number)).map(Number).sort((a, b) => a - b); });
-    }
+  // الشعبة الجديدة المقابلة لكل شعبة قديمة = شعبة أغلب طلابها المطابَقين (الأسماء قد تختلف: «6/1» و«61» …)
+  const votes = {};
+  plan.forEach(({ oc, cls }) => { const v = votes[oc.id] = votes[oc.id] || new Map(); v.set(cls, (v.get(cls) || 0) + 1); });
+  const clsMap = {};
+  Object.entries(votes).forEach(([ocId, v]) => { clsMap[ocId] = [...v.entries()].sort((x, y) => y[1] - x[1])[0][0]; });
+  (d.classes || []).forEach(oc => { if (!clsMap[oc.id]) { const c = state.classes.find(x => x.name === oc.name); if (c) clsMap[oc.id] = c; } });
+  // أيام الحصص المحفوظة تُدمج في الشعبة المقابلة
+  (d.classes || []).forEach(oc => {
+    const cls = clsMap[oc.id]; if (!cls) return;
+    cls._savedDates = uni(cls._savedDates, oc._savedDates);
+    cls._savedPeriods = Object.assign({}, cls._savedPeriods || {});
+    Object.entries(oc._savedPeriods || {}).forEach(([dt, ps]) => { cls._savedPeriods[dt] = uni((cls._savedPeriods[dt] || []).map(Number), (ps || []).map(Number)).map(Number).sort((a, b) => a - b); });
+  });
+  plan.forEach(({ cls, oc, st, os }) => {
+    const hadMarks = Array.isArray(st._mPart);
+    st._mPart = st._mPart || []; st._mBonus = st._mBonus || [];
+    // هل دُمج هذا الطالب في نسخة سابقة من الدمج (قبل حفظ العلامات)؟ ⇐ نعرفه من وجود سجله القديم كاملاً لديه
+    const pk0 = e => (e.date || '') + '|' + (e.type || '') + '|' + (e.pts || 0) + '|' + (e.assessId || e.t || e.time || '');
+    const hp0 = new Set((st.pointsLog || []).map(pk0));
+    const nk0 = n => (n.type || '') + '|' + (n.isoDate || n.date || '') + '|' + moNoteText(n);
+    const hn0 = new Set((st.behaviorNotes || []).map(nk0)), ha0 = new Set(st.absenceDates || []);
+    const ev = [...(os.pointsLog || []).map(e => hp0.has(pk0(e))), ...(os.behaviorNotes || []).map(n => hn0.has(nk0(n))), ...(os.absenceDates || []).map(x => ha0.has(x))];
+    const legacy = MO.again && !hadMarks && (!ev.length || ev.every(Boolean));   // دُمج بالنسخة السابقة ⇐ مشاركاته أُضيفت سابقاً
     if (!st.sid && MO_SID(os)) st.sid = MO_SID(os);
-    const newAbs = (os.absenceDates || []).filter(x => !(st.absenceDates || []).includes(x));
     st.absenceDates = uni(st.absenceDates, os.absenceDates);
     st.lateDates = uni(st.lateDates, os.lateDates);
     st._prevAtt = Object.assign({}, os._prevAtt || {}, st._prevAtt || {});
-    // العدادات: الحضور والغياب من الأيام القديمة غير الموجودة حالياً
-    st.absent = (st.absent || 0) + newAbs.length;
-    st.present = (st.present || 0) + Math.max(0, (os.present || 0));
-    st.participation = (st.participation || 0) + (os.participation || 0);
+    // العدادات بلا تاريخ تُضاف مرة واحدة فقط لكل ملف
+    if (!st._mPart.includes(MO.h)) { if (!legacy) st.participation = (st.participation || 0) + (os.participation || 0); st._mPart.push(MO.h); }
+    if (!st._mBonus.includes(MO.h)) { st._manualBonus = (st._manualBonus || 0) + (os._manualBonus || 0); st._mBonus.push(MO.h); }
     // الملاحظات (بدون تكرار) — بالصياغة الجديدة
     const key = n => (n.type || '') + '|' + (n.isoDate || n.date || '') + '|' + moNoteText(n);
     const have = new Set((st.behaviorNotes || []).map(key));
@@ -139,29 +153,35 @@ function mergeOldApply() {
       if (m.type === 'negative' && !m.code && typeof marsadCodeOf === 'function') m.code = marsadCodeOf(n.text) || '';
       if (!have.has(key(m))) { st.behaviorNotes.push(m); have.add(key(m)); }
     });
-    // سجل النقاط والنقاط
-    const pk = e => (e.date || '') + '|' + (e.type || '') + '|' + (e.pts || 0) + '|' + (e.t || e.time || '');
+    // سجل النقاط (مشاركات/خصم بالتاريخ) — بدون تكرار؛ termWeek يُعاد حسابه من التاريخ
+    const pk = e => (e.date || '') + '|' + (e.type || '') + '|' + (e.pts || 0) + '|' + (e.assessId || e.t || e.time || '');
     const hp = new Set((st.pointsLog || []).map(pk));
-    let addPts = 0;
     st.pointsLog = st.pointsLog || [];
-    (os.pointsLog || []).forEach(e => { if (!hp.has(pk(e))) { st.pointsLog.push(e); hp.add(pk(e)); addPts += (+e.pts || 0); } });
-    const logged = (os.pointsLog || []).reduce((a, e) => a + (+e.pts || 0), 0);
-    st.points = (st.points || 0) + addPts + Math.max(0, (os.points || 0) - logged);   // نقاط قديمة بلا سجل تُضاف كما هي
+    (os.pointsLog || []).forEach(e => { if (!hp.has(pk(e))) { const x = Object.assign({}, e); delete x.termWeek; const tw = getTermWeek(x.date); if (tw !== null) x.termWeek = tw; st.pointsLog.push(x); hp.add(pk(e)); } });
     st.deductReasons = (st.deductReasons || []).concat((os.deductReasons || []).filter(r => !(st.deductReasons || []).some(x => x.date === r.date && x.code === r.code)));
     if (os.parentPhone && !st.parentPhone) st.parentPhone = os.parentPhone;
   });
-  // التقييمات: تُضاف (بربط الصفوف والطلاب الجدد)
+  // التقييمات: الدرجات ونقاطها تُنقل لأرقام الطلاب الجدد (وتُكمَّل إن كان التقييم موجوداً من دمج سابق)
   let addA = 0;
-  const clsMap = {}; (d.classes || []).forEach(oc => { const c = state.classes.find(x => x.name === oc.name); if (c) clsMap[oc.id] = c; });
   state.assessments = state.assessments || [];
   (d.assessments || []).forEach(a => {
-    if (state.assessments.some(x => x.name === a.name && (x.date || '') === (a.date || '') && x.maxScore === a.maxScore)) return;
-    const na = Object.assign({}, a, { id: Date.now() + Math.floor(Math.random() * 1e6), classIds: (a.classIds || []).map(id => clsMap[id] && clsMap[id].id).filter(Boolean), scores: {} });
-    plan.forEach(({ oc, st, os }) => { if ((a.classIds || []).includes(oc.id) && a.scores && a.scores[os.id] !== undefined) na.scores[st.id] = a.scores[os.id]; });
-    if (na.classIds.length) { state.assessments.push(na); addA++; }
+    const newCls = [...new Set((a.classIds || []).map(id => clsMap[id] && clsMap[id].id).filter(Boolean))];
+    if (!newCls.length) return;
+    let na = state.assessments.find(x => x.name === a.name && (x.date || '') === (a.date || '') && x.maxScore === a.maxScore);
+    if (!na) { na = Object.assign({}, a, { id: Date.now() + Math.floor(Math.random() * 1e6), classIds: [], scores: {}, awardedPoints: {} }); state.assessments.push(na); addA++; }
+    na.classIds = [...new Set([...(na.classIds || []), ...newCls])];
+    na.scores = na.scores || {}; na.awardedPoints = na.awardedPoints || {};
+    plan.forEach(({ oc, st, os }) => {
+      if (!(a.classIds || []).includes(oc.id)) return;
+      if (a.scores && a.scores[os.id] !== undefined && na.scores[st.id] === undefined) na.scores[st.id] = a.scores[os.id];
+      if (a.awardedPoints && a.awardedPoints[os.id] !== undefined && !na.awardedPoints[st.id]) na.awardedPoints[st.id] = a.awardedPoints[os.id];
+    });
   });
+  // إعادة احتساب النقاط والحضور لكل الطلاب من المصدر
+  if (typeof recalcAllTermWeeks === 'function') recalcAllTermWeeks();
+  state.classes.forEach(c => c.students.forEach(st => recomputeWithAssessments(c, st)));
   state.rosterMeta = Object.assign({}, state.rosterMeta || {});
-  state.rosterMeta.mergedFrom = (state.rosterMeta.mergedFrom || []).concat(MO.h);
+  if (!state.rosterMeta.mergedFrom || !state.rosterMeta.mergedFrom.includes(MO.h)) state.rosterMeta.mergedFrom = (state.rosterMeta.mergedFrom || []).concat(MO.h);
   const n = plan.length;
   MO = null;
   closeModalForce();

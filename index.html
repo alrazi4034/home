@@ -2561,7 +2561,7 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
       if(row.includes('اسم المدرسة')) infoHeaderRow = i;
       if(row.some(c => String(c).includes('الفصل الدراسي الأول'))) termHeaderRow = i;
     });
-    if(termHeaderRow < 0){ const w1 = aoa.findIndex(r => /^\s*الأسبوع\s*0*1\s*$/.test(String(r[0] || ''))); if(w1 > 0) termHeaderRow = w1 - 1; }
+    { const w1 = aoa.findIndex(r => /^\s*الأسبوع\s*0*1\s*$/.test(String(r[0] || ''))); if(w1 > 0) termHeaderRow = w1 - 1; }   // الصف الذي يسبق «الأسبوع 1» (اسم إجازة قد يحتوي «الفصل الدراسي الأول»)
     if(infoHeaderRow >= 0){
       state.infoHeaders = aoa[infoHeaderRow].filter(h => h);
       const valRow = aoa[infoHeaderRow+1] || [];
@@ -2570,7 +2570,7 @@ function loadWorkbookFromArrayBuffer(buf, fileName){
       state.schoolClasses = classesFromString(state.schoolInfo['صفوف المدرسة']||'').sort();
     }
     if(termHeaderRow >= 0){
-      state.termHeaders = aoa[termHeaderRow].some(c => String(c).includes('الفصل الدراسي')) ? aoa[termHeaderRow]
+      state.termHeaders = aoa[termHeaderRow].some(c => String(c).includes('تاريخ البداية')) ? aoa[termHeaderRow]
         : [' الفصل الدراسي الأول','تاريخ البداية1',' الفصل الدراسي الثاني','تاريخ البداية2',' الفصل الدراسي الثالث','تاريخ البداية3'];   // إصلاح صف العناوين
       const rawRows = [];
       const holRow = aoa.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل'));
