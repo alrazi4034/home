@@ -438,6 +438,16 @@ function showStudentReport() {
     presentVal = Math.max(0, savedInRange.length - absentInRange);
   }
 
+  // تفصيل النقاط: كل الفترة = نفس معادلة الرصيد · فترة محددة = من الأحداث المؤرخة داخلها
+  const _P = pointsParts(cls, s);
+  const _inR = d => d && (!_dateFrom || d >= _dateFrom) && (!_dateTo || d <= _dateTo);
+  const _R = (_dateFrom || _dateTo) ? (() => {
+    const ev = datedPoints(s, cls).filter(e => _inR(e.date));
+    const sum = t => ev.filter(e => e.type === t).reduce((a, e) => a + e.pts, 0);
+    const r = { attend: sum('attendance'), part: sum('participation'), deduct: sum('deduct'), notes: sum('note'), assess: sum('assessment') };
+    r.total = r.attend + r.part + r.deduct + r.notes + r.assess;
+    return r;
+  })() : null;
   const total = presentVal + absentVal;
   const attPct = total > 0 ? Math.round((presentVal/total)*100) : 0;
   const level = s.points >= 100 ? '🥇 ممتاز' : s.points >= 60 ? '🥈 جيد جداً' : s.points >= 30 ? '🥉 جيد' : '📘 مبتدئ';
@@ -499,7 +509,7 @@ function showStudentReport() {
         const score = a.scores?.[s.id];
         const pct = score !== undefined && score !== '' ? Math.round((parseFloat(score)/a.maxScore)*100) : null;
         const color = pct === null ? 'var(--text-muted)' : pct >= 75 ? 'var(--present)' : pct >= 50 ? '#ff9f43' : 'var(--absent)';
-        const earnedPts = a.awardedPoints?.[s.id];
+        const earnedPts = (score !== undefined && score !== '') ? assessEarned(a, s.id) : undefined;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:var(--surface);border-radius:10px;margin-bottom:6px;border:1px solid var(--border-color)">
           <div>
             <div style="font-size:13px;font-weight:700">${a.name}</div>
@@ -575,20 +585,20 @@ function showStudentReport() {
             <!-- 1: رصيد النقاط -->
             <div class="stat-card yellow" style="padding:14px 10px">
               <div class="stat-icon" style="font-size:22px">⭐</div>
-              <div class="stat-value" style="color:var(--accent);font-size:26px">${s.points}</div>
-              <div class="stat-label">رصيد النقاط</div>
+              <div class="stat-value" style="color:var(--accent);font-size:26px">${_R ? _R.total : _P.total}</div>
+              <div class="stat-label">${_R ? 'نقاط الفترة' : 'رصيد النقاط'}</div>
             </div>
             <!-- 2: نسبة الحضور -->
             <div class="stat-card teal" style="padding:14px 10px">
               <div class="stat-icon" style="font-size:22px">${attPct>=75?'✅':'⚠️'}</div>
               <div class="stat-value" style="color:${attPct>=75?'var(--present)':'var(--absent)'};font-size:24px">${attPct}%</div>
               <div class="stat-label">الحضور</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${presentVal}/${totalSessions} حصة</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:3px">${presentVal}/${total} حصة</div>
             </div>
             <!-- 3: المشاركات -->
             <div class="stat-card purple" style="padding:14px 10px">
               <div class="stat-icon" style="font-size:22px">✋</div>
-              <div class="stat-value" style="color:#a29bfe;font-size:26px">${s.participation}</div>
+              <div class="stat-value" style="color:#a29bfe;font-size:26px">${_R ? _R.part : s.participation}</div>
               <div class="stat-label">مشاركة</div>
             </div>
             <!-- 4: التقييمات -->
@@ -613,36 +623,37 @@ function showStudentReport() {
 
         <!-- جدول تفاصيل احتساب رصيد النقاط -->
         ${(() => {
-          const ATTEND_PTS = 2;
-          const attendPts = presentVal * ATTEND_PTS;
-          const partPts   = s.participation;
-          const notePts   = (s.behaviorNotes||[]).reduce((sm,n)=>sm+(n.points||0),0);
-          const manualPts = s._manualBonus||0;
-          const assessList2 = (state.assessments||[]).filter(a=>a.classIds.includes(reportActiveClass));
-          const assessPts = assessList2.reduce((sm,a)=>sm+(a.awardedPoints?.[s.id]||0),0);
-          const rows = [
-            { label:'📅 الحضور', detail:`${presentVal} حصة × 2`, pts: attendPts, color:'var(--present)' },
-            { label:'✋ المشاركة', detail:`${s.participation} مشاركة × 1`, pts: partPts, color:'#a29bfe' },
-            { label:'📝 التقييمات', detail:`${assessList2.length} تقييم`, pts: assessPts, color:'#5fd8e8' },
-            { label:'📋 الملاحظات', detail:`إيجابية/سلبية`, pts: notePts, color: notePts>=0?'var(--present)':'var(--absent)' },
-
+          const rows = _R ? [
+            { label:'📅 الحضور', detail:`${presentVal} حصة × 2`, pts: _R.attend, color:'var(--present)' },
+            { label:'✋ المشاركة', detail:`${_R.part} مشاركة × 1`, pts: _R.part, color:'#a29bfe' },
+            { label:'📝 التقييمات', detail:`بتاريخ التقييم`, pts: _R.assess, color:'#5fd8e8' },
+            { label:'📋 الملاحظات', detail:`إيجابية/سلبية`, pts: _R.notes, color: _R.notes>=0?'var(--present)':'var(--absent)' },
+            { label:'➖ الخصم', detail:`خصم أثناء الحصص`, pts: _R.deduct, color:'var(--absent)' },
+          ] : [
+            { label:'📅 الحضور', detail:`${_P.present} حصة × 2`, pts: _P.attend, color:'var(--present)' },
+            { label:'✋ المشاركة', detail:`${_P.part} مشاركة × 1`, pts: _P.part, color:'#a29bfe' },
+            { label:'📝 التقييمات', detail:`${_P.assessCount} تقييم مُدخل`, pts: _P.assess, color:'#5fd8e8' },
+            { label:'📋 الملاحظات', detail:`إيجابية/سلبية`, pts: _P.notes, color: _P.notes>=0?'var(--present)':'var(--absent)' },
+            { label:'🎁 مكافآت / خصم يدوي', detail:`مكافأة − خصم`, pts: _P.manual, color: _P.manual>=0?'var(--accent)':'var(--absent)' },
           ];
-          const tableRows = rows.map(r=>`
+          const tableRows = rows.filter(r => r.pts !== 0 || !r.label.includes('➖')).map(r=>`
             <div style="display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border-color);font-size:13px">
               <div style="flex:1;font-weight:600">${r.label}</div>
               <div style="flex:1;color:var(--text-muted);font-size:12px">${r.detail}</div>
               <div style="min-width:60px;text-align:left;font-weight:800;font-size:14px;color:${r.color}">${r.pts>0?'+':''}${r.pts} ⭐</div>
             </div>`).join('');
+          const tot = _R ? _R.total : _P.total;
           return `
           <div style="background:var(--surface2);border-radius:12px;overflow:hidden;margin-bottom:16px;border:1px solid rgba(247,201,72,0.2)">
             <div style="padding:10px 14px;background:rgba(247,201,72,0.08);border-bottom:1px solid rgba(247,201,72,0.15);font-size:13px;font-weight:800;color:var(--accent)">
-              ⭐ تفاصيل احتساب رصيد النقاط
+              ⭐ تفاصيل احتساب رصيد النقاط${_R ? ` <span style="font-weight:600;color:var(--text-muted);font-size:12px">(الفترة ${_dateFrom||'…'} ← ${_dateTo||'…'})</span>` : ''}
             </div>
             ${tableRows}
             <div style="display:flex;align-items:center;padding:9px 12px;background:rgba(247,201,72,0.08);font-size:14px;font-weight:900">
-              <div style="flex:1;color:var(--text)">المجموع</div>
-              <div style="min-width:60px;text-align:left;color:var(--accent);font-size:16px">${s.points} ⭐</div>
+              <div style="flex:1;color:var(--text)">${_R ? 'مجموع الفترة' : 'المجموع'}</div>
+              <div style="min-width:60px;text-align:left;color:var(--accent);font-size:16px">${tot} ⭐</div>
             </div>
+            ${_R ? `<div style="padding:6px 12px;font-size:11px;color:var(--text-muted)">الرصيد الكلي: ${_P.total} ⭐ — المكافآت اليدوية والمشاركات القديمة غير المؤرخة تظهر في الرصيد الكلي فقط.</div>` : ''}
           </div>`;
         })()}
 
@@ -723,18 +734,12 @@ function renderWeeklyChart() {
   var cls = state.classes.find(function(c) { return c.id === reportActiveClass; });
   var s = cls && cls.students.find(function(st) { return st.id === reportActiveStudent; });
   if (!s) return;
-  var log = s.pointsLog || [];
-  var hasWeeks = log.some(function(e) { return e.termWeek !== undefined && e.termWeek !== null; });
+  var weekMap = weeklyPointsMap(s, cls);
+  var hasWeeks = Object.keys(weekMap).length > 0;
   if (!hasWeeks) {
     container.innerHTML = '<div style="text-align:center;padding:16px;color:rgba(255,255,255,0.4);font-size:13px">📊 أدخل تاريخ بداية الفصل لعرض الرسم البياني</div>';
     return;
   }
-  var weekMap = {};
-  log.forEach(function(e) {
-    if (e.termWeek !== undefined && e.termWeek !== null) {
-      weekMap[e.termWeek] = (weekMap[e.termWeek] || 0) + (e.pts || 0);
-    }
-  });
   var weeks = Object.keys(weekMap).map(Number).sort(function(a, b) { return a - b; });
   var values = weeks.map(function(w) { return weekMap[w]; });
   var maxVal = Math.max.apply(null, values.concat([1]));

@@ -188,5 +188,7 @@ function load() {
   normalizeAllStudentIds();
   // إعادة حساب الأسابيع لأي entry لم يُسجَّل فيه termWeek
   recalcAllTermWeeks();
+  // النقاط تُعاد من المصدر عند كل تحميل (تصحّح أي رصيد مخزّن قديم/خاطئ)
+  try { if (typeof normalizeAssessmentPoints === 'function') normalizeAssessmentPoints(); } catch (e) { console.warn('points', e); }
 }
 

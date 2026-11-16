@@ -154,12 +154,14 @@ function parseCentral(wb) {
       if (String(h).includes('العام')) out.school.year = String(val[i] || '').trim();
     });
   }
-  const ti = cal.findIndex(row => row.some(v => String(v).includes('الفصل الدراسي')));
+  let ti = cal.findIndex(row => row.some(v => /الفصل الدراسي (الأول|الثاني|الثالث)/.test(String(v))));
+  { const w1 = cal.findIndex(r => /^\s*الأسبوع\s*0*1\s*$/.test(String(r[0] || ''))); if (w1 > 0) ti = w1 - 1; }
   const calEnd = (() => { const h = cal.findIndex(r => r.some(c => String(c).trim() === 'الإجازات والعطل')); return h > ti ? h : cal.length; })();
   if (ti >= 0) {
     const hdr = cal[ti];
-    for (let c = 0; c < hdr.length; c += 2) {
-      const tname = String(hdr[c] || '').trim();
+    const okHdr = hdr.some(v => String(v).includes('تاريخ البداية'));
+    for (let c = 0; c < Math.max(hdr.length, 6); c += 2) {
+      const tname = okHdr ? String(hdr[c] || '').trim() : ['الفصل الدراسي الأول', 'الفصل الدراسي الثاني', 'الفصل الدراسي الثالث'][c / 2] || '';
       if (!tname) continue;
       const weeks = [];
       for (let r = ti + 1; r < calEnd; r++) { const d = toISO(cal[r][c + 1]); if (d) weeks.push(d); }

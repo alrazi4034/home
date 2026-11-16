@@ -211,27 +211,52 @@ function recomputeStudentAttendance(cls, s) {
 
 // =================================================================
 // مصدر الحقيقة الوحيد لحساب نقاط الطالب
-// النقاط = (حضور×2) + مشاركات + نقاط_ملاحظات + _manualBonus + نقاط_تقييمات
+// النقاط = (حضور×2) + مشاركات + نقاط_ملاحظات + مكافآت/خصم يدوي + نقاط_تقييمات
+// نقاط التقييم تُحسب من الدرجة نفسها (الدرجة ÷ العلامة الكاملة × نقاط التقييم) — لا من awardedPoints المخزّن
+// (كان يبقى مربوطاً بأرقام طلاب قديمة بعد الدمج/الاستيراد فتضيع النقاط)
 // =================================================================
-function recomputeWithAssessments(cls, s) {
+function assessEarned(a, sid) {
+  const sc = (a.scores || {})[sid];
+  if (sc === '' || sc == null || isNaN(parseFloat(sc))) return 0;
+  if (a.pointsValue === undefined) return +((a.awardedPoints || {})[sid] || 0);   // تقييمات قديمة بلا قيمة نقاط
+  const pv = +a.pointsValue || 0, mx = +a.maxScore || 0;
+  return pv > 0 && mx > 0 ? Math.round(parseFloat(sc) / mx * pv) : 0;
+}
+function pointsParts(cls, s) {
   const ATTEND_POINTS = 2;
   const savedDays  = cls._savedDates || [];
   const absentDays = (s.absenceDates || []).filter(d => savedDays.includes(d));
-  s.absent   = absentDays.length;
-  s.present  = Math.max(0, savedDays.length - absentDays.length);
-  s.absenceDates = absentDays;
-
-  const attendPts = s.present * ATTEND_POINTS;                    // نقطتان / حضور
-  const partPts   = s.participation || 0;                         // نقطة / مشاركة
-  const notePts   = (s.behaviorNotes || [])                       // نقاط الملاحظات (+1..5 أو -1..5)
-                      .reduce((sum, n) => sum + (n.points || 0), 0);
-  const manualPts = s._manualBonus || 0;                          // مكافآت/خصومات يدوية
-  const assessPts = (state.assessments || []).reduce((sum, a) => {// نقاط التقييمات
-    if (!a.classIds?.includes(cls.id)) return sum;
-    return sum + (a.awardedPoints?.[s.id] || 0);
-  }, 0);
-
-  s.points = attendPts + partPts + notePts + manualPts + assessPts;
+  const present = Math.max(0, savedDays.length - absentDays.length);
+  const assessList = (state.assessments || []).filter(a => (a.classIds || []).includes(cls.id));
+  const parts = {
+    present, absent: absentDays.length,
+    attend: present * ATTEND_POINTS,
+    part:   s.participation || 0,
+    notes:  (s.behaviorNotes || []).reduce((sum, n) => sum + (n.points || 0), 0),
+    manual: s._manualBonus || 0,
+    assess: assessList.reduce((sum, a) => sum + assessEarned(a, s.id), 0),
+    assessCount: assessList.filter(a => { const v = (a.scores || {})[s.id]; return v !== '' && v != null; }).length
+  };
+  parts.total = parts.attend + parts.part + parts.notes + parts.manual + parts.assess;
+  return parts;
+}
+function recomputeWithAssessments(cls, s) {
+  const savedDays = cls._savedDates || [];
+  s.absenceDates = (s.absenceDates || []).filter(d => savedDays.includes(d));
+  const P = pointsParts(cls, s);
+  s.absent = P.absent; s.present = P.present; s.points = P.total;
+}
+// يُصلح awardedPoints من الدرجات (لعرض «نقطة مكتسبة») ويعيد احتساب النقاط — بدون حذف أي بيانات
+function normalizeAssessmentPoints() {
+  (state.assessments || []).forEach(a => {
+    if (a.pointsValue === undefined) return;
+    const ap = {};
+    state.classes.filter(c => (a.classIds || []).includes(c.id)).forEach(c => c.students.forEach(st => {
+      const v = (a.scores || {})[st.id]; if (v !== '' && v != null) ap[st.id] = assessEarned(a, st.id);
+    }));
+    a.awardedPoints = ap;
+  });
+  state.classes.forEach(c => c.students.forEach(st => { const P = pointsParts(c, st); st.points = P.total; st.present = P.present; st.absent = P.absent; }));
 }
 
 function recalcAllPoints() {

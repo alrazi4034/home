@@ -220,9 +220,7 @@ function buildWeeklyPointsChart(activeCls, weeksFilter) {
   var info = getSchoolInfo();
   activeCls.forEach(function(cls) {
     cls.students.forEach(function(s) {
-      (s.pointsLog||[]).forEach(function(e) {
-        if (e.termWeek !== null && e.termWeek !== undefined) allWeeks.add(e.termWeek);
-      });
+      Object.keys(weeklyPointsMap(s, cls)).forEach(function(w) { allWeeks.add(+w); });
     });
     // إضافة الأسابيع من _savedDates
     if (info.termStart) {
@@ -249,13 +247,12 @@ function buildWeeklyPointsChart(activeCls, weeksFilter) {
     var color = getClassColor(cls.id);
     var pts = weeks.map(function(w) {
       var total = 0, count = 0;
-      cls.students.forEach(function(s) {
-        // نحسب مجموع نقاط هذا الطالب في هذا الأسبوع
-        var wLog = (s.pointsLog||[]).filter(function(e){ return e.termWeek === w; });
-        // نتحقق إذا كان هذا الأسبوع مسجلاً (حضور أو نقاط)
-        var hasData = wLog.length > 0 || (cls._savedDates||[]).some(function(d){ return getTermWeek(d) === w; });
+      var wm = cls.students.map(function(s){ return weeklyPointsMap(s, cls); });
+      cls.students.forEach(function(s, si) {
+        // نقاط هذا الطالب في هذا الأسبوع (من كل المصادر بالتاريخ)
+        var hasData = wm[si][w] !== undefined || (cls._savedDates||[]).some(function(d){ return getTermWeek(d) === w; });
         if (hasData) {
-          var weekPts = wLog.reduce(function(sum,e){ return sum + (e.pts||0); }, 0);
+          var weekPts = wm[si][w] || 0;
           total += weekPts;
           count++;
         }
@@ -352,7 +349,7 @@ function renderStatsDashboard() {
     if (weeksFilter) {
       // من pointsLog حسب الأسابيع
       sts.forEach(s => {
-        const log = (s.pointsLog||[]).filter(e => weeksFilter.has(e.termWeek));
+        const log = datedPoints(s, cls).filter(e => weeksFilter.has(getTermWeek(e.date)));
         totalPresent += log.filter(e=>e.type==='attendance').length;
         totalPart    += log.filter(e=>e.type==='participation').reduce((a,e)=>a+e.pts,0);
         totalPts     += log.reduce((a,e)=>a+e.pts,0);
