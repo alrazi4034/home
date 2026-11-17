@@ -30,7 +30,7 @@ async function run(){
   try{ L('إذن القراءة/الكتابة: '+await h.queryPermission({mode:'readwrite'})); }catch(e){L('queryPermission: '+e.message,'bad')}
   try{ let n=0,names=[]; for await (const [k,v] of h.entries()){n++; if(names.length<8)names.push((v.kind==='file'?'📄 ':'📁 ')+k)} L('محتوى المجلد ('+n+'): '+names.join('، '),'ok'); }
   catch(e){ L('❌ تعذّرت قراءة المحتوى: '+e.name+' — '+e.message,'bad') }
-  try{ const f=await h.getFileHandle('~razi_test.tmp',{create:true}); const w=await f.createWritable(); await w.write('ok'); await w.close(); await h.removeEntry('~razi_test.tmp'); L('✅ الكتابة في المجلد تعمل','ok'); }
+  try{ const f=await h.getFileHandle('razi_write_test.txt',{create:true}); const w=await f.createWritable(); await w.write('ok'); await w.close(); await h.removeEntry('razi_write_test.txt'); L('✅ الكتابة في المجلد تعمل','ok'); }
   catch(e){ L('❌ الكتابة فشلت: '+e.name+' — '+e.message,'bad') }
   try{ const s=await navigator.storage.persisted(); L('IndexedDB/تخزين الموقع: '+(window.indexedDB?'متاح':'غير متاح')+' · دائم: '+s); }catch(e){}
 }
