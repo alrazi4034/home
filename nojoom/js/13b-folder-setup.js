@@ -6,15 +6,16 @@ let FL_PENDING = null;
 
 async function flPortalState() {
   if (typeof FL === 'undefined' || !FL.supported()) return null;
-  const [folders, me, tf] = await Promise.all([FL.folders(), FL.me(), FL.teacherFile()]);
-  if (!folders.length || !me || !me.key || !tf) return null;
-  return { folders, me, tf };
+  const [folders, me, tf, cf] = await Promise.all([FL.folders(), FL.me(), FL.teacherFile(), FL.centralFile ? FL.centralFile() : null]);
+  if ((!folders.length && !cf) || !me || !me.key || !tf) return null;
+  return { folders, me, tf, cf };
 }
 async function flSame(a, b) { try { return !!(a && b && await a.isSameEntry(b)); } catch (e) { return false; } }
 async function flPermsOk(ps) {
   try {
     if ((await ps.tf.queryPermission({ mode: 'readwrite' })) !== 'granted') return false;
     for (const f of ps.folders) if ((await f.queryPermission({ mode: 'read' })) !== 'granted') return false;
+    if (ps.cf && (await ps.cf.queryPermission({ mode: 'read' })) !== 'granted') return false;
     return true;
   } catch (e) { return false; }
 }
@@ -57,6 +58,7 @@ async function flContinue() {
     catch (e) { try { await f.requestPermission({ mode: 'read' }); } catch (e2) {} }
   }
   try { if ((await ps.tf.queryPermission({ mode: 'readwrite' })) !== 'granted') await ps.tf.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+  try { if (ps.cf && (await ps.cf.queryPermission({ mode: 'read' })) !== 'granted') await ps.cf.requestPermission({ mode: 'read' }); } catch (e) {}
   if (!(await flPermsOk(ps))) { toast('اضغط «متابعة» مرة أخرى للسماح بالوصول للملفات', '🔓'); return; }
   FL_PENDING = null; flHideBanner();
   await flApply(ps, true);
