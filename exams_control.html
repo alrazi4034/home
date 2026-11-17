@@ -58,28 +58,35 @@ table.sh td.nm{text-align:right}
 .sh-foot{margin-top:auto;padding-top:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px}
 .sh-foot div{border:1px solid #000;padding:4px 6px;min-height:42px}
 .sh-sum{font-size:12px;margin-top:4px;display:flex;gap:20px;justify-content:center;font-weight:600}
-.pwpage{width:210mm;height:297mm;background:#fff;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(10,1fr);page-break-after:always;box-shadow:0 1px 6px rgba(0,0,0,.2);overflow:hidden;color:#000}
-.pc{border:.25mm dashed #888;padding:1.2mm 2mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;min-width:0}
-.pc .ex{font-size:6pt;line-height:1.2;max-height:2.45em;overflow:hidden;color:#333}
-.pc .nm{font-weight:700;font-size:8.5pt;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pc .id{font-size:7pt;line-height:1.1;display:flex;justify-content:space-between}
-.pc .bx{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm}
-.pc .b{border:.4mm solid #000;border-radius:1mm;text-align:center;padding:.3mm 0;line-height:1.1;min-width:0}
-.pc .b small{display:block;font-size:5.5pt;color:#444}
-.pc .b b{font-family:Consolas,'Courier New',monospace;font-size:10pt;direction:ltr;display:block}
-.pc .b.k b{font-size:13pt}
+.pwpage{width:210mm;height:297mm;background:#fff;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(10,minmax(0,1fr));page-break-after:always;box-shadow:0 1px 6px rgba(0,0,0,.2);overflow:hidden;color:#000}
+.pc{border:.25mm dashed #888;padding:1.2mm 2mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;min-width:0;min-height:0;font-size:8pt;line-height:1.2}
+.fith{overflow:hidden;white-space:nowrap}
+.pc>*{flex-shrink:0}
+.pc .ex{font-size:.74em;color:#333}
+.pc .nm{font-weight:700;font-size:1.12em}
+.pc .ln{display:flex;justify-content:space-between;gap:1.5mm;font-size:.84em}
+.pc .ln span{display:block;min-width:0}
+.pc .ln span.c{font-weight:700}
+.pc .bx{display:grid;grid-template-columns:1.1fr 1fr;gap:1.2mm}
+.pc .b{border:.4mm solid #000;border-radius:1mm;text-align:center;padding:.3mm .8mm;min-width:0;overflow:hidden;line-height:1.15}
+.pc .b small{display:block;font-size:.66em;color:#444;white-space:nowrap;overflow:hidden}
+.pc .b b{font-family:Consolas,'Courier New',monospace;font-size:1.25em;direction:ltr;display:block}
+.pc .b.k b{font-size:1.5em;letter-spacing:.3px}
 #warn{background:#FEF3C7;border-bottom:1px solid #F59E0B;padding:8px clamp(14px,4vw,40px);font-size:13px;display:none}
 #mQR{display:inline-block;padding:8px;background:#fff;border:1px solid var(--line);border-radius:8px;cursor:zoom-in}
 #mQR img{width:230px;height:230px;image-rendering:pixelated}
 #mQR.big{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:#fff;border:none;border-radius:0;padding:0;cursor:zoom-out}
 #mQR.big img{width:min(94vw,94vh)!important;height:min(94vw,94vh)!important}
 .stpage{width:210mm;height:297mm;background:#fff;display:grid;page-break-after:always;box-shadow:0 1px 6px rgba(0,0,0,.2);overflow:hidden;color:#000}
-.sk{border:.25mm dashed #777;padding:1mm 1.5mm;display:flex;flex-direction:column;justify-content:space-between;text-align:center;overflow:hidden;min-width:0;min-height:0}
-.sk1{display:flex;justify-content:space-between;align-items:center;gap:4px;font-weight:700;border-bottom:.2mm solid #999;padding-bottom:.5mm;line-height:1.1}
-.sk1 .sn{border:.35mm solid #000;border-radius:50%;min-width:1.7em;height:1.7em;display:inline-flex;align-items:center;justify-content:center}
-.sk2{font-weight:700;line-height:1.15;overflow:hidden}
-.sk3{line-height:1.1}
-.sk4{color:#444;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sk{border:.25mm dashed #777;padding:.45em .7em;display:flex;flex-direction:column;justify-content:space-evenly;text-align:center;overflow:hidden;min-width:0;min-height:0;line-height:1.2}
+.sk>*{flex-shrink:0}
+.sk1{display:flex;justify-content:space-between;align-items:center;gap:.4em;font-weight:700;border-bottom:.2mm solid #999;padding-bottom:.2em}
+.sk1 .cm{display:block;min-width:0}
+.sk1 .sn{border:.35mm solid #000;border-radius:50%;min-width:1.7em;height:1.7em;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.sk2{font-weight:700;font-size:1.45em;line-height:1.15}
+.sk3{font-size:1em}
+.sk5{font-size:.9em}
+.sk4{color:#444;font-size:.7em}
 textarea.mt{min-height:120px}
 @media print{
  @page{size:A4 portrait;margin:0}
@@ -123,7 +130,7 @@ const LS='raziExamsControl_v1';
 const GR={1:'الأول',2:'الثاني',3:'الثالث',4:'الرابع',5:'الخامس',6:'السادس',7:'السابع',8:'الثامن',9:'التاسع',10:'العاشر',11:'الحادي عشر',12:'الثاني عشر'};
 const SUBJ=['التربية الإسلامية','اللغة العربية','اللغة الإنجليزية','الرياضيات','العلوم','الدراسات الاجتماعية'];
 const D={cfg:{school:'',year:'',term:'الفصل الدراسي الأول',exam:'اختبار نهاية الفصل',cap:30},
- custom:[],ren:{},assign:{},order:[],manual:[],removed:{},exams:[],staff:[],obsDay:{},obsSub:{},obsSel:'',abs:{},sign:{subject:'',date:'',time:''},pw:{},pwSel:'',rep:{},sent:{},tpl:{},supDay:{},stk:{}};
+ custom:[],ren:{},assign:{},order:[],manual:[],removed:{},exams:[],staff:[],obsDay:{},obsSub:{},obsSel:'',abs:{},sign:{subject:'',date:'',time:''},pw:{},pwSel:'',rep:{},sent:{},tpl:{},supDay:{},stk:{},pwShort:{}};
 let lsFail=false,HIST=[],sessionBase=null,sessionSnap=false,fsPend=false,base=[],students=[],view='dash',pick={},checked={},openC={},absView='all',staffQ='';
 try{Object.assign(D,JSON.parse(localStorage.getItem(LS)||'{}'))}catch(e){}
 try{HIST=JSON.parse(localStorage.getItem(LS+'_hist')||'[]')}catch(e){}
@@ -559,7 +566,7 @@ function buildAbs(p,silent){
 }
 
 
-/* ---------- بطاقات كلمات المرور ---------- */
+/* ---------- بطاقات كلمات المرور (استيراد Excel/CSV متعدد) ---------- */
 let pwPick={},pwMode='page';
 function parseCSV(t){const rows=[];let r=[],c='',q=false;
   for(let i=0;i<t.length;i++){const ch=t[i];
@@ -567,42 +574,83 @@ function parseCSV(t){const rows=[];let r=[],c='',q=false;
     else if(ch==='"')q=true;else if(ch===','){r.push(c);c=''}
     else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(c);c='';rows.push(r);r=[]}else c+=ch}
   if(c||r.length){r.push(c);rows.push(r)}return rows.filter(x=>x.some(y=>y.trim()))}
+const hn=s=>String(s||'').replace(/[ً-ْ]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[\s_]+/g,'').toLowerCase();
+const PWC={u:['رقم الطالب','Username'],n:['الاسم كاملا','الاسم','اسم الطالب','FullName','Full Name'],tr:['المسار'],sub:['المادة'],sec:['الشعبة'],grp:['المجموعة'],
+  ex:['اسم الاختبار','Exam'],dt:['تاريخ الاختبار'],url:['رابط الاختبار','ACUMobileAccessURL','ACUAccessURL'],k:['كلمة المرور','مفتاح الاختبار','Exam Key'],p:['Exam Password']};
+function pwRows(objs,fname){const g={};
+  objs.forEach(o=>{const ix={};Object.keys(o).forEach(k=>ix[hn(k)]=o[k]);
+    const v=f=>{for(const c of PWC[f]){const x=ix[hn(c)];if(x!==undefined&&x!==null&&String(x).trim()!=='')return String(x).trim()}return ''};
+    const u=nid(v('u'));if(!u)return;const ex=v('ex')||fname.replace(/\.(csv|xlsx?)$/i,'');
+    (g[ex]=g[ex]||[]).push({u,n:arName(v('n')),k:v('k'),p:v('p'),url:v('url').replace(/^https?:\/\//i,'').replace(/\/+$/,''),tr:v('tr'),sub:v('sub'),sec:v('sec'),grp:v('grp'),dt:v('dt')})});
+  return g}
 function importPw(fs){
-  let k=fs.length;[...fs].forEach(f=>{const r=new FileReader();r.onload=e=>{
-    try{const rows=parseCSV(String(e.target.result).replace(/^\uFEFF/,''));const h=rows.shift().map(x=>x.trim()),ix=n=>h.indexOf(n),g={};
-      rows.forEach(r=>{const u=nid(r[ix('Username')]);if(!u)return;const ex=(r[ix('Exam')]||f.name).trim(),url=(r[ix('ACUAccessURL')]||'').trim(),mu=(r[ix('ACUMobileAccessURL')]||'').trim();
-        (g[ex]=g[ex]||[]).push({u,n:arName(r[ix('FullName')]),k:(r[ix('Exam Key')]||'').trim(),p:(r[ix('Exam Password')]||'').trim(),url:(mu||url).replace(/^https?:\/\//,'')});});
-      if(!Object.keys(g).length)throw 0;Object.assign(D.pw,g);D.pwSel=Object.keys(g)[0];}catch(x){alert('تعذر قراءة الملف '+f.name)}
-    if(--k===0){save();render()}};r.readAsText(f,'utf-8')});
+  const all={},bad=[];let k=fs.length;if(!k)return;
+  [...fs].forEach(f=>{const r=new FileReader(),csv=/\.csv$/i.test(f.name);
+    r.onload=e=>{try{let objs=[];
+      if(csv){const rows=parseCSV(String(e.target.result).replace(/^﻿/,'')),h=rows.shift()||[];objs=rows.map(x=>Object.fromEntries(h.map((c,i)=>[c,x[i]??''])))}
+      else{const wb=XLSX.read(e.target.result,{type:'array'});wb.SheetNames.forEach(sn=>objs.push(...XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:''})))}
+      const g=pwRows(objs,f.name);if(!Object.keys(g).length)throw 0;
+      Object.entries(g).forEach(([ex,a])=>(all[ex]=all[ex]||[]).push(...a))}catch(x){bad.push(f.name)}
+      if(--k===0)pwMerge(all,bad)};
+    csv?r.readAsText(f,'utf-8'):r.readAsArrayBuffer(f)});
 }
+function pwMerge(all,bad){
+  let n=0;const ks=Object.keys(all);
+  ks.forEach(ex=>{const m={};(D.pw[ex]||[]).forEach(r=>m[r.u]=r);all[ex].forEach(r=>{m[r.u]=r;n++});D.pw[ex]=Object.values(m)});
+  if(ks.length)D.pwSel=ks.length>1?'__all':ks[0];save();render();
+  alert('تم استيراد '+n+' طالب في '+ks.length+' اختبار'+(bad.length?'\nتعذر قراءة: '+bad.join('، '):''));
+}
+const autoShort=e=>{const p=String(e||'').replace(/\d{4}\s*[-–\/]\s*\d{4}/g,' ').replace(/\.{2,}|…/g,' - ').split(/\s+[-–]\s*|\s*[-–]\s+/).map(x=>x.trim()).filter(x=>x&&!/^الصف\s/.test(x));
+  if(p.length>1&&/^[A-Za-z]$/.test(p[p.length-1])){const l=p.pop();p[p.length-1]+=' ('+l+')'}return p.join(' - ')||String(e||'')};
+const exShort=e=>{const s=(D.pwShort||{})[e];return s?s:autoShort(e)};
+function stuInfo(){const m={};Object.values(D.pw).forEach(a=>a.forEach(r=>{const o=m[r.u]=m[r.u]||{};['tr','sec','n'].forEach(k=>{if(r[k]&&!o[k])o[k]=r[k]})}));return m}
+const trOf=(s,r)=>(r&&r.tr)||(s?'الصف '+(GR[gOf(s)]||gOf(s)):'');
+const secOfS=(s,r)=>(r&&r.sec)||(s?s.cls.slice(-1):'');
+const cmName=c=>c?'لجنة '+c.num+': '+esc(c.name):'غير مسجّل في اللجان';
+/* تصغير النص تلقائياً حتى يتسع داخل البطاقة/الملصق */
+function fitAll(){const pv=$('preview');for(let i=0;i<6;i++){const R=[];
+  pv.querySelectorAll('.fitv').forEach(e=>{if(e.scrollHeight&&e.scrollWidth){const k=Math.min(e.clientHeight/e.scrollHeight,e.clientWidth/e.scrollWidth);if(k<.99)R.push([e,k,parseFloat(getComputedStyle(e).fontSize)])}});
+  pv.querySelectorAll('.fith').forEach(e=>{if(e.scrollWidth){const k=e.clientWidth/e.scrollWidth;if(k<.99)R.push([e,k,parseFloat(getComputedStyle(e).fontSize)])}});
+  if(!R.length)break;R.forEach(([e,k,f])=>e.style.fontSize=Math.max(3.5,f*k*.97)+'px')}}
+function showFit(h,p){$('preview').innerHTML=h;fitAll();
+  const go=()=>{fitAll();if(p)window.print();else $('preview').scrollIntoView()};
+  document.fonts?document.fonts.ready.then(()=>setTimeout(go,p?250:0)):setTimeout(go,300)}
+
 function renderPw(m,L){
-  const exs=Object.keys(D.pw),ex=exs.includes(D.pwSel)?D.pwSel:exs[0],rows=D.pw[ex]||[],ids={};rows.forEach(r=>ids[r.u]=1);
-  const act=L.filter(c=>c.list.length),un=rows.filter(r=>!students.some(s=>s.id===r.u));
+  const exs=Object.keys(D.pw),ex=D.pwSel==='__all'&&exs.length?'__all':exs.includes(D.pwSel)?D.pwSel:exs[0],sel=ex==='__all'?exs:(ex?[ex]:[]),ids={};
+  sel.forEach(e=>D.pw[e].forEach(r=>ids[r.u]=1));
+  const act=L.filter(c=>c.list.length),un=Object.keys(ids).filter(u=>!students.some(s=>s.id===u));
   act.forEach(c=>{if(pwPick[c.id]===undefined)pwPick[c.id]=true});
+  const q=s=>esc(s).replace(/'/g,"\\'");
   m.innerHTML=`<div class="box"><h3>بطاقات كلمات المرور</h3>
-   <div class="bar"><label class="btn p">📥 استيراد ملفات CSV (متعدد)<input type="file" multiple accept=".csv" hidden onchange="importPw(this.files)"></label>
-   ${exs.length?`<select onchange="D.pwSel=this.value;save();render()">${exs.map(e=>`<option value="${esc(e)}" ${e===ex?'selected':''}>${esc(e.slice(0,90))} (${D.pw[e].length})</option>`).join('')}</select>
-   <button class="btn d" onclick="if(confirm('حذف بيانات هذا الاختبار؟')){delete D.pw['${esc(ex).replace(/'/g,"\\'")}'];save();render()}">🗑</button>`:''}</div>
+   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>
+   ${exs.length?`<select onchange="D.pwSel=this.value;save();render()" style="max-width:520px">${exs.length>1?`<option value="__all" ${ex==='__all'?'selected':''}>📚 كل الاختبارات (${exs.length})</option>`:''}${exs.map(e=>`<option value="${esc(e)}" ${e===ex?'selected':''}>${esc(exShort(e).slice(0,90))} (${D.pw[e].length})</option>`).join('')}</select>
+   ${ex!=='__all'?`<button class="btn d" onclick="if(confirm('حذف بيانات هذا الاختبار؟')){delete D.pw['${q(ex)}'];save();render()}">🗑</button>`:''}
+   <button class="btn d s" onclick="if(confirm('حذف بيانات كل الاختبارات المستوردة؟')){D.pw={};D.pwSel='';save();render()}">حذف الكل</button>`:''}</div>
+   <p class="note">الأعمدة المقروءة: رقم الطالب، الاسم كاملا، المسار، المادة، الشعبة، المجموعة، اسم الاختبار، تاريخ الاختبار، رابط الاختبار، كلمة المرور (مفتاح الاختبار). يمكن اختيار عدة ملفات معاً، وتُدمج الملفات التي لها نفس اسم الاختبار.</p>
+   ${ex&&ex!=='__all'?`<div class="bar"><label class="f" style="flex:1;min-width:280px">اسم الاختبار المختصر على البطاقة<input value="${esc(exShort(ex))}" oninput="D.pwShort=D.pwShort||{};D.pwShort['${q(ex)}']=this.value.trim();save()"></label></div><p class="note">الاسم الكامل: ${esc(ex)}</p>`:''}
    ${exs.length?`<div class="bar"><label class="f">طريقة الترتيب<select onchange="pwMode=this.value"><option value="page" ${pwMode==='page'?'selected':''}>ورقة مستقلة لكل لجنة</option><option value="cont" ${pwMode==='cont'?'selected':''}>عرض متواصل (لجنة واحدة في كل صف)</option></select></label>
    <button class="btn s" onclick="pwAll(true)">تحديد الكل</button><button class="btn s" onclick="pwAll(false)">إلغاء الكل</button></div>
    <div class="chips">${act.map(c=>{const n=c.list.filter(s=>ids[s.id]).length;return n?`<label class="chip"><input type="checkbox" class="pk" data-c="${c.id}" ${pwPick[c.id]?'checked':''} onchange="pwPick['${c.id}']=this.checked"> ${c.num}: ${esc(c.name)} (${n})</label>`:''}).join('')}
    ${un.length?`<label class="chip"><input type="checkbox" class="pk" data-c="__u" ${pwPick.__u===false?'':'checked'} onchange="pwPick.__u=this.checked"> طلاب غير مسجلين في اللجان (${un.length})</label>`:''}</div>
-   <p class="note">البطاقة: 30 في صفحة A4 (3×10). عند الطباعة اختر: الورق A4، الهوامش «بدون»، المقياس 100%.</p>
-   <div class="bar"><button class="btn p" onclick="buildPw(true)">🖨️ طباعة</button><button class="btn" onclick="buildPw(false)">👁 معاينة</button></div>`:'<p class="note">استورد ملف/ملفات CSV الخاصة بمفاتيح الاختبار (Exam Key) لتظهر البطاقات.</p>'}</div>`;
+   <p class="note">البطاقة: 30 في صفحة A4 (3×10) — الاسم والرقم، اللجنة، المسار والشعبة، اسم الاختبار المختصر، الرابط ومفتاح الاختبار. عند الطباعة اختر: الورق A4، الهوامش «بدون»، المقياس 100%.</p>
+   <div class="bar"><button class="btn p" onclick="buildPw(true)">🖨️ طباعة</button><button class="btn" onclick="buildPw(false)">👁 معاينة</button></div>`:'<p class="note">استورد ملف/ملفات Excel الخاصة بالاختبار لتظهر البطاقات.</p>'}</div>`;
 }
 function pwAll(v){document.querySelectorAll('.pk').forEach(k=>{k.checked=v;pwPick[k.dataset.c]=v})}
 function buildPw(p){
-  const ex=D.pwSel,rows=D.pw[ex];if(!rows){alert('لا توجد بيانات');return}
-  const mp={};rows.forEach(r=>mp[r.u]=r);let cells=[];
+  const exs=Object.keys(D.pw),sel=D.pwSel==='__all'?exs:[D.pwSel].filter(e=>D.pw[e]);if(!sel.length){alert('لا توجد بيانات');return}
+  const L=committees(),cm={};L.forEach(c=>c.list.forEach(s=>cm[s.id]=c));let cells=[];
   const pad=()=>{const n=pwMode==='page'?30:3;while(cells.length%n)cells.push(null)};
-  committees().filter(c=>c.list.length&&pwPick[c.id]!==false).forEach(c=>{
-    const it=c.list.filter(s=>mp[s.id]).map(s=>({name:s.name,u:s.id,r:mp[s.id],tag:'لجنة '+c.num}));
-    if(it.length){cells.push(...it);pad()}});
-  if(pwPick.__u!==false){const it=rows.filter(r=>!students.some(s=>s.id===r.u)).map(r=>({name:arName(r.n),u:r.u,r,tag:'—'}));if(it.length){cells.push(...it);pad()}}
+  sel.forEach(ex=>{const mp={},es=exShort(ex);D.pw[ex].forEach(r=>mp[r.u]=r);
+    L.filter(c=>c.list.length&&pwPick[c.id]!==false).forEach(c=>{const it=c.list.filter(s=>mp[s.id]).map(s=>({s,r:mp[s.id],c,es}));if(it.length){cells.push(...it);pad()}});
+    if(pwPick.__u!==false){const it=D.pw[ex].filter(r=>!cm[r.u]).map(r=>({s:null,r,c:null,es}));if(it.length){cells.push(...it);pad()}}});
   if(!cells.length){alert('لا توجد بطاقات للجان المحددة');return}
-  const card=x=>x?`<div class="pc"><div class="ex">${esc(ex)}</div><div class="nm">${esc(x.name)}</div><div class="id"><span>رقم الطالب: ${esc(x.u)}</span><span>${x.tag}</span></div>
-    <div class="bx"><div class="b"><small>رابط الاختبار</small><b>${esc(x.r.url)}</b></div><div class="b k"><small>مفتاح الاختبار${x.r.p?' / كلمة المرور: '+esc(x.r.p):''}</small><b>${esc(x.r.k)}</b></div></div></div>`:'<div class="pc" style="border:none"></div>';
-  show(chunks(cells,30).map(ch=>`<div class="pwpage">${ch.map(card).join('')}</div>`).join(''),p);
+  const card=x=>{if(!x)return '<div class="pc" style="border:none"></div>';const r=x.r,s=x.s;
+    return `<div class="pc fitv"><div class="ex fith">${esc(x.es)}</div><div class="nm fith">${esc(s?s.name:arName(r.n))}</div>
+    <div class="ln"><span class="fith">رقم الطالب: <b>${esc(r.u)}</b></span><span class="c fith">${cmName(x.c)}</span></div>
+    <div class="ln"><span class="fith">${esc(trOf(s,r))}</span><span class="fith">الشعبة: <b>${esc(secOfS(s,r))}</b></span></div>
+    <div class="bx"><div class="b"><small>رابط الاختبار</small><b class="fith">${esc(r.url)}</b></div><div class="b k"><small>مفتاح الاختبار${r.p?' / كلمة المرور: '+esc(r.p):''}</small><b class="fith">${esc(r.k)}</b></div></div></div>`};
+  showFit(chunks(cells,30).map(ch=>`<div class="pwpage">${ch.map(card).join('')}</div>`).join(''),p);
 }
 
 /* ---------- تقارير الاختبارات ---------- */
@@ -777,33 +825,42 @@ function obsAuto(){
 
 /* ---------- ملصقات الجلوس ---------- */
 let stkPick={},stkMode='page';
-const STK0={rows:8,cols:3,mt:10,mr:8,mb:10,ml:8,border:true};
+const STK0={rows:8,cols:3,mt:10,mr:8,mb:10,ml:8,border:true,fs:100,school:true,sn:true,un:true};
 const stk=()=>Object.assign({},STK0,D.stk||{});
+const setStk=(k,v)=>{D.stk=Object.assign(stk(),{[k]:v});save()};
 function renderStk(m,L){
-  const s=stk(),act=L.filter(c=>c.list.length);act.forEach(c=>{if(stkPick[c.id]===undefined)stkPick[c.id]=true});
-  const num=(k,l,mx)=>`<label class="f">${l}<input type="number" min="0" max="${mx}" step="0.5" value="${s[k]}" oninput="D.stk=Object.assign(stk(),{${k}:+this.value});save();stkInfo()"></label>`;
-  m.innerHTML=`<div class="box"><h3>ملصقات الجلوس (A4)</h3><div class="grid">${num('rows','عدد الصفوف',30)}${num('cols','عدد الأعمدة',8)}${num('mt','هامش أعلى (مم)',80)}${num('mb','هامش أسفل (مم)',80)}${num('mr','هامش يمين (مم)',80)}${num('ml','هامش يسار (مم)',80)}</div>
-   <div class="bar" style="margin-top:10px"><label class="chip"><input type="checkbox" ${s.border?'checked':''} onchange="D.stk=Object.assign(stk(),{border:this.checked});save()"> حدود القص</label>
+  const s=stk(),act=L.filter(c=>c.list.length),info=stuInfo(),un=Object.keys(info).filter(u=>!students.some(x=>x.id===u)).length;
+  act.forEach(c=>{if(stkPick[c.id]===undefined)stkPick[c.id]=true});
+  const num=(k,l,mx,st)=>`<label class="f">${l}<input type="number" min="0" max="${mx}" step="${st||0.5}" value="${s[k]}" oninput="setStk('${k}',+this.value);stkInfo()"></label>`;
+  const ck=(k,l)=>`<label class="chip"><input type="checkbox" ${s[k]?'checked':''} onchange="setStk('${k}',this.checked)"> ${l}</label>`;
+  m.innerHTML=`<div class="box"><h3>ملصقات الجلوس (A4)</h3>
+   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>
+   <span class="note">${Object.keys(D.pw).length?`مستورد: ${Object.keys(D.pw).length} اختبار — ${Object.keys(info).length} طالب`:'لم تُستورد ملفات بعد'}</span></div>
+   <p class="note">المسار والشعبة تُقرأ من ملفات الاختبار المستوردة (نفس ملفات بطاقات كلمات المرور). الطالب غير الموجود فيها يُكتب له صفه وشعبته من بيانات المدرسة.</p>
+   <div class="grid">${num('rows','عدد الصفوف',30,1)}${num('cols','عدد الأعمدة',8,1)}${num('mt','هامش أعلى (مم)',80)}${num('mb','هامش أسفل (مم)',80)}${num('mr','هامش يمين (مم)',80)}${num('ml','هامش يسار (مم)',80)}${num('fs','حجم الخط %',200,5)}</div>
+   <div class="bar" style="margin-top:10px">${ck('border','حدود القص')}${ck('sn','الرقم المسلسل')}${ck('school','اسم المدرسة')}${un?ck('un','غير المسجلين في اللجان ('+un+')'):''}
    <select onchange="stkMode=this.value"><option value="page" ${stkMode==='page'?'selected':''}>ورقة مستقلة لكل لجنة</option><option value="cont" ${stkMode==='cont'?'selected':''}>عرض متواصل (لجنة واحدة في كل صف)</option></select>
    <button class="btn s" onclick="document.querySelectorAll('.sp').forEach(k=>{k.checked=true;stkPick[k.dataset.c]=true})">الكل</button><button class="btn s" onclick="document.querySelectorAll('.sp').forEach(k=>{k.checked=false;stkPick[k.dataset.c]=false})">لا أحد</button>
    <span class="note" id="stkInfo"></span></div>
    <div class="chips">${act.map(c=>`<label class="chip"><input type="checkbox" class="sp" data-c="${c.id}" ${stkPick[c.id]?'checked':''} onchange="stkPick['${c.id}']=this.checked"> ${c.num}: ${esc(c.name)} (${c.list.length})</label>`).join('')}</div>
-   <p class="note">كل ملصق: رقم اللجنة واسمها، رقم المسلسل، اسم الطالب ورقمه، واسم المدرسة بخط صغير. عند الطباعة اختر الهوامش «بدون» والمقياس 100%.</p>
+   <p class="note">كل ملصق: رقم اللجنة واسمها، اسم الطالب ورقمه، المسار والشعبة. الخط يتأقلم تلقائياً مع حجم الملصق. عند الطباعة اختر الهوامش «بدون» والمقياس 100%.</p>
    <div class="bar"><button class="btn p" onclick="buildStk(true)">🖨️ طباعة</button><button class="btn" onclick="buildStk(false)">👁 معاينة</button></div></div>`;
   stkInfo();
 }
 function stkInfo(){const s=stk(),R=Math.max(1,+s.rows|0),C=Math.max(1,+s.cols|0),w=(210-s.ml-s.mr)/C,h=(297-s.mt-s.mb)/R,e=$('stkInfo');
-  if(e)e.textContent='حجم الملصق: '+w.toFixed(1)+' × '+h.toFixed(1)+' مم — '+(R*C)+' ملصق في الصفحة'+(w<25||h<14?' ⚠ صغير جداً':'')}
+  if(e)e.textContent='حجم الملصق: '+w.toFixed(1)+' × '+h.toFixed(1)+' مم — '+(R*C)+' ملصق في الصفحة'+(w<25||h<12?' ⚠ صغير جداً':'')}
 function buildStk(p){
   const s=stk(),R=Math.max(1,+s.rows|0),C=Math.max(1,+s.cols|0),per=R*C,w=(210-s.ml-s.mr)/C,h=(297-s.mt-s.mb)/R;
   if(w<=5||h<=5){alert('الهوامش كبيرة جداً');return}
-  let cells=[];const pad=()=>{const n=stkMode==='page'?per:C;while(cells.length%n)cells.push(null)};
-  committees().filter(c=>c.list.length&&stkPick[c.id]!==false).forEach(c=>{c.list.forEach((st,i)=>cells.push({c,st,i:i+1}));pad()});
+  const info=stuInfo();let cells=[];const pad=()=>{const n=stkMode==='page'?per:C;while(cells.length%n)cells.push(null)};
+  committees().filter(c=>c.list.length&&stkPick[c.id]!==false).forEach(c=>{c.list.forEach((st,i)=>cells.push({c,st,r:info[st.id],i:i+1}));pad()});
+  if(s.un){const u=Object.keys(info).filter(u=>!students.some(x=>x.id===u));u.forEach((id,i)=>cells.push({c:null,st:{id,name:info[id].n||''},r:info[id],i:i+1,x:1}));if(u.length)pad()}
   if(!cells.length){alert('اختر لجنة واحدة على الأقل');return}
-  const fn=Math.max(6.5,Math.min(13,h*.3)),fs=Math.max(4.5,Math.min(7,h*.15)),fb=Math.max(6.5,Math.min(11,h*.24));
-  const cell=x=>x?`<div class="sk" style="${s.border?'':'border:none'}"><div class="sk1" style="font-size:${fb}pt"><span>لجنة ${x.c.num}: ${esc(x.c.name)}</span><span class="sn" style="font-size:${fb*1.2}pt">${x.i}</span></div>
-    <div class="sk2" style="font-size:${fn}pt">${esc(x.st.name)}</div><div class="sk3" style="font-size:${fb*.85}pt">رقم الطالب: ${esc(x.st.id)}</div><div class="sk4" style="font-size:${fs}pt">${esc(D.cfg.school)}</div></div>`:'<div class="sk" style="border:none"></div>';
-  show(chunks(cells,per).map(ch=>`<div class="stpage" style="padding:${s.mt}mm ${s.mr}mm ${s.mb}mm ${s.ml}mm;grid-template-columns:repeat(${C},1fr);grid-template-rows:repeat(${R},1fr)">${ch.map(cell).join('')}</div>`).join(''),p);
+  const base=Math.max(5,Math.min(30,Math.min(h*3.78/7.2,w*3.78/12)*(+s.fs||100)/100));
+  const cell=x=>x?`<div class="sk fitv" style="font-size:${base.toFixed(1)}px;${s.border?'':'border:none'}"><div class="sk1"><span class="cm fith">${cmName(x.c)}</span>${s.sn?`<span class="sn">${x.i}</span>`:''}</div>
+    <div class="sk2">${esc(x.st.name)}</div><div class="sk3 fith">رقم الطالب: <b>${esc(x.st.id)}</b></div>
+    <div class="sk5 fith">${esc(trOf(x.x?null:x.st,x.r))} — الشعبة: <b>${esc(secOfS(x.x?null:x.st,x.r))}</b></div>${s.school?`<div class="sk4 fith">${esc(D.cfg.school)}</div>`:''}</div>`:'<div class="sk" style="border:none"></div>';
+  showFit(chunks(cells,per).map(ch=>`<div class="stpage" style="padding:${s.mt}mm ${s.mr}mm ${s.mb}mm ${s.ml}mm;grid-template-columns:repeat(${C},minmax(0,1fr));grid-template-rows:repeat(${R},minmax(0,1fr))">${ch.map(cell).join('')}</div>`).join(''),p);
 }
 
 /* ---------- اللوحة الرئيسية + فحص التعارضات + حماية البيانات ---------- */
