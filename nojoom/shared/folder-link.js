@@ -28,7 +28,7 @@ const FL = (() => {
       q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
     });
   }
-  const supported = () => typeof window.showDirectoryPicker === 'function';
+  const supported = () => typeof window.showDirectoryPicker === 'function' || typeof window.showOpenFilePicker === 'function';
   const norm = t => String(t || '').replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
     .replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
   const normEmail = e => String(e || '').trim().toLowerCase().replace(/^tid-/, '');
@@ -71,6 +71,17 @@ const FL = (() => {
       else await cb(name, h, prefix, dir);
     }
   }
+  // ملف «بيانات المدرسة» المختار مباشرة كملف (لأجهزة ترفض اختيار المجلدات)
+  async function centralFile() { try { return (await idb('get', 'cfile')) || null; } catch (e) { return null; } }
+  async function setCentralFile(h) { await idb('put', 'cfile', h || null); }
+  async function pickFile(kind) {            // kind: 'xlsx' | 'json'
+    const types = kind === 'json'
+      ? [{ description: 'ملف نجوم مدرستي (JSON)', accept: { 'application/json': ['.json'] } }]
+      : [{ description: 'ملف بيانات المدرسة (Excel)', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }];
+    const [h] = await window.showOpenFilePicker({ id: 'razi-files', multiple: false, types });
+    try { if ((await h.queryPermission({ mode: 'readwrite' })) !== 'granted') await h.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+    return h;
+  }
   // ملف بيانات المدرسة (xlsx) — الأولوية للاسم «بيانات المدرسة»
   async function findCentral(interactive) {
     const found = [];
@@ -84,7 +95,13 @@ const FL = (() => {
       });
     }
     found.sort((a, b) => b.score - a.score || b.modified - a.modified);
-    return found[0] || null;
+    if (found[0]) return found[0];
+    const cf = await centralFile();               // لا مجلدات ⇐ الملف المختار مباشرة
+    if (cf && await perm(cf, interactive, 'read')) {
+      let modified = 0; try { modified = (await cf.getFile()).lastModified; } catch (e) {}
+      return { handle: cf, name: cf.name, path: cf.name, modified, score: 0, folder: null, top: false, direct: true };
+    }
+    return null;
   }
   // كل ملفات JSON (لوحة التحكم وبرنامج الغياب)
   async function listJson(interactive, depth) {
@@ -217,5 +234,5 @@ const FL = (() => {
   }
 
   return { supported, folders, addHandle, add, remove, clear, perm, status, findCentral, listJson, readFiles,
-           me, setMe, teacherFile, setTeacherFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
+           me, setMe, teacherFile, setTeacherFile, centralFile, setCentralFile, pickFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
 })();
