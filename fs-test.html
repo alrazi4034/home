@@ -6,7 +6,10 @@ button{font:inherit;font-weight:bold;padding:10px 18px;border-radius:10px;border
 .ok{color:#15803d}.bad{color:#b91c1c}</style></head><body>
 <h2>🔧 فحص ربط المجلدات على هذا الجهاز</h2>
 <p>اضغط الزر، اختر مجلد «بيانات المدرسة» من OneDrive، ثم صوّر النتيجة وأرسلها.</p>
-<button onclick="run()">ابدأ الفحص</button>
+<button onclick="run()">1) فحص المجلد</button>
+<button onclick="runFile()">2) فحص اختيار ملف (الطريقة الحديثة)</button>
+<button onclick="document.getElementById('classic').click()">3) فحص اختيار ملف (الطريقة العادية)</button>
+<input type="file" id="classic" hidden onchange="classicDone(this)">
 <div id="log">—</div>
 <script>
 const L=(t,c)=>{const d=document.createElement('div');d.textContent=t;if(c)d.className=c;log.appendChild(d)};
@@ -30,5 +33,23 @@ async function run(){
   try{ const f=await h.getFileHandle('~razi_test.tmp',{create:true}); const w=await f.createWritable(); await w.write('ok'); await w.close(); await h.removeEntry('~razi_test.tmp'); L('✅ الكتابة في المجلد تعمل','ok'); }
   catch(e){ L('❌ الكتابة فشلت: '+e.name+' — '+e.message,'bad') }
   try{ const s=await navigator.storage.persisted(); L('IndexedDB/تخزين الموقع: '+(window.indexedDB?'متاح':'غير متاح')+' · دائم: '+s); }catch(e){}
+}
+
+async function runFile(){
+  log.innerHTML='';
+  L('المتصفح: '+navigator.userAgent);
+  if(!('showOpenFilePicker' in window)){L('❌ showOpenFilePicker غير مدعوم','bad');return}
+  const t0=Date.now(); let h;
+  try{ [h]=await showOpenFilePicker({multiple:false}); L('✅ تم اختيار الملف: '+h.name+' (بعد '+Math.round((Date.now()-t0)/1000)+' ث)','ok'); }
+  catch(e){ L('❌ فشل اختيار الملف: '+e.name+' — '+e.message+' (بعد '+(Date.now()-t0)+' ملّي ثانية)','bad');
+    if(Date.now()-t0<1500)L('← الإلغاء كان فورياً: النافذة لم تظهر للمستخدم ⇐ حظر على الجهاز (برنامج حماية/إدارة).','bad');
+    return }
+  try{ const f=await h.getFile(); L('✅ قراءة الملف تعمل — الحجم '+f.size+' بايت','ok'); }catch(e){ L('❌ القراءة فشلت: '+e.name+' — '+e.message,'bad') }
+  try{ L('إذن الكتابة: '+await h.requestPermission({mode:'readwrite'})); }catch(e){ L('❌ طلب إذن الكتابة فشل: '+e.name+' — '+e.message,'bad') }
+}
+function classicDone(inp){
+  log.innerHTML='';
+  const f=inp.files[0];
+  L(f?('✅ الطريقة العادية تعمل: '+f.name+' — '+f.size+' بايت'):'❌ لم يُختر ملف بالطريقة العادية', f?'ok':'bad');
 }
 </script></body></html>
