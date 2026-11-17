@@ -508,7 +508,7 @@ const FL = (() => {
       q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error);
     });
   }
-  const supported = () => typeof window.showDirectoryPicker === 'function';
+  const supported = () => typeof window.showDirectoryPicker === 'function' || typeof window.showOpenFilePicker === 'function';
   const norm = t => String(t || '').replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
     .replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
   const normEmail = e => String(e || '').trim().toLowerCase().replace(/^tid-/, '');
@@ -551,6 +551,17 @@ const FL = (() => {
       else await cb(name, h, prefix, dir);
     }
   }
+  // ملف «بيانات المدرسة» المختار مباشرة كملف (لأجهزة ترفض اختيار المجلدات)
+  async function centralFile() { try { return (await idb('get', 'cfile')) || null; } catch (e) { return null; } }
+  async function setCentralFile(h) { await idb('put', 'cfile', h || null); }
+  async function pickFile(kind) {            // kind: 'xlsx' | 'json'
+    const types = kind === 'json'
+      ? [{ description: 'ملف نجوم مدرستي (JSON)', accept: { 'application/json': ['.json'] } }]
+      : [{ description: 'ملف بيانات المدرسة (Excel)', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }];
+    const [h] = await window.showOpenFilePicker({ id: 'razi-files', multiple: false, types });
+    try { if ((await h.queryPermission({ mode: 'readwrite' })) !== 'granted') await h.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+    return h;
+  }
   // ملف بيانات المدرسة (xlsx) — الأولوية للاسم «بيانات المدرسة»
   async function findCentral(interactive) {
     const found = [];
@@ -564,7 +575,13 @@ const FL = (() => {
       });
     }
     found.sort((a, b) => b.score - a.score || b.modified - a.modified);
-    return found[0] || null;
+    if (found[0]) return found[0];
+    const cf = await centralFile();               // لا مجلدات ⇐ الملف المختار مباشرة
+    if (cf && await perm(cf, interactive, 'read')) {
+      let modified = 0; try { modified = (await cf.getFile()).lastModified; } catch (e) {}
+      return { handle: cf, name: cf.name, path: cf.name, modified, score: 0, folder: null, top: false, direct: true };
+    }
+    return null;
   }
   // كل ملفات JSON (لوحة التحكم وبرنامج الغياب)
   async function listJson(interactive, depth) {
@@ -697,7 +714,7 @@ const FL = (() => {
   }
 
   return { supported, folders, addHandle, add, remove, clear, perm, status, findCentral, listJson, readFiles,
-           me, setMe, teacherFile, setTeacherFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
+           me, setMe, teacherFile, setTeacherFile, centralFile, setCentralFile, pickFile, matchTeacher, scanTeacherFiles, findTeacherFile, teacherDir, fileNameFor, starterData, writeText, teachersFromWorkbook, norm, normEmail, safeName };
 })();
 
 </script>
@@ -1205,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', plHdrRefresh); setTimeout(plHdrRef
 // عند فتح البوابة: إن كانت المجلدات مرتبطة ولها صلاحية ⇐ اربط «بيانات المدرسة» تلقائياً (بدون نوافذ)
 setTimeout(async () => {
   try {
-    if (!FL.supported() || !(await FL.folders()).length) return;
+    if (!FL.supported() || (!(await FL.folders()).length && !(await FL.centralFile()))) return;
     if (typeof linkedHandle !== 'undefined' && linkedHandle) return;
     const c = await FL.findCentral(false);
     if (c) await plAutoLinkCentral(c);
@@ -1217,7 +1234,8 @@ let _plFiles = [], _plTeachers = [];
 async function portalFolders(interactive) {
   if (!FL.supported()) return alert('ربط المجلدات يعمل في Chrome أو Edge على الكمبيوتر فقط.');
   let st = await FL.status(false);
-  if (!st.length) return plGuide();                            // أول مرة: شرح الخطوات ثم اختيار المجلدين
+  const cfile = await FL.centralFile();
+  if (!st.length && !cfile) return plGuide();                            // أول مرة: شرح الخطوات ثم اختيار المجلدين
   if (st.some(x => !x.ok)) st = await FL.status(true);       // نحن داخل ضغطة زر: يمكن طلب الإذن
   plModal('<div style="padding:20px;text-align:center">⏳ جاري قراءة المجلدات…</div>');
   const { central, teachers } = await plCentralTeachers(false);
@@ -1246,8 +1264,11 @@ async function portalFolders(interactive) {
       : 'اربط مجلد <b>«بيانات المدرسة»</b> و<b>مجلدك</b> (يمكن أكثر من مجلد). بعدها يفتح «نجوم مدرستي» جاهزاً بملفك دون أي إعداد.'}</div>
     ${admin ? '' : plChecklist(central, st, tf)}
     ${st.map((x, i) => `<div style="display:flex;align-items:center;gap:8px;border:1px solid #ddd;border-radius:10px;padding:6px 10px;margin-bottom:6px">📁 <b style="flex:1">${plEsc(x.name)}</b>${x.ok ? '✅' : '🔒'}<button class="btn" style="padding:2px 10px" onclick="FL.remove(${i}).then(()=>portalFolders())">✖</button></div>`).join('')}
+    ${cfile ? `<div style="display:flex;align-items:center;gap:8px;border:1px solid #ddd;border-radius:10px;padding:6px 10px;margin-bottom:6px">📗 <b style="flex:1">${plEsc(cfile.name)}</b> <span style="font-size:12px;color:#777">ملف مختار مباشرة</span><button class="btn" style="padding:2px 10px" onclick="FL.setCentralFile(null).then(()=>portalFolders())">✖</button></div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px">
       <button class="btn" onclick="plAdd()">➕ إضافة مجلد</button>
+      <button class="btn" onclick="plPickCentralFile()" title="إذا رفض الجهاز اختيار المجلدات">📗 اختيار ملف «بيانات المدرسة»</button>
+      ${admin ? '' : '<button class="btn" onclick="plPickMyFile()" title="ملف نجوم مدرستي الخاص بك (JSON)">📄 اختيار ملفي</button>'}
       <button class="btn" onclick="plGuide(true)">❔ كيف أجهّز المجلدات؟</button>
     </div>
     ${plStatusHTML(admin, central, linkedCentral, tf, me)}
@@ -1275,17 +1296,60 @@ function plStatusHTML(admin, central, linkedCentral, tf, me) {
   }
   return `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:6px 12px;margin:6px 0">${h}</div>`;
 }
+// ---- الربط بالملفات مباشرة (لأجهزة ترفض اختيار المجلدات) ----
+let _plPickedTF = null;
+async function plPickCentralFile() {
+  try {
+    const h = await FL.pickFile('xlsx');
+    await FL.setCentralFile(h);
+    if (!(await FL.folders()).length && plRole() !== 'admin' && !(await FL.teacherFile())) return plFileMode();   // الخطوة التالية: ملفي
+    await portalFolders();
+  } catch (e) { if (!(e && e.name === 'AbortError')) alert('تعذّر اختيار الملف: ' + e.message); else plFileMode(); }
+}
+async function plPickMyFile() {
+  try {
+    const h = await FL.pickFile('json');
+    let d = null; try { d = JSON.parse(await (await h.getFile()).text()); } catch (e) {}
+    if (!d || !Array.isArray(d.classes)) return alert('هذا ليس ملف نجوم مدرستي.\nاختر الملف الذي يبدأ اسمه بـ nojoom_data_');
+    if ((await h.queryPermission({ mode: 'readwrite' })) !== 'granted') return alert('يجب السماح بتعديل الملف حتى تُحفظ بياناتك فيه.');
+    _plPickedTF = h;
+    const t = FL.matchTeacher(d, _plTeachers || []);
+    await FL.setTeacherFile(h);
+    if (t) await FL.setMe(t);
+    await portalFolders();
+    if (t) setTimeout(() => { const sel = document.getElementById('plMe'); if (sel) sel.value = t.key; }, 50);
+  } catch (e) { if (!(e && e.name === 'AbortError')) alert('تعذّر اختيار الملف: ' + e.message); else plAbortHint(); }
+}
+// نافذة بديلة: ربط بالملفات مباشرة (يحتاج ضغطة زر لفتح نافذة الاختيار)
+async function plFileMode() {
+  const cf = await FL.centralFile(), tf = await FL.teacherFile(), admin = plRole() === 'admin';
+  plModal(`<h3 style="margin:0 0 6px">📄 الربط بالملفات مباشرة</h3>
+    <div style="font-size:13px;line-height:1.9">لم يتم ربط المجلد. إذا كان جهازك يرفض اختيار المجلدات، اختر <b>الملفات نفسها</b> من OneDrive:</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">
+      <button class="btn ${cf ? '' : 'btn-primary'}" onclick="plPickCentralFile()">${cf ? '✅' : '1️⃣'} ملف «بيانات المدرسة» (Excel)${cf ? ' — ' + plEsc(cf.name) : ''}</button>
+      ${admin ? '' : `<button class="btn ${cf && !tf ? 'btn-primary' : ''}" onclick="plPickMyFile()">${tf ? '✅' : '2️⃣'} ملفي في نجوم مدرستي (nojoom_data_….json)${tf ? ' — ' + plEsc(tf.name) : ''}</button>`}
+    </div>
+    <div style="font-size:12px;color:#777">إذا لم تظهر نافذة الاختيار أصلاً، فالجهاز يمنع نوافذ اختيار الملفات بسياسة من الإدارة (AllowFileSelectionDialogs) — يحتاج قسم تقنية المعلومات.</div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" onclick="plAdd()">📁 محاولة المجلد مرة أخرى</button><button class="btn" onclick="document.getElementById('plModal').remove()">إغلاق</button></div>`);
+}
+function plAbortHint() {
+  console.info('اختيار أُلغي — إن لم تظهر نافذة الاختيار أصلاً فالجهاز يمنع نوافذ اختيار الملفات (سياسة AllowFileSelectionDialogs).');
+}
 // إضافة مجلد (يمكن تكرارها لأكثر من مجلد) ثم الرجوع لنافذة الربط
 function plAdd() {
-  FL.add().then(() => portalFolders(), e => { if (!(e && e.name === 'AbortError')) alert('تعذّر ربط المجلد: ' + e.message); });
+  if (typeof window.showDirectoryPicker !== 'function') return plPickCentralFile();
+  FL.add().then(() => portalFolders(), e => {
+    if (!(e && e.name === 'AbortError')) return alert('تعذّر ربط المجلد: ' + e.message);
+    plFileMode();                                  // الجهاز رفض المجلد أو أُلغي الاختيار ⇐ اقتراح الملفات
+  });
 }
 // قائمة تحقق للمعلم: مجلد بيانات المدرسة + مجلده
 function plChecklist(central, st, tf) {
   const mineOk = !!tf || st.some(x => !(central && String(central.path).startsWith(x.name + '/')));
   const row = (ok, t, hint) => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0">${ok ? '✅' : '⬜'} <span style="flex:1"><b>${t}</b>${ok ? '' : `<br><span style="font-size:12px;color:#b7791f">${hint}</span>`}</span>${ok ? '' : '<button class="btn" style="padding:2px 10px" onclick="plAdd()">➕ اختيار</button>'}</div>`;
   return `<div style="border:1px solid #cbd5e1;border-radius:10px;padding:6px 12px;margin-bottom:10px;background:rgba(148,163,184,.08)">
-    ${row(!!central, '1) مجلد «بيانات المدرسة»', 'اختر مجلد «بيانات المدرسة» من OneDrive على جهازك')}
-    ${row(mineOk, '2) مجلدي (المجلد الذي باسمي)', 'اختر المجلد الذي يحمل اسمك من OneDrive على جهازك')}</div>`;
+    ${row(!!central, '1) «بيانات المدرسة»', 'اختر مجلد «بيانات المدرسة» من OneDrive — أو اختر الملف نفسه من «📗 اختيار ملف بيانات المدرسة»')}
+    ${row(mineOk, '2) ملفي / مجلدي', 'اختر المجلد الذي يحمل اسمك — أو اختر ملفك مباشرة من «📄 اختيار ملفي»')}</div>`;
 }
 // شرح خطوات تجهيز المجلدات (اختصار OneDrive + مزامنة) ثم اختيار المجلدين
 function plGuide(fromMain) {
@@ -1327,12 +1391,12 @@ async function portalSaveMe() {
   const key = document.getElementById('plMe') && document.getElementById('plMe').value;
   const t = _plTeachers.find(x => x.key === key);
   if (!t) { await FL.setMe(null); await FL.setTeacherFile(null); plHdrRefresh(); const ov = document.getElementById('plModal'); if (ov) ov.remove(); return; }
-  // ملف المعلم: الموجود في مجلداته، وإلا يُنشأ في مجلده
+  // ملف المعلم: المختار يدوياً، أو الموجود في مجلداته، وإلا يُنشأ في مجلده
   let f = _plFiles.find(x => x.teacher && x.teacher.key === t.key);
-  let h = f ? f.handle : null;
+  let h = f ? f.handle : (_plPickedTF || null);
   if (!h) {
     const dir = await FL.teacherDir(t, false);
-    if (!dir) return alert('لم أجد مجلدك الخاص.\nأضف مجلدك (الذي لديك عليه صلاحية تعديل) من «➕ إضافة مجلد».');
+    if (!dir) return alert('لم أجد مجلدك الخاص.\nأضف مجلدك من «➕ إضافة مجلد»، أو اختر ملفك مباشرة من «📄 اختيار ملفي».');
     if (!(await FL.perm(dir, true, 'readwrite'))) return alert('لا توجد صلاحية كتابة على المجلد «' + dir.name + '».');
     try {
       h = await dir.getFileHandle(FL.fileNameFor(t), { create: true });
@@ -1481,7 +1545,7 @@ async function plPickFiles() {
 }
 async function plUnlinkAll() {
   if (!confirm('فك كل الروابط على هذا الجهاز؟\n(الملفات نفسها لا تتأثر — فقط تحتاج إعادة الربط)')) return;
-  await FL.clear(); await FL.setMe(null); await FL.setTeacherFile(null);
+  await FL.clear(); await FL.setMe(null); await FL.setTeacherFile(null); await FL.setCentralFile(null); _plPickedTF = null;
   try { await onUnlinkBtnClick(); } catch (e) {}
   const ov = document.getElementById('plModal'); if (ov) ov.remove();
   plHdrRefresh();
