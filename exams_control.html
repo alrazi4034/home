@@ -568,7 +568,7 @@ function buildAbs(p,silent){
 
 /* ---------- بطاقات كلمات المرور (استيراد Excel/CSV متعدد) ---------- */
 let pwPick={},pwMode='page';
-const pwM=()=>Object.assign({t:5,r:5,b:5,l:5},D.pwM||{});
+const pwM=()=>Object.assign({t:5,r:5,b:5,l:5,it:1.2,ib:1.2,ir:2,il:2},D.pwM||{});
 function parseCSV(t){const rows=[];let r=[],c='',q=false;
   for(let i=0;i<t.length;i++){const ch=t[i];
     if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}
@@ -635,6 +635,7 @@ function renderPw(m,L){
    <div class="chips">${act.map(c=>{const n=c.list.filter(s=>ids[s.id]).length;return n?`<label class="chip"><input type="checkbox" class="pk" data-c="${c.id}" ${pwPick[c.id]?'checked':''} onchange="pwPick['${c.id}']=this.checked"> ${c.num}: ${esc(c.name)} (${n})</label>`:''}).join('')}
    ${un.length?`<label class="chip"><input type="checkbox" class="pk" data-c="__u" ${pwPick.__u===false?'':'checked'} onchange="pwPick.__u=this.checked"> طلاب غير مسجلين في اللجان (${un.length})</label>`:''}</div>
    <div class="grid" style="margin-top:8px">${[['t','أعلى'],['b','أسفل'],['r','يمين'],['l','يسار']].map(([k,n])=>`<label class="f">هامش الصفحة ${n} (مم)<input type="number" min="0" max="30" step="0.5" value="${pwM()[k]}" oninput="D.pwM=Object.assign(pwM(),{${k}:+this.value});save()"></label>`).join('')}</div>
+   <div class="grid">${[['t','أعلى'],['b','أسفل'],['r','يمين'],['l','يسار']].map(([k,n])=>`<label class="f">هامش البطاقة من الداخل ${n} (مم)<input type="number" min="0" max="10" step="0.5" value="${pwM()['i'+k]}" oninput="D.pwM=Object.assign(pwM(),{i${k}:+this.value});save()"></label>`).join('')}</div>
    <p class="note">البطاقة: 30 في صفحة A4 (3×10) — الاسم والرقم، اللجنة، المسار والشعبة، اسم الاختبار المختصر، الرابط ومفتاح الاختبار. عند الطباعة اختر: الورق A4، الهوامش «بدون»، المقياس 100%.</p>
    <div class="bar"><button class="btn p" onclick="buildPw(true)">🖨️ طباعة</button><button class="btn" onclick="buildPw(false)">👁 معاينة</button></div>`:'<p class="note">استورد ملف/ملفات Excel الخاصة بالاختبار لتظهر البطاقات.</p>'}</div>`;
 }
@@ -647,8 +648,9 @@ function buildPw(p){
     L.filter(c=>c.list.length&&pwPick[c.id]!==false).forEach(c=>{const it=c.list.filter(s=>mp[s.id]).map(s=>({s,r:mp[s.id],c,es}));if(it.length){cells.push(...it);pad()}});
     if(pwPick.__u!==false){const it=D.pw[ex].filter(r=>!cm[r.u]).map(r=>({s:null,r,c:null,es}));if(it.length){cells.push(...it);pad()}}});
   if(!cells.length){alert('لا توجد بطاقات للجان المحددة');return}
+  const IM=pwM(),ip=`padding:${IM.it}mm ${IM.ir}mm ${IM.ib}mm ${IM.il}mm`;
   const card=x=>{if(!x)return '<div class="pc" style="border:none"></div>';const r=x.r,s=x.s;
-    return `<div class="pc fitv"><div class="ex fith">${esc(x.es)}</div><div class="nm fith">${esc(s?s.name:arName(r.n))}</div>
+    return `<div class="pc fitv" style="${ip}"><div class="ex fith">${esc(x.es)}</div><div class="nm fith">${esc(s?s.name:arName(r.n))}</div>
     <div class="ln"><span class="fith">رقم الطالب: <b>${esc(r.u)}</b></span><span class="c fith">${cmName(x.c)}</span></div>
     <div class="ln"><span class="fith">${esc(trOf(s,r))}</span><span class="fith">الشعبة: <b>${esc(secOfS(s,r))}</b></span></div>
     <div class="bx"><div class="b"><small>رابط الاختبار</small><b class="fith">${esc(r.url)}</b></div><div class="b k"><small>مفتاح الاختبار${r.p?' / كلمة المرور: '+esc(r.p):''}</small><b class="fith">${esc(r.k)}</b></div></div></div>`};
@@ -827,7 +829,7 @@ function obsAuto(){
 
 /* ---------- ملصقات الجلوس ---------- */
 let stkPick={},stkMode='page';
-const STK0={rows:8,cols:3,mt:10,mr:8,mb:10,ml:8,border:true,fs:100,school:true,sn:true,un:true};
+const STK0={rows:8,cols:3,mt:10,mr:8,mb:10,ml:8,it:1,ib:1,ir:1.5,il:1.5,border:true,fs:100,school:true,sn:true,un:true};
 const stk=()=>Object.assign({},STK0,D.stk||{});
 const setStk=(k,v)=>{D.stk=Object.assign(stk(),{[k]:v});save()};
 function renderStk(m,L){
@@ -840,6 +842,7 @@ function renderStk(m,L){
    <span class="note">${Object.keys(D.pw).length?`مستورد: ${Object.keys(D.pw).length} اختبار — ${Object.keys(info).length} طالب`:'لم تُستورد ملفات بعد'}</span></div>
    <p class="note">المسار والشعبة تُقرأ من ملفات الاختبار المستوردة (نفس ملفات بطاقات كلمات المرور). الطالب غير الموجود فيها يُكتب له صفه وشعبته من بيانات المدرسة.</p>
    <div class="grid">${num('rows','عدد الصفوف',30,1)}${num('cols','عدد الأعمدة',8,1)}${num('mt','هامش أعلى (مم)',80)}${num('mb','هامش أسفل (مم)',80)}${num('mr','هامش يمين (مم)',80)}${num('ml','هامش يسار (مم)',80)}${num('fs','حجم الخط %',200,5)}</div>
+   <div class="grid" style="margin-top:8px">${num('it','هامش الملصق من الداخل أعلى (مم)',20)}${num('ib','هامش الملصق من الداخل أسفل (مم)',20)}${num('ir','هامش الملصق من الداخل يمين (مم)',20)}${num('il','هامش الملصق من الداخل يسار (مم)',20)}</div>
    <div class="bar" style="margin-top:10px">${ck('border','حدود القص')}${ck('sn','الرقم المسلسل')}${ck('school','اسم المدرسة')}${un?ck('un','غير المسجلين في اللجان ('+un+')'):''}
    <select onchange="stkMode=this.value"><option value="page" ${stkMode==='page'?'selected':''}>ورقة مستقلة لكل لجنة</option><option value="cont" ${stkMode==='cont'?'selected':''}>عرض متواصل (لجنة واحدة في كل صف)</option></select>
    <button class="btn s" onclick="document.querySelectorAll('.sp').forEach(k=>{k.checked=true;stkPick[k.dataset.c]=true})">الكل</button><button class="btn s" onclick="document.querySelectorAll('.sp').forEach(k=>{k.checked=false;stkPick[k.dataset.c]=false})">لا أحد</button>
@@ -852,14 +855,14 @@ function renderStk(m,L){
 function stkInfo(){const s=stk(),R=Math.max(1,+s.rows|0),C=Math.max(1,+s.cols|0),w=(210-s.ml-s.mr)/C,h=(297-s.mt-s.mb)/R,e=$('stkInfo');
   if(e)e.textContent='حجم الملصق: '+w.toFixed(1)+' × '+h.toFixed(1)+' مم — '+(R*C)+' ملصق في الصفحة'+(w<25||h<12?' ⚠ صغير جداً':'')}
 function buildStk(p){
-  const s=stk(),R=Math.max(1,+s.rows|0),C=Math.max(1,+s.cols|0),per=R*C,w=(210-s.ml-s.mr)/C,h=(297-s.mt-s.mb)/R;
+  const s=stk(),R=Math.max(1,+s.rows|0),C=Math.max(1,+s.cols|0),per=R*C,w=(210-s.ml-s.mr)/C-s.ir-s.il,h=(297-s.mt-s.mb)/R-s.it-s.ib;
   if(w<=5||h<=5){alert('الهوامش كبيرة جداً');return}
   const info=stuInfo();let cells=[];const pad=()=>{const n=stkMode==='page'?per:C;while(cells.length%n)cells.push(null)};
   committees().filter(c=>c.list.length&&stkPick[c.id]!==false).forEach(c=>{c.list.forEach((st,i)=>cells.push({c,st,r:info[st.id],i:i+1}));pad()});
   if(s.un){const u=Object.keys(info).filter(u=>!students.some(x=>x.id===u));u.forEach((id,i)=>cells.push({c:null,st:{id,name:info[id].n||''},r:info[id],i:i+1,x:1}));if(u.length)pad()}
   if(!cells.length){alert('اختر لجنة واحدة على الأقل');return}
   const base=Math.max(5,Math.min(30,Math.min(h*3.78/7.2,w*3.78/12)*(+s.fs||100)/100));
-  const cell=x=>x?`<div class="sk fitv" style="font-size:${base.toFixed(1)}px;${s.border?'':'border:none'}"><div class="sk1"><span class="cm fith">${cmName(x.c)}</span>${s.sn?`<span class="sn">${x.i}</span>`:''}</div>
+  const cell=x=>x?`<div class="sk fitv" style="font-size:${base.toFixed(1)}px;padding:${s.it}mm ${s.ir}mm ${s.ib}mm ${s.il}mm;${s.border?'':'border:none'}"><div class="sk1"><span class="cm fith">${cmName(x.c)}</span>${s.sn?`<span class="sn">${x.i}</span>`:''}</div>
     <div class="sk2">${esc(x.st.name)}</div><div class="sk3 fith">رقم الطالب: <b>${esc(x.st.id)}</b></div>
     <div class="sk5 fith">${esc(trOf(x.x?null:x.st,x.r))} — الشعبة: <b>${esc(secOfS(x.x?null:x.st,x.r))}</b></div>${s.school?`<div class="sk4 fith">${esc(D.cfg.school)}</div>`:''}</div>`:'<div class="sk" style="border:none"></div>';
   showFit(chunks(cells,per).map(ch=>`<div class="stpage" style="padding:${s.mt}mm ${s.mr}mm ${s.mb}mm ${s.ml}mm;grid-template-columns:repeat(${C},minmax(0,1fr));grid-template-rows:repeat(${R},minmax(0,1fr))">${ch.map(cell).join('')}</div>`).join(''),p);
