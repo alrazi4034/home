@@ -50,6 +50,9 @@ table.t input,table.t select{width:100%}
 .sh-head .mid{text-align:center;line-height:1.5;font-weight:700;font-size:13px}
 .sh-title{text-align:center;font-family:'El Messiri',sans-serif;font-size:18px;font-weight:700;margin:6px 0 4px}
 .sh-meta{display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:center;font-size:12px;margin-bottom:5px;font-weight:600}
+.sh-title.sp{margin-top:7mm}
+.sh-meta.sp{margin-bottom:7mm}
+.sheet,.stpage{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 table.sh{width:100%;border-collapse:collapse;table-layout:fixed}
 table.sh th,table.sh td{border:1px solid #000;padding:0 4px;text-align:center;height:var(--rh);overflow:hidden;white-space:nowrap;font-size:12px}
 table.sh.wrap td{white-space:normal}
@@ -130,12 +133,12 @@ const LS='raziExamsControl_v1';
 const GR={1:'الأول',2:'الثاني',3:'الثالث',4:'الرابع',5:'الخامس',6:'السادس',7:'السابع',8:'الثامن',9:'التاسع',10:'العاشر',11:'الحادي عشر',12:'الثاني عشر'};
 const SUBJ=['التربية الإسلامية','اللغة العربية','اللغة الإنجليزية','الرياضيات','العلوم','الدراسات الاجتماعية'];
 const D={cfg:{school:'',year:'',term:'الفصل الدراسي الأول',exam:'اختبار نهاية الفصل',cap:30},
- custom:[],ren:{},assign:{},order:[],manual:[],removed:{},exams:[],staff:[],obsDay:{},obsSub:{},obsSel:'',abs:{},sign:{subject:'',date:'',time:''},pw:{},pwSel:'',rep:{},sent:{},tpl:{},supDay:{},stk:{},pwShort:{}};
+ custom:[],ren:{},assign:{},order:[],manual:[],removed:{},exams:[],staff:[],obsDay:{},obsSub:{},obsSel:'',abs:{},sign:{subject:'',date:'',time:''},hl:{},pw:{},pwSel:'',rep:{},sent:{},tpl:{},supDay:{},stk:{},pwShort:{}};
 let lsFail=false,HIST=[],sessionBase=null,sessionSnap=false,fsPend=false,base=[],students=[],view='dash',pick={},checked={},openC={},absView='all',staffQ='';
 try{Object.assign(D,JSON.parse(localStorage.getItem(LS)||'{}'))}catch(e){}
 try{HIST=JSON.parse(localStorage.getItem(LS+'_hist')||'[]')}catch(e){}
 let lastSnap=HIST.length?+new Date(HIST[0].t):0;
-const SNAPK=['cfg','custom','ren','assign','order','manual','removed','exams','staff','obsDay','supDay','obsSub','obsSel','abs','sent','tpl','sign','stk'];
+const SNAPK=['cfg','custom','ren','assign','order','manual','removed','exams','staff','obsDay','supDay','obsSub','obsSel','abs','sent','tpl','sign','stk','hl'];
 const slim=()=>{const o={};SNAPK.forEach(k=>o[k]=JSON.parse(JSON.stringify(D[k]===undefined?null:D[k])));return o};
 function snapObj(o,label){if(HIST.length&&JSON.stringify(HIST[0].d)===JSON.stringify(o))return false;HIST.unshift({t:new Date().toISOString(),label,d:o});HIST=HIST.slice(0,10);try{localStorage.setItem(LS+'_hist',JSON.stringify(HIST))}catch(e){}return true}
 function autoSnap(){
@@ -389,7 +392,21 @@ function findStu(q){
 /* ---------- أدوات الطباعة ---------- */
 const headH=()=>`<div class="sh-head"><img src="moe_logo.png" onerror="this.style.visibility='hidden'"><div class="mid">وزارة التربية والتعليم<br>${esc(D.cfg.school)}</div><img src="school_logo.png" onerror="this.style.visibility='hidden'"></div>`;
 const baseMeta=()=>`<span>العام الدراسي: ${esc(D.cfg.year)}</span><span>${esc(D.cfg.term)}</span><span>${esc(D.cfg.exam)}</span>`;
-const sheet=(t,meta,body,foot,rh)=>`<div class="sheet" style="--rh:${rh||'7.6mm'}">${headH()}<div class="sh-title">${t}</div><div class="sh-meta">${meta}</div>${body}${foot||''}</div>`;
+const sheet=(t,meta,body,foot,rh,sp)=>`<div class="sheet" style="--rh:${rh||'7.6mm'}">${headH()}<div class="sh-title${sp?' sp':''}">${t}</div><div class="sh-meta${sp?' sp':''}">${meta}</div>${body}${foot||''}</div>`;
+/* ---------- تلوين أرقام الجلوس حسب اللجنة ---------- */
+const HLC=[['#FFF176','أصفر'],['#A5D6A7','أخضر'],['#90CAF9','أزرق'],['#F48FB1','وردي'],['#FFCC80','برتقالي'],['#CE93D8','بنفسجي'],['#80DEEA','فيروزي'],['#EF9A9A','أحمر']];
+let hlPen=HLC[0][0];
+const hlOf=id=>(D.hl||{})[id]||'';
+const hlCell=id=>hlOf(id)?` style="background:${hlOf(id)};font-weight:700"`:'';
+function hlTog(id){D.hl=D.hl||{};if(!hlPen||D.hl[id]===hlPen)delete D.hl[id];else D.hl[id]=hlPen;save();render()}
+function hlBox(act){
+  return `<div class="box"><h3>🎨 تلوين أرقام الجلوس</h3>
+   <p class="note">اختر اللون ثم اضغط على اللجان المطلوبة؛ يُلوَّن رقم الجلوس لطلابها في كشوف اللجان وكشوف التوقيع وملصقات الجلوس. اضغط اللجنة مرة أخرى بنفس اللون لإزالته.</p>
+   <div class="bar">${HLC.map(([c,n])=>`<button class="btn s" title="${n}" onclick="hlPen='${c}';render()" style="background:${c};min-width:34px;${hlPen===c?'outline:2px solid #000;outline-offset:1px':''}">${hlPen===c?'✓':'&nbsp;'}</button>`).join('')}
+   <button class="btn s" onclick="hlPen='';render()" style="${hlPen?'':'outline:2px solid #000;outline-offset:1px'}">ممحاة</button>
+   <button class="btn s d" onclick="if(confirm('إزالة كل الألوان؟')){D.hl={};save();render()}">مسح الكل</button></div>
+   <div class="chips">${act.map(c=>`<span class="chip" style="cursor:pointer;${hlOf(c.id)?'background:'+hlOf(c.id)+';border-color:#999':''}" onclick="hlTog('${c.id}')">${c.num}: ${esc(c.name)}</span>`).join('')}</div></div>`;
+}
 const tbl=(cols,heads,rows,cls)=>`<table class="sh ${cls||''}"><colgroup>${cols}</colgroup><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr>${rows}</table>`;
 const chunks=(a,n)=>{const r=[];for(let i=0;i<a.length;i+=n)r.push(a.slice(i,i+n));return r.length?r:[[]]};
 const show=(h,p)=>{$('preview').innerHTML=h;if(p)setTimeout(()=>window.print(),300);else $('preview').scrollIntoView();};
@@ -410,7 +427,7 @@ function renderPrint(m,L){
    <div class="chips">${act.map(x=>`<label class="chip"><input type="checkbox" ${pick[x.id]?'checked':''} onchange="pick['${x.id}']=this.checked"> ${x.num}: ${esc(x.name)} (${x.list.length})</label>`).join('')}</div>
    <div class="bar" style="margin-top:12px"><button class="btn p" onclick="buildLists(true)">🖨️ طباعة</button><button class="btn" onclick="buildLists(false)">👁 معاينة</button>
    ${sg&&examDates().includes(S.date)?`<button class="btn p" onclick="buildLists(true,true)">🖨️ طباعة كشوف اليوم (حسب الجدول)</button><button class="btn" onclick="buildLists(false,true)">👁 معاينة اليوم</button>`:''}</div>
-   ${sg?`<p class="note">«كشوف اليوم»: تُطبع اللجان التي فيها طلاب صفوف مختبَرة في هذا التاريخ فقط، وتُملأ المادة والزمن والملاحظون تلقائياً لكل لجنة.</p>`:''}</div>`;
+   ${sg?`<p class="note">«كشوف اليوم»: تُطبع اللجان التي فيها طلاب صفوف مختبَرة في هذا التاريخ فقط، وتُملأ المادة والزمن والملاحظون تلقائياً لكل لجنة.</p>`:''}</div>${hlBox(act)}`;
 }
 function signFrom(d){if(!d)return;D.sign.date=d;D.sign.subject=subjOf(d);const t=D.exams.find(e=>e.date===d&&e.time);if(t)D.sign.time=t.time;save();render();}
 function buildLists(p,auto){
@@ -419,15 +436,15 @@ function buildLists(p,auto){
   L.forEach(x=>{
     let list=x.list,subj=S.subject,time=S.time;
     if(auto){list=dayStu(x,S.date);if(!list.length)return;const gs=[...new Set(list.map(gOf))],rs=D.exams.filter(e=>e.date===S.date&&exName(e)&&gs.some(g=>g>=+e.from&&g<=+e.to));subj=[...new Set(rs.map(exName))].join('، ');time=[...new Set(rs.map(e=>e.time).filter(Boolean))].join(' / ')||S.time}
-    const n=list.length,rows=Math.max(n,25),rh=rows>25?'6.4mm':'7.6mm',o=(D.obsDay[S.date]||{})[x.id]||{};let tr='';
-    for(let i=0;i<rows;i++){const s=list[i];tr+=`<tr><td>${i+1}</td><td>${s?s.id:''}</td><td class="nm">${s?esc(s.name):''}</td><td>${s?clsName(s.cls):''}</td>${sg?'<td></td>':''}</tr>`;}
+    const n=list.length,rh=n<=25?'7.6mm':Math.max(5,Math.min(7.6,190/(n+1))).toFixed(2)+'mm',o=(D.obsDay[S.date]||{})[x.id]||{},hc=hlCell(x.id);let tr='';
+    for(let i=0;i<n;i++){const s=list[i];tr+=`<tr><td${hc}>${i+1}</td><td>${s.id}</td><td class="nm">${esc(s.name)}</td><td>${clsName(s.cls)}</td>${sg?'<td></td>':''}</tr>`;}
     const cols=sg?'<col width="28"><col width="92"><col><col width="58"><col width="110">':'<col width="34"><col width="110"><col><col width="70">';
     const meta=baseMeta()+(sg?dateMeta(S.date,subj)+(time?`<span>الزمن: ${esc(time)}</span>`:''):'');
     const foot=sg?`<div class="sh-sum"><span>عدد الطلاب: ${n}</span><span>الحاضرون: ........</span><span>الغائبون: ........</span></div>
      <div class="sh-foot" style="grid-template-columns:repeat(${obsN()+1},1fr)">${OK.slice(0,obsN()).map((k,i)=>`<div>الملاحظ ${i+1}: ${esc(o[k]||'')}<br>التوقيع:</div>`).join('')}<div>المراقب: ${esc(supOf(S.date,x.id))}<br>التوقيع:</div></div>`
      :`<div class="sh-sum" style="margin-top:6px"><span>عدد طلاب اللجنة: ${n}</span></div>`;
     out+=sheet((sg?'كشف توقيع الطلاب':'كشف أسماء الطلاب')+` — لجنة رقم (${x.num}) : ${esc(x.name)}`,meta,
-      tbl(cols,['م','رقم الطالب','اسم الطالب','الشعبة'].concat(sg?['توقيع الطالب']:[]),tr),foot,rh);
+      tbl(cols,['م','رقم الطالب','اسم الطالب','الشعبة'].concat(sg?['توقيع الطالب']:[]),tr),foot,rh,true);
   });
   show(out,p);
 }
@@ -849,7 +866,7 @@ function renderStk(m,L){
    <span class="note" id="stkInfo"></span></div>
    <div class="chips">${act.map(c=>`<label class="chip"><input type="checkbox" class="sp" data-c="${c.id}" ${stkPick[c.id]?'checked':''} onchange="stkPick['${c.id}']=this.checked"> ${c.num}: ${esc(c.name)} (${c.list.length})</label>`).join('')}</div>
    <p class="note">كل ملصق: رقم اللجنة واسمها، اسم الطالب ورقمه، المسار والشعبة. الخط يتأقلم تلقائياً مع حجم الملصق. عند الطباعة اختر الهوامش «بدون» والمقياس 100%.</p>
-   <div class="bar"><button class="btn p" onclick="buildStk(true)">🖨️ طباعة</button><button class="btn" onclick="buildStk(false)">👁 معاينة</button></div></div>`;
+   <div class="bar"><button class="btn p" onclick="buildStk(true)">🖨️ طباعة</button><button class="btn" onclick="buildStk(false)">👁 معاينة</button></div></div>${hlBox(act)}`;
   stkInfo();
 }
 function stkInfo(){const s=stk(),R=Math.max(1,+s.rows|0),C=Math.max(1,+s.cols|0),w=(210-s.ml-s.mr)/C,h=(297-s.mt-s.mb)/R,e=$('stkInfo');
@@ -862,7 +879,7 @@ function buildStk(p){
   if(s.un){const u=Object.keys(info).filter(u=>!students.some(x=>x.id===u));u.forEach((id,i)=>cells.push({c:null,st:{id,name:info[id].n||''},r:info[id],i:i+1,x:1}));if(u.length)pad()}
   if(!cells.length){alert('اختر لجنة واحدة على الأقل');return}
   const base=Math.max(5,Math.min(30,Math.min(h*3.78/7.2,w*3.78/12)*(+s.fs||100)/100));
-  const cell=x=>x?`<div class="sk fitv" style="font-size:${base.toFixed(1)}px;padding:${s.it}mm ${s.ir}mm ${s.ib}mm ${s.il}mm;${s.border?'':'border:none'}"><div class="sk1"><span class="cm fith">${cmName(x.c)}</span>${s.sn?`<span class="sn">${x.i}</span>`:''}</div>
+  const cell=x=>x?`<div class="sk fitv" style="font-size:${base.toFixed(1)}px;padding:${s.it}mm ${s.ir}mm ${s.ib}mm ${s.il}mm;${s.border?'':'border:none'}"><div class="sk1"><span class="cm fith">${cmName(x.c)}</span>${s.sn?`<span class="sn"${x.c&&hlOf(x.c.id)?` style="background:${hlOf(x.c.id)}"`:''}>${x.i}</span>`:''}</div>
     <div class="sk2">${esc(x.st.name)}</div><div class="sk3 fith">رقم الطالب: <b>${esc(x.st.id)}</b></div>
     <div class="sk5 fith">${esc(trOf(x.x?null:x.st,x.r))} — الشعبة: <b>${esc(secOfS(x.x?null:x.st,x.r))}</b></div>${s.school?`<div class="sk4 fith">${esc(D.cfg.school)}</div>`:''}</div>`:'<div class="sk" style="border:none"></div>';
   showFit(chunks(cells,per).map(ch=>`<div class="stpage" style="padding:${s.mt}mm ${s.mr}mm ${s.mb}mm ${s.ml}mm;grid-template-columns:repeat(${C},minmax(0,1fr));grid-template-rows:repeat(${R},minmax(0,1fr))">${ch.map(cell).join('')}</div>`).join(''),p);
