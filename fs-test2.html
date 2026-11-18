@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>فحص الربط 2 – طرق بديلة</title>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#10142a;color:#e9ecf8;margin:0;padding:18px;line-height:1.8}
+.wrap{max-width:900px;margin:auto}
+h1{color:#ffc94d;margin:0 0 4px;font-size:24px}
+.card{background:#1a2042;border:1px solid #ffffff1f;border-radius:14px;padding:14px 18px;margin:12px 0}
+.card h3{margin:0 0 6px;color:#9fd3ff;font-size:17px}
+button{font-family:inherit;font-size:15px;border:0;border-radius:9px;padding:9px 16px;cursor:pointer;background:#ffc94d;color:#222;font-weight:bold;margin:4px 0 4px 6px}
+button.sec{background:#2e3770;color:#fff}
+#drop{border:3px dashed #ffc94d88;border-radius:14px;padding:34px;text-align:center;font-size:18px;color:#ffd98a;transition:.2s}
+#drop.over{background:#ffc94d22;border-color:#ffc94d}
+.log{direction:ltr;text-align:left;background:#05070f;border-radius:9px;padding:8px 12px;font-family:Consolas,monospace;font-size:13px;white-space:pre-wrap;min-height:22px;margin-top:6px}
+.ok{color:#7dffb0}.bad{color:#ff8fa3}.st{font-weight:bold}
+table{width:100%;border-collapse:collapse;font-size:14px}td{border:1px solid #ffffff1c;padding:6px 10px}
+.hint{color:#c9c3ef;font-size:14px}
+</style></head><body><div class="wrap">
+<h1>🧪 فحص الربط 2 – طرق بديلة مشروعة</h1>
+<div class="hint">جرّب الاختبارات بالترتيب على الجهاز الذي يرفض الربط، ثم اضغط «نسخ النتائج» في الأسفل وأرسلها. استخدم مجلداً تجريبياً فارغاً، مثل <b>C:\razi</b> أو مجلداً في OneDrive.</div>
+
+<div class="card"><h3>① السحب والإفلات (الأهم)</h3>
+<div class="hint">افتح مستكشف الملفات، واسحب <b>المجلد نفسه</b> وأفلته داخل المربع. لا تفتح المجلد ولا تسحب ما بداخله.</div>
+<div id="drop">📂 أفلت المجلد هنا</div><div class="log" id="l1"></div></div>
+
+<div class="card"><h3>② اختيار مجلد للقراءة فقط (طريقة الرفع العادية)</h3>
+<input type="file" id="dirIn" webkitdirectory multiple style="display:none">
+<button onclick="dirIn.click()">📁 اختر مجلداً</button><div class="log" id="l2"></div></div>
+
+<div class="card"><h3>③ «حفظ باسم» إلى مجلد تختاره</h3>
+<button onclick="tSave()">💾 احفظ ملفاً تجريبياً</button><div class="log" id="l3"></div></div>
+
+<div class="card"><h3>④ اختيار المجلد بطرق مختلفة (للمقارنة)</h3>
+<button class="sec" onclick="tPick({})">بدون خيارات</button>
+<button class="sec" onclick="tPick({mode:'readwrite'})">قراءة وكتابة مباشرة</button>
+<button class="sec" onclick="tPick({startIn:'documents'})">يبدأ من «المستندات»</button>
+<div class="log" id="l4"></div></div>
+
+<div class="card"><h3>⑤ تخزين داخلي في المتصفح (OPFS)</h3>
+<button class="sec" onclick="tOPFS()">جرّب</button><div class="log" id="l5"></div></div>
+
+<div class="card"><h3>النتائج</h3>
+<table id="sum"></table>
+<button onclick="copyRes()" style="margin-top:10px">📋 نسخ النتائج</button> <span id="cp" class="ok"></span>
+</div>
+</div>
+<script>
+const R={};
+const env=`UA: ${navigator.userAgent}\nURL: ${location.href}\nsecure: ${isSecureContext}  iframe: ${self!==top}\nAPIs: dirPicker=${'showDirectoryPicker' in window} savePicker=${'showSaveFilePicker' in window} dropHandle=${'DataTransferItem' in window && 'getAsFileSystemHandle' in DataTransferItem.prototype} opfs=${!!(navigator.storage&&navigator.storage.getDirectory)}`;
+function log(id,msg,cls){const e=document.getElementById(id);const s=document.createElement('div');if(cls)s.className=cls;s.textContent=msg;e.appendChild(s)}
+function err(e){return (e&&e.name?e.name+' — ':'')+(e&&e.message||e)}
+function res(k,ok,txt){R[k]={ok,txt};const names={drop:'① السحب والإفلات',dropW:'① كتابة بعد الإفلات',inp:'② اختيار للقراءة',save:'③ حفظ باسم',pick:'④ اختيار مجلد',opfs:'⑤ تخزين داخلي'};
+  sum.innerHTML=Object.entries(R).map(([k,v])=>`<tr><td>${names[k]||k}</td><td class="st ${v.ok?'ok':'bad'}">${v.ok?'✅ نجح':'❌ فشل'}</td><td style="direction:ltr;text-align:left">${v.txt.replace(/[<>&]/g,'')}</td></tr>`).join('')}
+
+async function writeTest(dir,id,key){
+  const t0=performance.now();
+  try{
+    let p=await dir.queryPermission({mode:'readwrite'});log(id,'queryPermission(readwrite) = '+p);
+    if(p!=='granted'){p=await dir.requestPermission({mode:'readwrite'});log(id,'requestPermission(readwrite) = '+p)}
+    if(p!=='granted'){res(key,false,'write permission '+p);return}
+    const fh=await dir.getFileHandle('razi_write_test.txt',{create:true});
+    const w=await fh.createWritable();await w.write('razi test '+new Date().toISOString());await w.close();
+    const txt=await (await fh.getFile()).text();
+    await dir.removeEntry('razi_write_test.txt');
+    log(id,'✅ write+read+delete OK ('+Math.round(performance.now()-t0)+' ms): '+txt,'ok');res(key,true,'write OK');
+  }catch(e){log(id,'❌ write: '+err(e),'bad');res(key,false,err(e))}
+}
+async function listDir(dir,id){let n=0,names=[];for await(const [nm,h] of dir.entries()){n++;if(names.length<5)names.push((h.kind==='directory'?'📁':'📄')+nm)}log(id,`read OK: ${n} entries ${names.join(', ')}`,'ok')}
+
+// ① drag & drop
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over')});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',async e=>{
+  e.preventDefault();drop.classList.remove('over');l1.textContent='';
+  const items=[...e.dataTransfer.items].filter(i=>i.kind==='file');
+  if(!items.length){log('l1','لم يُستلم أي عنصر','bad');return}
+  const it=items[0];
+  if(!it.getAsFileSystemHandle){log('l1','getAsFileSystemHandle غير مدعوم','bad');res('drop',false,'unsupported');return}
+  try{
+    const hp=it.getAsFileSystemHandle();const h=await hp;
+    if(!h){log('l1','handle = null','bad');res('drop',false,'null handle');return}
+    log('l1',`handle: kind=${h.kind} name=${h.name}`,'ok');
+    if(h.kind!=='directory'){log('l1','أفلتّ ملفاً وليس مجلداً. اسحب المجلد نفسه.','bad');return}
+    await listDir(h,'l1');res('drop',true,'read OK');
+    await writeTest(h,'l1','dropW');
+  }catch(e2){log('l1','❌ '+err(e2),'bad');res('drop',false,err(e2))}
+});
+
+// ② input webkitdirectory
+dirIn.onchange=async()=>{l2.textContent='';const fs=[...dirIn.files];
+  if(!fs.length){log('l2','لم يُختر شيء (أو المجلد فارغ)','bad');res('inp',false,'0 files');return}
+  try{const t=await fs[0].text();log('l2',`✅ ${fs.length} files, first: ${fs[0].webkitRelativePath} (${t.length} chars)`,'ok');res('inp',true,fs.length+' files')}
+  catch(e){log('l2','❌ '+err(e),'bad');res('inp',false,err(e))}};
+
+// ③ save picker
+async function tSave(){l3.textContent='';const t0=performance.now();
+  try{const fh=await showSaveFilePicker({suggestedName:'razi_save_test.txt',types:[{description:'Text',accept:{'text/plain':['.txt']}}]});
+    const w=await fh.createWritable();await w.write('razi save test '+new Date().toISOString());await w.close();
+    log('l3','✅ saved: '+fh.name+' (يمكنك حذفه)','ok');res('save',true,'OK')}
+  catch(e){log('l3',`❌ ${err(e)} (after ${Math.round(performance.now()-t0)} ms)`,'bad');res('save',false,err(e))}}
+
+// ④ picker variants
+async function tPick(opt){const t0=performance.now();const tag=JSON.stringify(opt);
+  try{const d=await showDirectoryPicker(opt);log('l4',`✅ ${tag}: ${d.name}`,'ok');await listDir(d,'l4');res('pick',true,tag+' OK');await writeTest(d,'l4','pick')}
+  catch(e){log('l4',`❌ ${tag}: ${err(e)} (after ${Math.round(performance.now()-t0)} ms)`,'bad');if(!(R.pick&&R.pick.ok))res('pick',false,tag+' '+err(e))}}
+
+// ⑤ OPFS
+async function tOPFS(){l5.textContent='';
+  try{const root=await navigator.storage.getDirectory();const fh=await root.getFileHandle('t.txt',{create:true});const w=await fh.createWritable();await w.write('ok');await w.close();
+    log('l5','✅ OPFS write/read: '+await (await fh.getFile()).text(),'ok');await root.removeEntry('t.txt');res('opfs',true,'OK')}
+  catch(e){log('l5','❌ '+err(e),'bad');res('opfs',false,err(e))}}
+
+function copyRes(){const lines=[env,'',...Object.entries(R).map(([k,v])=>`${k}: ${v.ok?'OK':'FAIL'} — ${v.txt}`),'',...['l1','l2','l3','l4','l5'].map(i=>i+':\n'+document.getElementById(i).innerText)];
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>cp.textContent='✓ تم النسخ')}
+</script></body></html>
