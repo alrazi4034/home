@@ -318,6 +318,7 @@ function goToMyPeriod(classId, p) {
 // عند فتح البرنامج وعند تغيّر الحصة: انتقل تلقائياً لصف الحصة الحالية (إذا لم توجد تغييرات غير محفوظة)
 let _autoLastPeriod = null;
 function autoSelectCurrentPeriod() {
+  return;   // أُلغي الاختيار التلقائي للحصة والصف — الاختيار يدوي
   if (!onAttendancePage() || sessionDate !== _today()) return;
   const p = currentPeriod(sessionDate);
   if (!p || p === _autoLastPeriod) return;

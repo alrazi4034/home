@@ -156,3 +156,47 @@ async function flUnlockExisting() {
     if (btn && FL_PENDING) { btn.innerHTML = '🔓'; btn.title = 'اضغط «متابعة» لتفعيل الربط من بوابة الرازي'; }
   };
 })();
+
+/* ===== نافذة منبثقة واضحة عند الحاجة لإعادة الربط (بدل الاكتفاء بأيقونة 🔓) ===== */
+let _relinkDismissedAt = 0;
+function flNeedsRelink() {
+  if (FL_PENDING) return true;
+  const ids = ['btnSetup', 'btnRoster', 'btnLinkJson'];
+  return ids.some(id => (document.getElementById(id)?.textContent || '').trim().startsWith('🔓'));
+}
+function flRelinkPopup(force) {
+  if (!flNeedsRelink()) { flRelinkClose(); return; }
+  if (document.getElementById('flRelinkDlg')) return;
+  if (!force && _relinkDismissedAt && Date.now() - _relinkDismissedAt < 3 * 60 * 1000) return;   // «لاحقاً» = يعود بعد 3 دقائق
+  const n = FL_PENDING && FL_PENDING.me ? FL_PENDING.me.name : '';
+  const ov = document.createElement('div'); ov.id = 'flRelinkDlg';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(5,8,25,.65);display:flex;align-items:center;justify-content:center;direction:rtl';
+  ov.innerHTML = `<div style="background:var(--surface,#1e2236);color:var(--text,#fff);border:2px solid var(--accent,#f7c948);border-radius:18px;max-width:440px;width:92%;padding:22px 22px 18px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);line-height:1.9">
+      <div style="font-size:44px;line-height:1">🔗</div>
+      <div style="font-size:19px;font-weight:900;margin:6px 0 4px">يجب إعادة تفعيل الربط</div>
+      <div style="font-size:14px;opacity:.9">${n ? 'مرحباً <b>' + rsEsc(n) + '</b> — ' : ''}المتصفح يحتاج إذنك للوصول إلى ملفاتك.<br>
+        <b style="color:var(--absent,#ff6b6b)">لن تُحفظ بياناتك في ملفك حتى تضغط الزر.</b></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;font-size:17px;padding:12px" onclick="flRelinkGo()">🔓 تفعيل الربط الآن</button>
+      <div style="font-size:12px;opacity:.75;margin-top:8px">إذا سألك المتصفح اختر «السماح» أو «Allow on every visit»</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="_relinkDismissedAt=Date.now();flRelinkClose()">لاحقاً</button>
+    </div>`;
+  document.body.appendChild(ov);
+}
+function flRelinkClose() { const d = document.getElementById('flRelinkDlg'); if (d) d.remove(); }
+async function flRelinkGo() {
+  flRelinkClose();
+  try { await flContinue(); } catch (e) { console.warn(e); }
+  if (typeof setupBtnRefresh === 'function') setupBtnRefresh();
+  setTimeout(() => { if (flNeedsRelink()) { toast('لم يُفعَّل الربط — اضغط «السماح» عندما يسألك المتصفح', '🔓'); flRelinkPopup(true); } }, 900);
+}
+(function wireRelinkPopup() {
+  const check = () => setTimeout(() => flRelinkPopup(false), 400);
+  const ob = window.flShowBanner; if (typeof ob === 'function') window.flShowBanner = function () { ob.apply(this, arguments); check(); };
+  const os = window.setupBtnRefresh; if (typeof os === 'function') window.setupBtnRefresh = function () { os.apply(this, arguments); check(); };
+  const mo = new MutationObserver(check);   // مراقبة الأيقونات مباشرة (المراقب الأصلي يستدعي النسخة القديمة)
+  const watch = () => ['btnSetup', 'btnRoster', 'btnLinkJson'].forEach(id => { const el = document.getElementById(id); if (el && !el._flRel) { el._flRel = 1; mo.observe(el, { childList: true, characterData: true, subtree: true }); } });
+  watch(); document.addEventListener('DOMContentLoaded', watch);
+  setInterval(() => { watch(); flRelinkPopup(false); }, 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) flRelinkPopup(false); });
+  window.addEventListener('load', () => setTimeout(() => flRelinkPopup(false), 2500));
+})();

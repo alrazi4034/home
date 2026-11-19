@@ -15,7 +15,7 @@ function attMeta(cls, s) {
 }
 
 /* ===== رقم الحصة عند حفظ الحضور =====
-   يختار المعلم حصة أو أكثر. الافتراضي: الحصص المحفوظة لهذا التاريخ، وإلا حصص آخر يوم مماثل (نفس اليوم من الأسبوع) لنفس الصف. */
+   يختار المعلم حصة أو أكثر يدوياً. لا يُختار شيء تلقائياً إلا الحصص المحفوظة سابقاً لنفس التاريخ (عند تعديل حصة محفوظة). */
 const PERIODS_BY_WEEKDAY = { 5: 4 };   // الجمعة 4 حصص، وباقي الأيام 8
 let selPeriods = new Set(), selPeriodsCtx = '';
 function periodsCount(date) {
@@ -26,17 +26,7 @@ function periodsCount(date) {
 function defaultPeriods(cls, date) {
   const sp = cls._savedPeriods || {};
   if (sp[date] && sp[date].length) return sp[date];            // ما حُفظ لهذا اليوم يبقى كما هو
-  // 1) حسب التوقيت: الحصة الجارية الآن (اليوم فقط، ويتطلب توقيت الحصص في الملف المركزي)
-  if (typeof currentPeriod === 'function') { const now = currentPeriod(date); if (now) return [now]; }
-  // 2) حسب الأسبوع السابق: آخر ما حُفظ لهذه الشعبة في نفس اليوم من الأسبوع
-  const wd = new Date(date + 'T12:00:00').getDay();
-  const prev = Object.keys(sp).filter(d => d < date && sp[d] && sp[d].length && new Date(d + 'T12:00:00').getDay() === wd).sort().pop();
-  if (prev) return sp[prev];
-  // 3) حسب جدول المعلم في الملف المركزي
-  if (typeof myScheduleFor === 'function') {
-    const mine = myScheduleFor(date).filter(x => x.cls.id === cls.id).map(x => x.p);
-    if (mine.length) return mine;
-  }
+  // لا اختيار تلقائي: المعلم يختار رقم الحصة يدوياً (إلزامي عند الحفظ)
   return [];
 }
 function renderPeriodChips() {
