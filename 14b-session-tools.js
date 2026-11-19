@@ -280,37 +280,43 @@ function currentPeriod(date) {
 }
 function addMinutes(hm, m) { const [h, mi] = hm.split(':').map(Number); const x = h * 60 + mi + m; return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); }
 
+/* شريط حصص اليوم — من جدول المعلم في «بيانات المدرسة» فقط (لا توقيت ولا تخمين):
+   أخضر = أُدخلت، أحمر = لم تُدخل. الضغط على حصة يفتح شعبتها ويحدد رقمها. */
+function ttScheduleFor(date) {
+  const wd = new Date(date + 'T12:00:00').getDay();
+  const tt = state.rosterMeta && state.rosterMeta.timetable;
+  const out = [];
+  if (tt && tt[wd]) Object.entries(tt[wd]).forEach(([p, name]) => { const c = state.classes.find(x => x.name === name); if (c) out.push({ p: +p, cls: c, extra: false }); });
+  // حصص محفوظة لهذا اليوم وليست في الجدول (مثل الاحتياط) تظهر أيضاً
+  state.classes.forEach(c => (((c._savedPeriods || {})[date]) || []).forEach(p => { if (!out.some(x => x.p === +p && x.cls.id === c.id)) out.push({ p: +p, cls: c, extra: true }); }));
+  return out.sort((a, b) => a.p - b.p);
+}
 function renderTodayBar() {
   const box = document.getElementById('today-bar');
   if (!box) return;
   const hol = typeof holidayOn === 'function' ? holidayOn(sessionDate) : null;
   if (hol) { box.innerHTML = `<span style="font-size:12.5px;font-weight:800;color:var(--accent)">🏖️ ${hol.name || 'إجازة'} — ${hol.from}${hol.to && hol.to !== hol.from ? ' إلى ' + hol.to : ''} (ليس يوم دوام)</span>`; return; }
-  box.innerHTML = ''; return;   // أُلغي اقتراح «حصصي اليوم» من الجدول/التوقيت — الاختيار يدوي
-  const sched = myScheduleFor(sessionDate);
-  const bell = bellForDate(sessionDate);
-  const cur = currentPeriod(sessionDate);
-  if (!sched.length) {
-    box.innerHTML = `<span style="font-size:12px;color:var(--text-muted)">📅 حصصي اليوم: سيتعرّف البرنامج على حصصك تلقائياً بعد أسبوع من حفظ الحصص مع أرقامها.</span>`;
-    return;
-  }
-  const done = sched.filter(x => ((x.cls._savedPeriods || {})[sessionDate] || []).includes(x.p)).length;
-  const doneTxt = done === 0 ? 'لم تُدخل أي حصة اليوم' : done === 1 ? 'تم إدخال حصة واحدة اليوم' : done === 2 ? 'تم إدخال حصتين اليوم'
-    : done <= 10 ? `تم إدخال ${done} حصص اليوم` : `تم إدخال ${done} حصة اليوم`;
-  box.innerHTML = `<span style="font-size:12px;font-weight:800;color:var(--text-muted)">📅 ${doneTxt}:</span>` +
+  const wd = new Date(sessionDate + 'T12:00:00').getDay();
+  if (wd === 0 || wd === 6) { box.innerHTML = `<span style="font-size:12px;color:var(--text-muted)">📅 عطلة نهاية الأسبوع</span>`; return; }
+  const sched = ttScheduleFor(sessionDate);
+  if (!sched.length) { box.innerHTML = `<span style="font-size:12px;color:var(--text-muted)">📅 لا توجد لك حصص في جدول «بيانات المدرسة» لهذا اليوم.</span>`; return; }
+  const isDone = x => (((x.cls._savedPeriods || {})[sessionDate]) || []).map(Number).includes(x.p);
+  const done = sched.filter(isDone).length, total = sched.filter(x => !x.extra).length;
+  box.innerHTML = `<span style="font-size:12px;font-weight:800;color:var(--text-muted)">📅 حصص اليوم (${sched.filter(x => !x.extra && isDone(x)).length}/${total}):</span>` +
     sched.map(x => {
-      const ok = ((x.cls._savedPeriods || {})[sessionDate] || []).includes(x.p);
-      const time = bell ? (bell.find(b => b.p === x.p) || {}).start || '' : '';
-      const isCur = cur === x.p;
-      return `<button class="flt-btn ${x.cls.id === state.activeClass && selPeriods.has(x.p) ? 'flt-btn-on' : ''}" style="padding:4px 9px;${isCur ? 'box-shadow:0 0 0 2px var(--accent);' : ''}" onclick="goToMyPeriod(${x.cls.id},${x.p})" title="${time ? 'تبدأ ' + time : ''}">
-        ${ok ? '✅' : isCur ? '⏳' : '▫️'} ح${x.p} · ${x.cls.name}${time ? ` <span style="opacity:.6;font-size:10px">${time}</span>` : ''}</button>`;
-    }).join('') + (sched[0].src === 'learned' ? `<span style="font-size:10.5px;color:var(--text-muted)">(متوقعة من الأسبوع الماضي)</span>` : '');
+      const ok = isDone(x);
+      const on = x.cls.id === state.activeClass && selPeriods.has(x.p);
+      const col = ok ? 'var(--present,#2ecc71)' : 'var(--absent,#e74c3c)';
+      return `<button class="flt-btn" onclick="goToMyPeriod(${x.cls.id},${x.p})" title="${ok ? 'تم إدخالها' : 'لم تُدخل بعد'}${x.extra ? ' (خارج الجدول)' : ''}"
+        style="padding:4px 10px;font-weight:800;border:2px solid ${col};background:${ok ? 'rgba(46,204,113,.18)' : 'rgba(231,76,60,.16)'};color:${col};${on ? 'box-shadow:0 0 0 2px var(--accent);' : ''}">
+        ${ok ? '✓' : '✗'} ${x.cls.name} | الحصة ${x.p}${x.extra ? ' *' : ''}</button>`;
+    }).join('');
 }
-function goToMyPeriod(classId, p) {
+function goToMyPeriod(classId, p) {   // ضغطة المعلم على حصة من الشريط = اختيار يدوي لشعبتها ورقمها
   const apply = () => {
     if (state.activeClass !== classId) { _guardBusy = true; try { setActiveClass(classId); } finally { _guardBusy = false; } }
     selPeriodsCtx = classId + '|' + sessionDate;
-    const saved = ((sessionClass()._savedPeriods || {})[sessionDate]) || [];
-    selPeriods = new Set();   // لا تحديد تلقائي للحصة
+    selPeriods = new Set([p]);
     renderPeriodChips(); renderTodayBar();
   };
   if (state.activeClass !== classId) guardUnsaved(apply); else apply();
