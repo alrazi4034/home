@@ -36,7 +36,7 @@ function renderPeriodChips() {
   const n = periodsCount(sessionDate);
   [...selPeriods].forEach(p => { if (p > n) selPeriods.delete(p); });
   const saved = (cls._savedPeriods || {})[sessionDate];
-  box.innerHTML = `<span style="font-size:12px;font-weight:800;color:var(--text-muted)">الحصة:</span>` +
+  box.innerHTML = `<span style="font-size:12px;font-weight:800;color:var(--text-muted)">الحصة (اختر واحدة):</span>` +
     Array.from({ length: n }, (_, i) => i + 1).map(p =>
       `<button class="flt-btn ${selPeriods.has(p) ? 'flt-btn-on' : ''}" style="min-width:34px;padding:4px 8px" onclick="togglePeriod(${p})">${p}</button>`).join('') +
     (saved && saved.length ? `<span style="font-size:11px;color:var(--present)">✓ محفوظ لهذا اليوم: ${saved.map(p => `ح${p} <a href="#" title="إزالة رقم الحصة ${p} من هذا اليوم" style="color:var(--absent);text-decoration:none" onclick="event.preventDefault();removeSavedPeriod(${p})">✕</a>`).join(' ، ')}</span>` : '');
