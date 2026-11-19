@@ -158,6 +158,12 @@ function mergeOldApply() {
     const hp = new Set((st.pointsLog || []).map(pk));
     st.pointsLog = st.pointsLog || [];
     (os.pointsLog || []).forEach(e => { if (!hp.has(pk(e))) { const x = Object.assign({}, e); delete x.termWeek; const tw = getTermWeek(x.date); if (tw !== null) x.termWeek = tw; st.pointsLog.push(x); hp.add(pk(e)); } });
+    // إصلاح مشاركات مضاعفة من دمج سابق: المشاركات «بلا تاريخ» (العداد − سجل المشاركات المؤرخ)
+    // كل مشاركة جديدة تُسجَّل بتاريخها عند حفظ الحصة، فالزيادة «بلا تاريخ» عن الملف القديم بقدر عداده كاملاً = إضافة مكررة
+    if (legacy && (os.participation || 0) > 0) {
+      const undated = x => (x.participation || 0) - (x.pointsLog || []).filter(e => e.type === 'participation').reduce((a, e) => a + (+e.pts || 0), 0) - Object.values(x._dailyPart || {}).reduce((a, n) => a + (+n || 0), 0);
+      if (undated(st) - undated(os) >= os.participation) { st.participation -= os.participation; MO.fixedPart = (MO.fixedPart || 0) + 1; }
+    }
     st.deductReasons = (st.deductReasons || []).concat((os.deductReasons || []).filter(r => !(st.deductReasons || []).some(x => x.date === r.date && x.code === r.code)));
     if (os.parentPhone && !st.parentPhone) st.parentPhone = os.parentPhone;
   });
@@ -182,10 +188,10 @@ function mergeOldApply() {
   state.classes.forEach(c => c.students.forEach(st => recomputeWithAssessments(c, st)));
   state.rosterMeta = Object.assign({}, state.rosterMeta || {});
   if (!state.rosterMeta.mergedFrom || !state.rosterMeta.mergedFrom.includes(MO.h)) state.rosterMeta.mergedFrom = (state.rosterMeta.mergedFrom || []).concat(MO.h);
-  const n = plan.length;
+  const n = plan.length, MO_FIX = MO.fixedPart || 0;
   MO = null;
   closeModalForce();
   save();
   if (typeof renderStudentList === 'function') renderStudentList();
-  toast(`تم دمج بيانات ${n} طالب${addA ? ' و' + addA + ' تقييم' : ''} ✅`, '📥');
+  toast(`تم دمج بيانات ${n} طالب${addA ? ' و' + addA + ' تقييم' : ''}${MO_FIX ? ' — وأُصلحت مشاركات مكررة لـ ' + MO_FIX + ' طالب' : ''} ✅`, '📥');
 }

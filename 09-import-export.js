@@ -316,7 +316,8 @@ function buildBackupData() {
         pointsLog: s.pointsLog||[],
         _dailyPart:   s._dailyPart   || {},
         _dailyDeduct: s._dailyDeduct || {},
-        deductReasons: s.deductReasons || []
+        deductReasons: s.deductReasons || [],
+        _mPart: s._mPart || [], _mBonus: s._mBonus || []          // علامات الدمج (تمنع إضافة العدادات مرتين)
       }))
     })),
     sessions: state.sessions||[],
@@ -797,15 +798,18 @@ function importFromJSON(text) {
 
   let updated = 0;
   const newStudents = [];
+  const _sidMap = {}, _cidMap = {};      // أرقام الملف ⇐ أرقام المتصفح (لتبقى درجات التقييمات مربوطة بالطالب الصحيح)
 
   state.classes.forEach(cls => {
     const sc = data.classes.find(c => c.name === cls.name);
     if (!sc) return;
+    _cidMap[sc.id] = cls.id;
     if (sc._savedDates) cls._savedDates = sc._savedDates;
     if (sc._savedPeriods) cls._savedPeriods = sc._savedPeriods;
     cls.students.forEach(st => {
       const ss = (st.sid && sc.students?.find(s => s.sid && s.sid === st.sid)) || sc.students?.find(s => s.name === st.name);
       if (!ss) return;
+      _sidMap[ss.id] = st.id;
       if (ss.sid && !st.sid) st.sid = ss.sid;
       if (Array.isArray(ss.lateDates)) st.lateDates = ss.lateDates;
       st.points = ss.points||0; st.present = ss.present||0; st.absent = ss.absent||0;
@@ -827,6 +831,8 @@ function importFromJSON(text) {
       if (ss._dailyPart) st._dailyPart = ss._dailyPart;
       if (ss._dailyDeduct) st._dailyDeduct = ss._dailyDeduct;
       if (Array.isArray(ss.deductReasons)) st.deductReasons = ss.deductReasons;
+      if (Array.isArray(ss._mPart)) st._mPart = ss._mPart;
+      if (Array.isArray(ss._mBonus)) st._mBonus = ss._mBonus;
       updated++;
     });
     const existingNames = new Set(cls.students.map(s => s.name));
@@ -846,6 +852,15 @@ function importFromJSON(text) {
     }
   });
 
+  // إعادة ربط التقييمات بأرقام الشعب والطلاب في المتصفح
+  (state.assessments || []).forEach(a => {
+    a.classIds = [...new Set((a.classIds || []).map(id => _cidMap[id] || id))];
+    ['scores', 'awardedPoints'].forEach(f => {
+      if (!a[f]) return; const o = {};
+      Object.entries(a[f]).forEach(([k, v]) => { const nk = _sidMap[k] !== undefined ? _sidMap[k] : k; if (o[nk] === undefined || o[nk] === '') o[nk] = v; });
+      a[f] = o;
+    });
+  });
   if (data.seating && typeof data.seating === 'object') state.seating = Object.assign({}, state.seating||{}, data.seating);
   if (Array.isArray(data.archivedStudents) && data.archivedStudents.length) state.archivedStudents = data.archivedStudents;
   if (Array.isArray(data.archivedClasses) && data.archivedClasses.length) state.archivedClasses = data.archivedClasses;

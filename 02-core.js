@@ -126,8 +126,8 @@ function datedPoints(s, cls) {
   (s.behaviorNotes || []).forEach(n => { const d = _isoOf(n.isoDate || n.date); if (d && n.points) out.push({ date: d, pts: +n.points, type: 'note' }); });
   (state.assessments || []).forEach(a => {
     if (!(a.classIds || []).includes(cls.id)) return;
-    const v = (a.awardedPoints || {})[s.id]; if (!v) return;
-    const lg = (s.pointsLog || []).find(e => e.type === 'assessment' && e.assessId === a.id);
+    const v = assessEarned(a, s.id); if (!v) return;
+    const lg = (s.pointsLog || []).find(e => e.type === 'assessment' && (e.assessId === a.id || e.assessName === a.name));
     const d = _isoOf(a.date) || (lg && _isoOf(lg.date)); if (d) out.push({ date: d, pts: +v, type: 'assessment' });
   });
   return out;
