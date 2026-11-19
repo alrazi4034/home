@@ -310,8 +310,7 @@ function goToMyPeriod(classId, p) {
     if (state.activeClass !== classId) { _guardBusy = true; try { setActiveClass(classId); } finally { _guardBusy = false; } }
     selPeriodsCtx = classId + '|' + sessionDate;
     const saved = ((sessionClass()._savedPeriods || {})[sessionDate]) || [];
-    selPeriods = new Set(saved.length ? saved : [p]);
-    if (!selPeriods.has(p)) selPeriods.add(p);
+    selPeriods = new Set();   // لا تحديد تلقائي للحصة
     renderPeriodChips(); renderTodayBar();
   };
   if (state.activeClass !== classId) guardUnsaved(apply); else apply();
