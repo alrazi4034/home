@@ -15,7 +15,7 @@ function attMeta(cls, s) {
 }
 
 /* ===== رقم الحصة عند حفظ الحضور =====
-   يختار المعلم حصة أو أكثر يدوياً. لا يُختار شيء تلقائياً إلا الحصص المحفوظة سابقاً لنفس التاريخ (عند تعديل حصة محفوظة). */
+   يختار المعلم حصة واحدة يدوياً في كل حفظ، ولا يقترح البرنامج أي حصة. أرقام الحصص المحفوظة لليوم تُجمع (ويمكن إزالة الخطأ بـ ✕). */
 const PERIODS_BY_WEEKDAY = { 5: 4 };   // الجمعة 4 حصص، وباقي الأيام 8
 let selPeriods = new Set(), selPeriodsCtx = '';
 function periodsCount(date) {
@@ -24,10 +24,7 @@ function periodsCount(date) {
   const wd = new Date(date + 'T12:00:00').getDay(); return PERIODS_BY_WEEKDAY[wd] || 8;
 }
 function defaultPeriods(cls, date) {
-  const sp = cls._savedPeriods || {};
-  if (sp[date] && sp[date].length) return sp[date];            // ما حُفظ لهذا اليوم يبقى كما هو
-  // لا اختيار تلقائي: المعلم يختار رقم الحصة يدوياً (إلزامي عند الحفظ)
-  return [];
+  return [];   // لا اقتراح إطلاقاً (لا توقيت ولا جدول ولا محفوظ) — المعلم يختار حصة واحدة يدوياً
 }
 function renderPeriodChips() {
   const box = document.getElementById('period-chips');
@@ -42,7 +39,7 @@ function renderPeriodChips() {
   box.innerHTML = `<span style="font-size:12px;font-weight:800;color:var(--text-muted)">الحصة:</span>` +
     Array.from({ length: n }, (_, i) => i + 1).map(p =>
       `<button class="flt-btn ${selPeriods.has(p) ? 'flt-btn-on' : ''}" style="min-width:34px;padding:4px 8px" onclick="togglePeriod(${p})">${p}</button>`).join('') +
-    (saved && saved.length ? `<span style="font-size:11px;color:var(--present)">✓ محفوظ: ${saved.join('، ')}</span>` : '');
+    (saved && saved.length ? `<span style="font-size:11px;color:var(--present)">✓ محفوظ لهذا اليوم: ${saved.map(p => `ح${p} <a href="#" title="إزالة رقم الحصة ${p} من هذا اليوم" style="color:var(--absent);text-decoration:none" onclick="event.preventDefault();removeSavedPeriod(${p})">✕</a>`).join(' ، ')}</span>` : '');
   if (typeof renderTodayBar === 'function') renderTodayBar();
 }
 // نافذة منبثقة: اختيار رقم الحصة (إلزامي) ثم الحفظ — وتكمل الانتقال المعلّق إن وُجد
@@ -51,16 +48,25 @@ function periodPickHTML(prefix) {
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 4px">` +
     Array.from({ length: n }, (_, i) => i + 1).map(p => `<button class="flt-btn ${selPeriods.has(p) ? 'flt-btn-on' : ''}" id="${prefix}${p}" style="min-width:42px;padding:7px 10px;font-size:15px" onclick="periodPickToggle(${p},'${prefix}')">${p}</button>`).join('') + `</div>`;
 }
-function periodPickToggle(p, prefix) {
-  if (selPeriods.has(p)) selPeriods.delete(p); else selPeriods.add(p);
-  const b = document.getElementById(prefix + p); if (b) b.classList.toggle('flt-btn-on', selPeriods.has(p));
+function periodPickToggle(p, prefix) {   // اختيار حصة واحدة فقط
+  selPeriods = selPeriods.has(p) ? new Set() : new Set([p]);
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(b => b.classList.toggle('flt-btn-on', selPeriods.has(+b.id.slice(prefix.length))));
   renderPeriodChips();
+}
+function removeSavedPeriod(p) {
+  const cls = state.classes.find(c => c.id === state.activeClass);
+  const sp = cls && cls._savedPeriods && cls._savedPeriods[sessionDate];
+  if (!sp) return;
+  if (sp.length <= 1) return toast('لا يمكن إزالة رقم الحصة الوحيد — اختر الرقم الصحيح واحفظ، ثم أزل الخطأ', '⚠️');
+  if (!confirm(`إزالة الحصة ${p} من سجل ${cls.name} بتاريخ ${sessionDate}؟`)) return;
+  cls._savedPeriods[sessionDate] = sp.filter(x => x !== p);
+  save(); renderPeriodChips(); toast('تمت إزالة رقم الحصة ' + p, '🗑️');
 }
 function askPeriodThenSave() {
   const cls = state.classes.find(c => c.id === state.activeClass);
   openModal(`
     <div class="modal-title">🔢 اختر رقم الحصة للحفظ</div>
-    <div style="font-size:13px;line-height:1.8;text-align:center">حصة <b>${cls ? cls.name : ''}</b> بتاريخ <b>${sessionDate}</b> — اختر رقم الحصة (أو الحصتين إن كانت مزدوجة):</div>
+    <div style="font-size:13px;line-height:1.8;text-align:center">حصة <b>${cls ? cls.name : ''}</b> بتاريخ <b>${sessionDate}</b> — اختر رقم الحصة:</div>
     ${periodPickHTML('pp-')}
     <div class="modal-actions">
       <button class="btn btn-primary" style="flex:1" onclick="periodPickSave()">💾 حفظ الحصة</button>
@@ -75,8 +81,8 @@ function periodPickSave() {
   const go = window._guardProceed; window._guardProceed = null;
   if (go) go();
 }
-function togglePeriod(p) {
-  if (selPeriods.has(p)) selPeriods.delete(p); else selPeriods.add(p);
+function togglePeriod(p) {   // اختيار حصة واحدة فقط
+  selPeriods = selPeriods.has(p) ? new Set() : new Set([p]);
   renderPeriodChips();
 }
 
@@ -195,7 +201,8 @@ function saveSession() {
   if (!cls._savedDates.includes(sessionDate)) cls._savedDates.push(sessionDate);
   // رقم الحصة/الحصص لهذا التاريخ
   if (!cls._savedPeriods) cls._savedPeriods = {};
-  cls._savedPeriods[sessionDate] = [...selPeriods].sort((a, b) => a - b);
+  // تُضاف الحصة المختارة لما حُفظ سابقاً لنفس اليوم (حتى لا تُمحى حصة سابقة للصف نفسه)
+  cls._savedPeriods[sessionDate] = [...new Set([...(cls._savedPeriods[sessionDate] || []), ...selPeriods].map(Number))].sort((a, b) => a - b);
   // التأخر: الطالب الحاضر المعلَّم «متأخر»
   cls.students.forEach(s => {
     s.lateDates = (s.lateDates || []).filter(d => d !== sessionDate);

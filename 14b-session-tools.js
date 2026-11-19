@@ -285,6 +285,7 @@ function renderTodayBar() {
   if (!box) return;
   const hol = typeof holidayOn === 'function' ? holidayOn(sessionDate) : null;
   if (hol) { box.innerHTML = `<span style="font-size:12.5px;font-weight:800;color:var(--accent)">🏖️ ${hol.name || 'إجازة'} — ${hol.from}${hol.to && hol.to !== hol.from ? ' إلى ' + hol.to : ''} (ليس يوم دوام)</span>`; return; }
+  box.innerHTML = ''; return;   // أُلغي اقتراح «حصصي اليوم» من الجدول/التوقيت — الاختيار يدوي
   const sched = myScheduleFor(sessionDate);
   const bell = bellForDate(sessionDate);
   const cur = currentPeriod(sessionDate);
