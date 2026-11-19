@@ -53,10 +53,10 @@ function tvGo(d, clsName, p) {
     s._todayAtt = (s._prevAtt || {})[d] || 'unmarked';
     s._todayLate = s._todayAtt === 'present' && (s.lateDates || []).includes(d);
   }));
-  if (cls) { state.activeClass = cls.id; if (p > 0 && typeof selPeriods !== 'undefined') { selPeriodsCtx = cls.id + '|' + d; selPeriods = new Set([p]); } }
+  if (cls) { state.activeClass = cls.id; if (typeof selPeriods !== 'undefined') { selPeriodsCtx = cls.id + '|' + d; selPeriods = new Set(); } }   // لا تحديد تلقائي للحصة
   save();
   showPage('attendance', document.querySelector('.tab-btn[onclick*="\'attendance\'"]'));
   if (typeof showOldDateWarning === 'function') showOldDateWarning();
   if (typeof renderPeriodChips === 'function') renderPeriodChips();
-  toast(`📅 ${d} — ${clsName}${p > 0 ? ' — الحصة ' + p : ''}`, '📋');
+  toast(`📅 ${d} — ${clsName} — اختر رقم الحصة يدوياً`, '📋');
 }

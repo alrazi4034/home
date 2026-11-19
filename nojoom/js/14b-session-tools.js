@@ -285,6 +285,7 @@ function renderTodayBar() {
   if (!box) return;
   const hol = typeof holidayOn === 'function' ? holidayOn(sessionDate) : null;
   if (hol) { box.innerHTML = `<span style="font-size:12.5px;font-weight:800;color:var(--accent)">🏖️ ${hol.name || 'إجازة'} — ${hol.from}${hol.to && hol.to !== hol.from ? ' إلى ' + hol.to : ''} (ليس يوم دوام)</span>`; return; }
+  box.innerHTML = ''; return;   // أُلغي اقتراح «حصصي اليوم» من الجدول/التوقيت — الاختيار يدوي
   const sched = myScheduleFor(sessionDate);
   const bell = bellForDate(sessionDate);
   const cur = currentPeriod(sessionDate);
@@ -309,8 +310,7 @@ function goToMyPeriod(classId, p) {
     if (state.activeClass !== classId) { _guardBusy = true; try { setActiveClass(classId); } finally { _guardBusy = false; } }
     selPeriodsCtx = classId + '|' + sessionDate;
     const saved = ((sessionClass()._savedPeriods || {})[sessionDate]) || [];
-    selPeriods = new Set(saved.length ? saved : [p]);
-    if (!selPeriods.has(p)) selPeriods.add(p);
+    selPeriods = new Set();   // لا تحديد تلقائي للحصة
     renderPeriodChips(); renderTodayBar();
   };
   if (state.activeClass !== classId) guardUnsaved(apply); else apply();
@@ -318,6 +318,7 @@ function goToMyPeriod(classId, p) {
 // عند فتح البرنامج وعند تغيّر الحصة: انتقل تلقائياً لصف الحصة الحالية (إذا لم توجد تغييرات غير محفوظة)
 let _autoLastPeriod = null;
 function autoSelectCurrentPeriod() {
+  return;   // أُلغي الاختيار التلقائي للحصة والصف — الاختيار يدوي
   if (!onAttendancePage() || sessionDate !== _today()) return;
   const p = currentPeriod(sessionDate);
   if (!p || p === _autoLastPeriod) return;
