@@ -679,10 +679,10 @@ const absT=v=>v&&(v.t==='بعذر'||v.t==='بدون عذر')?v.t:'';
 const absLbl=v=>{const t=absT(v);return t?(t==='بعذر'&&v.k?'بعذر — '+v.k:t):'لم يُحدَّد'};
 function absEdit(){
   const AL=absView==='all',ds=AL?Object.keys(D.abs).sort():[absView],cm=cmap(),rows=[];
-  ds.forEach(d=>Object.entries(D.abs[d]||{}).forEach(([id,v])=>{const s=students.find(x=>x.id===id);if(s)rows.push({d,s,v})}));
+  let hid=0;ds.forEach(d=>Object.entries(D.abs[d]||{}).forEach(([id,v])=>{const s=students.find(x=>x.id===id);if(!s)return;if(isEx(id)){hid++;return}rows.push({d,s,v})}));
   rows.sort((a,b)=>a.d.localeCompare(b.d)||clsKey(a.s.cls)-clsKey(b.s.cls)||a.s.name.localeCompare(b.s.name,'ar'));
   const un=rows.filter(x=>!absT(x.v)).length;
-  return `<div class="box"><h3>📝 تصنيف الغائبين ${AL?'(كل الأيام)':'— '+dayName(absView)+' '+fd(absView)} <span class="n">${rows.length}</span>${un?` <span class="chip" style="background:#FEF3C7;font-size:12px">غير مصنَّف: ${un}</span>`:''}</h3>
+  return `<div class="box"><h3>📝 تصنيف الغائبين ${AL?'(كل الأيام)':'— '+dayName(absView)+' '+fd(absView)} <span class="n">${rows.length}</span>${hid?` <span class="chip" style="background:#EEF3FF;font-size:12px">♿ مستبعد من أصحاب الهمم: ${hid}</span>`:''}${un?` <span class="chip" style="background:#FEF3C7;font-size:12px">غير مصنَّف: ${un}</span>`:''}</h3>
    ${rows.length?`<div style="overflow:auto"><table class="t"><tr><th>م</th>${AL?'<th>التاريخ</th>':''}<th>الطالب</th><th>الشعبة</th><th>اللجنة</th><th>الحالة</th><th>نوع العذر</th><th>بيان السبب</th><th></th></tr>
    ${rows.map((x,i)=>{const t=absT(x.v),a=`'${x.d}','${x.s.id}'`;return `<tr${t?'':' style="background:#FFFBEB"'}><td>${i+1}</td>${AL?`<td style="white-space:nowrap">${dayName(x.d)} ${fd(x.d)}</td>`:''}<td>${esc(x.s.name)}${(D.sen||[]).includes(x.s.id)?' ♿':''}</td><td>${clsName(x.s.cls)}</td><td class="note">${esc(cm[x.s.id]||'')}</td>
     <td><select onchange="absSet(${a},'t',this.value)">${ST.map(([v,l])=>`<option value="${v}" ${t===v?'selected':''}>${l}</option>`).join('')}</select></td>
@@ -694,14 +694,14 @@ function absEdit(){
 }
 function absSet(d,id,f,v){const r=D.abs[d]&&D.abs[d][id];if(!r)return;r[f]=v;if(f==='t'&&v!=='بعذر')delete r.k;save();render()}
 function absDel1(d,id){if(!confirm('حذف هذا الطالب من سجل الغياب؟'))return;delete D.abs[d][id];save();render()}
-function absAllUn(t){(absView==='all'?Object.keys(D.abs):[absView]).forEach(d=>Object.values(D.abs[d]||{}).forEach(v=>{if(!absT(v)){v.t=t;if(t!=='بعذر')delete v.k}}));save();render()}
+function absAllUn(t){(absView==='all'?Object.keys(D.abs):[absView]).forEach(d=>Object.entries(D.abs[d]||{}).forEach(([id,v])=>{if(isEx(id))return;if(!absT(v)){v.t=t;if(t!=='بعذر')delete v.k}}));save();render()}
 function renderAbs(m){
   const ds=absDates();if(absView!=='all'&&!ds.includes(absView))absView='all';
   m.innerHTML=`<div class="box"><h3>تقرير الغياب</h3><div class="bar">
    <select onchange="absView=this.value;render()"><option value="all">كل الأيام (ملخص + تفصيل)</option>${ds.map(d=>`<option value="${d}" ${d===absView?'selected':''}>${dayName(d)} ${fd(d)}</option>`).join('')}</select>
    <button class="btn p" onclick="absModal()">➕ إدخال الغياب</button><button class="btn" onclick="buildAbs(true)">🖨️ طباعة A4</button>
    ${absView!=='all'&&D.abs[absView]?`<button class="btn d" onclick="delAbs('${absView}')">🗑 حذف غياب هذا اليوم</button>`:''}</div>
-   <p class="note">«كل الأيام» يطبع تقريراً كلياً في ورقة A4 واحدة (ملخص الأيام + أسماء الغائبين وأرقامهم وصفوفهم). اختر يوماً محدداً لطباعة كشف ذلك اليوم.</p></div>${absEdit()}${senBox()}`;
+   <p class="note">«كل الأيام» يطبع تقريراً كلياً في ورقة A4 واحدة (ملخص الأيام + أسماء الغائبين وأرقامهم وصفوفهم). اختر يوماً محدداً لطباعة كشف ذلك اليوم.</p></div>${senBox()}${absEdit()}`;
   buildAbs(false,true);
 }
 function delAbs(d){if(!confirm('حذف سجل غياب '+fd(d)+'؟'))return;delete D.abs[d];save();render();}
