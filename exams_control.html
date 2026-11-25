@@ -104,6 +104,8 @@ table.t input,table.t select{width:100%}
 table.sh{width:100%;border-collapse:collapse;table-layout:fixed}
 table.sh th,table.sh td{border:1px solid #000;padding:0 4px;text-align:center;height:var(--rh);overflow:hidden;white-space:nowrap;font-size:12px}
 table.sh.wrap td{white-space:normal}
+table.sh td.dcell{white-space:normal;line-height:1.25;font-size:11px;padding:2px}
+table.sh td.wr{white-space:normal;line-height:1.15;font-size:11px}
 table.sh th{background:#e8e8e8;font-weight:700}
 table.sh td.nm{text-align:right}
 .sh-foot{margin-top:auto;padding-top:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px}
@@ -671,7 +673,7 @@ function senDel(id){D.sen=D.sen.filter(x=>x!==id);senEx().ids=D.senEx.ids.filter
 /* ---------- تقرير الغياب ---------- */
 const absDates=()=>[...new Set(examDates().concat(Object.keys(D.abs)))].filter(Boolean).sort();
 const TYPES=['بدون عذر','بعذر','أخرى'];
-const EXK=['طبي','خلل تقني','ظرف عائلي','أخرى'];
+const EXK=['طبي','خارج الدولة','خلل تقني','ظرف عائلي','أخرى'];
 const ST=[['','لم يُحدَّد'],['بعذر','بعذر'],['بدون عذر','بدون عذر']];
 const absT=v=>v&&(v.t==='بعذر'||v.t==='بدون عذر')?v.t:'';
 const absLbl=v=>{const t=absT(v);return t?(t==='بعذر'&&v.k?'بعذر — '+v.k:t):'لم يُحدَّد'};
@@ -729,16 +731,19 @@ function buildAbs(p,silent){
   const cnt=(a,t)=>a.filter(x=>x.t===t).length;
   let out='';
   if(absView==='all'){
-    const T=[0,0,0,0],all=[];
-    const rows=ds.map((d,i)=>{const a=items(d),rc=D.abs[d]!==undefined,v=[cnt(a,'بعذر'),cnt(a,'بدون عذر'),cnt(a,'')];if(rc){v.forEach((x,k)=>T[k]+=x);T[3]+=a.length;a.forEach(x=>all.push(Object.assign({d},x)))}
-      return `<tr><td>${i+1}</td><td>${dayName(d)}</td><td>${fd(d)}</td><td class="nm">${esc(subjOf(d))}</td>${rc?v.map(x=>`<td>${x}</td>`).join('')+`<td><b>${a.length}</b></td>`:'<td colspan="4">لم يُسجَّل</td>'}</tr>`});
-    const sumT=tbl('<col width="24"><col width="58"><col width="74"><col><col width="56"><col width="60"><col width="60"><col width="58">',['م','اليوم','التاريخ','المادة','بعذر','بدون عذر','لم يُحدَّد','الإجمالي'],rows.join('')+`<tr><th colspan="4">المجموع</th>${T.map(x=>`<th>${x}</th>`).join('')}</tr>`);
-    const nr=(x,i)=>`<tr><td>${i+1}</td><td>${fd(x.d)}</td><td>${x.s.id}</td><td class="nm">${esc(x.s.name)}</td><td>${clsName(x.s.cls)}</td><td class="nm">${esc(cn[x.s.id]||'')}</td><td>${absLbl(x)}</td><td class="nm" style="white-space:normal;font-size:9.5px;line-height:1.1">${esc(x.n||'')}</td></tr>`;
-    const nc='<col width="22"><col width="72"><col width="76"><col><col width="58"><col width="76"><col width="80"><col width="80">',nh=['م','التاريخ','رقم الطالب','اسم الطالب','الشعبة','اللجنة','الحالة','السبب'];
-    const cap=Math.max(6,Math.floor((178-(ds.length+2)*6.3)/6.3)),first=all.slice(0,cap),rest=all.length>cap?chunks(all.slice(cap),36):[];
-    const meta=baseMeta()+exNote()+`<span>إجمالي حالات الغياب: ${all.length}</span>`;
-    out+=sheet('تقرير الغياب في الاختبارات — التقرير الكلي',meta,`<div class="env-h" style="margin-top:2mm">ملخص أيام الاختبار</div>${sumT}<div class="env-h">أسماء الطلاب الغائبين</div>`+(all.length?tbl(nc,nh,first.map(nr).join('')):'<p style="text-align:center;font-weight:700">لا يوجد غياب ✓</p>'),'','6.3mm');
-    rest.forEach((ch,j)=>{out+=sheet('تقرير الغياب — أسماء الغائبين (تابع)',meta,tbl(nc,nh,ch.map((x,i)=>nr(x,cap+j*36+i)).join('')),'','6.3mm')});
+    const T={'بعذر':0,'بدون عذر':0,'':0},E=[];let tot=0;
+    ds.forEach(d=>{const a=items(d),rc=D.abs[d]!==undefined;a.forEach(x=>T[x.t]++);tot+=a.length;
+      if(!rc)E.push({d,z:'لم يُسجَّل الغياب لهذا اليوم'});else if(!a.length)E.push({d,z:'لا يوجد غياب ✓'});else a.forEach(x=>E.push({d,x,n:a.length}))});
+    const cnt1=d=>items(d).length;let k=0;
+    const page=(rows,last)=>{let h='';rows.forEach((e,i)=>{const first=i===0||rows[i-1].d!==e.d;let span=0;if(first){for(let j=i;j<rows.length&&rows[j].d===e.d;j++)span++}
+      const dc=first?`<td rowspan="${span}" class="dcell" style="background:#f5f5f5"><b>${dayName(e.d)}</b><br>${fd(e.d)}${D.abs[e.d]!==undefined?`<br><small>الغائبون: ${cnt1(e.d)}</small>`:''}</td><td rowspan="${span}" class="dcell">${esc(subjOf(e.d))}</td>`:'';
+      h+=e.x?`<tr>${dc}<td>${++k}</td><td>${e.x.s.id}</td><td class="nm">${esc(e.x.s.name)}</td><td>${clsName(e.x.s.cls)}</td><td class="nm">${esc(cn[e.x.s.id]||'')}</td><td class="nm wr"><b>${absLbl(e.x)}</b>${e.x.n?` — ${esc(e.x.n)}`:''}</td></tr>`
+        :`<tr>${dc}<td colspan="6" style="color:#555">${e.z}</td></tr>`});
+      return h+(last?`<tr><th colspan="2">المجموع</th><th colspan="6">إجمالي الغياب: ${tot} &nbsp;—&nbsp; بعذر: ${T['بعذر']} &nbsp;—&nbsp; بدون عذر: ${T['بدون عذر']}${T['']?` &nbsp;—&nbsp; لم يُحدَّد: ${T['']}`:''}</th></tr>`:'')};
+    const nc='<col width="74"><col width="70"><col width="24"><col width="80"><col><col width="56"><col width="74"><col width="120">',nh=['اليوم والتاريخ','المادة','م','رقم الطالب','اسم الطالب','الشعبة','اللجنة','نوع الغياب'];
+    const pages=[];for(let i=0,c=34;i<E.length;i+=c,c=38)pages.push(E.slice(i,i+c));if(!pages.length)pages.push([]);
+    const meta=baseMeta()+exNote()+`<span>إجمالي حالات الغياب: ${tot}</span>`;
+    pages.forEach((pg,i)=>{out+=sheet('تقرير الغياب في الاختبارات — التقرير الكلي'+(i?' (تابع)':''),meta,tbl(nc,nh,page(pg,i===pages.length-1)),'','6.4mm')});
     if(p)show(out,true);else $('preview').innerHTML=out;return;
   }
   sel.forEach(d=>{
@@ -795,6 +800,39 @@ function stuInfo(){const m={};Object.values(D.pw).forEach(a=>a.forEach(r=>{const
 const trOf=(s,r)=>(r&&r.tr)||(s?'الصف '+(GR[gOf(s)]||gOf(s)):'');
 const secOfS=(s,r)=>(r&&r.sec)||(s?s.cls.slice(-1):'');
 const cmName=c=>c?'لجنة '+c.num+': '+esc(c.name):'غير مسجّل في اللجان';
+/* ملاءمة خانات جداول الكشوف: تصغير الخط ثم السماح بسطرين بدل قص البيانات */
+/* توزيع عرض الأعمدة حسب المحتوى الفعلي: كل عمود يأخذ ما يحتاجه، والباقي لعمود الاسم */
+function autoCols(t){
+  if(t.dataset.ac||!t.clientWidth)return;const cols=[...t.querySelectorAll(':scope>colgroup>col')],n=cols.length;
+  const bare=cols.map((c,i)=>c.getAttribute('width')?-1:i).filter(i=>i>=0);if(!n||bare.length!==1)return;
+  t.dataset.ac=1;const ni=bare[0],W=t.clientWidth,need=Array(n).fill(0),orig=cols.map(c=>parseFloat(c.getAttribute('width'))||0),rg=document.createRange();
+  let carry=Array(n).fill(0);
+  [...t.rows].forEach(r=>{let i=0;[...r.cells].forEach(c=>{while(i<n&&carry[i]>0)i++;const sp=c.colSpan||1;
+    if(sp===1&&i<n&&c.textContent.trim()){const wrap=getComputedStyle(c).whiteSpace!=='nowrap',ws=c.style.whiteSpace;c.style.whiteSpace='nowrap';rg.selectNodeContents(c);let v=Math.ceil(rg.getBoundingClientRect().width)+10;c.style.whiteSpace=ws;
+      if(i!==ni)v=Math.min(v,wrap?W*.17:W*.3);need[i]=Math.max(need[i],v)}
+    if((c.rowSpan||1)>1)for(let k=i;k<i+sp&&k<n;k++)carry[k]=c.rowSpan;i+=sp});carry=carry.map(x=>x>0?x-1:0)});
+  const w=cols.map((c,i)=>i===ni?need[i]:Math.max(need[i],orig[i]));let other=w.reduce((a,b,i)=>i===ni?a:a+b,0);
+  if(other+need[ni]>W){/* استرجاع الزيادة غير الضرورية من الأعمدة الأخرى */
+    for(let i=0;i<n;i++)if(i!==ni&&w[i]>need[i]){const cut=Math.min(w[i]-need[i],other+need[ni]-W);w[i]-=cut;other-=cut;if(other+need[ni]<=W)break}}
+  if(other+need[ni]>W){const k=W/(other+need[ni]);for(let i=0;i<n;i++)w[i]*=k;w[ni]=W-w.reduce((a,b,i)=>i===ni?a:a+b,0)}else w[ni]=W-other;
+  cols.forEach((c,i)=>{c.removeAttribute('width');c.style.width=Math.max(14,w[i])+'px'});
+}
+function fitCells(root){
+  root=root||$('preview');if(!root)return;
+  if(document.fonts&&document.fonts.status!=='loaded')return;
+  root.querySelectorAll('table.sh').forEach(autoCols);
+  root.querySelectorAll('table.sh td,table.sh th,.env-hero b,.sh-sum span').forEach(e=>{
+    if(!e.clientWidth||e.scrollWidth<=e.clientWidth+1)return;
+    const f0=parseFloat(getComputedStyle(e).fontSize),sp=/\s/.test(e.textContent.trim());
+    let f=Math.max(8.5,f0*e.clientWidth/e.scrollWidth*.97);e.style.fontSize=f+'px';
+    if(e.scrollWidth>e.clientWidth+1&&sp&&e.tagName!=='B'){e.style.whiteSpace='normal';e.style.lineHeight='1.08';e.style.wordBreak='break-word';e.style.paddingTop=e.style.paddingBottom='1px'}
+    for(let i=0;i<8&&e.scrollWidth>e.clientWidth+1&&f>6;i++){f-=.5;e.style.fontSize=f+'px'}
+    e.title=e.textContent.trim();
+  });
+}
+(function(){const pv=document.getElementById('preview');if(!pv||!window.MutationObserver)return;let q=0;
+  new MutationObserver(()=>{if(q)return;q=1;requestAnimationFrame(()=>{q=0;fitCells(pv);document.fonts&&document.fonts.ready.then(()=>fitCells(pv))})}).observe(pv,{childList:true});
+  window.addEventListener('beforeprint',()=>fitCells(pv));})();
 /* تصغير النص تلقائياً حتى يتسع داخل البطاقة/الملصق */
 function fitAll(){const pv=$('preview');for(let i=0;i<6;i++){const R=[];
   pv.querySelectorAll('.fitv').forEach(e=>{if(e.scrollHeight&&e.scrollWidth){const k=Math.min(e.clientHeight/e.scrollHeight,e.clientWidth/e.scrollWidth);if(k<.99)R.push([e,k,parseFloat(getComputedStyle(e).fontSize)])}});
