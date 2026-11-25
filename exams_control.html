@@ -42,7 +42,7 @@ table.t input,table.t select{width:100%}
 #mod{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 10px}
 .mbox{background:#fff;border-radius:10px;padding:16px;width:min(760px,100%)}
 .mbox h3{margin:0 0 10px;font-family:'El Messiri',sans-serif}
-.arow{display:grid;grid-template-columns:1fr 110px 130px;gap:6px;align-items:center;padding:3px 0;border-top:1px solid #eee;font-size:13px}
+.arow{display:grid;grid-template-columns:1fr 110px 220px;gap:6px;align-items:center;padding:3px 0;border-top:1px solid #eee;font-size:13px}
 #preview{display:flex;flex-direction:column;align-items:center;gap:14px;margin:14px 0}
 .sheet{background:#fff;width:210mm;height:297mm;padding:8mm 10mm;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#000;font-size:12px;display:flex;flex-direction:column;overflow:hidden;page-break-after:always}
 .sh-head{display:grid;grid-template-columns:70px 1fr 70px;align-items:center;gap:8px;border-bottom:2px solid #000;padding-bottom:5px}
@@ -152,12 +152,12 @@ const LS='raziExamsControl_v1';
 const GR={1:'الأول',2:'الثاني',3:'الثالث',4:'الرابع',5:'الخامس',6:'السادس',7:'السابع',8:'الثامن',9:'التاسع',10:'العاشر',11:'الحادي عشر',12:'الثاني عشر'};
 const SUBJ=['التربية الإسلامية','اللغة العربية','اللغة الإنجليزية','الرياضيات','العلوم','الدراسات الاجتماعية'];
 const D={cfg:{school:'',year:'',term:'الفصل الدراسي الأول',exam:'اختبار نهاية الفصل',cap:30},
- custom:[],ren:{},assign:{},order:[],manual:[],removed:{},exams:[],staff:[],obsDay:{},obsSub:{},obsSel:'',abs:{},sign:{subject:'',date:'',time:''},hl:{},pw:{},pwSel:'',rep:{},sent:{},tpl:{},supDay:{},stk:{},pwShort:{}};
+ custom:[],ren:{},assign:{},order:[],manual:[],removed:{},exams:[],staff:[],obsDay:{},obsSub:{},obsSel:'',abs:{},sign:{subject:'',date:'',time:''},hl:{},sen:[],senEx:{mode:'none',ids:[]},pw:{},pwSel:'',rep:{},sent:{},tpl:{},supDay:{},stk:{},pwShort:{}};
 let lsFail=false,HIST=[],sessionBase=null,sessionSnap=false,fsPend=false,base=[],students=[],view='dash',pick={},checked={},openC={},absView='all',staffQ='';
 try{Object.assign(D,JSON.parse(localStorage.getItem(LS)||'{}'))}catch(e){}
 try{HIST=JSON.parse(localStorage.getItem(LS+'_hist')||'[]')}catch(e){}
 let lastSnap=HIST.length?+new Date(HIST[0].t):0;
-const SNAPK=['cfg','custom','ren','assign','order','manual','removed','exams','staff','obsDay','supDay','obsSub','obsSel','abs','sent','tpl','sign','stk','hl','env'];
+const SNAPK=['cfg','custom','ren','assign','order','manual','removed','exams','staff','obsDay','supDay','obsSub','obsSel','abs','sent','tpl','sign','stk','hl','env','sen','senEx'];
 const slim=()=>{const o={};SNAPK.forEach(k=>o[k]=JSON.parse(JSON.stringify(D[k]===undefined?null:D[k])));return o};
 function snapObj(o,label){if(HIST.length&&JSON.stringify(HIST[0].d)===JSON.stringify(o))return false;HIST.unshift({t:new Date().toISOString(),label,d:o});HIST=HIST.slice(0,10);try{localStorage.setItem(LS+'_hist',JSON.stringify(HIST))}catch(e){}return true}
 function autoSnap(){
@@ -607,6 +607,36 @@ function buildObs(all,p){
   show(out,p);
 }
 
+/* ---------- دمج الملفات + أصحاب الهمم ---------- */
+const mergeChk=(k,l)=>`<label class="chip" style="background:#EEF3FF" title="عند اختيار عدة ملفات معاً تُعامل كأنها ملف واحد"><input type="checkbox" ${D.cfg[k]?'checked':''} onchange="D.cfg['${k}']=this.checked;save()"> ${l}</label>`;
+const senEx=()=>D.senEx=Object.assign({mode:'none',ids:[]},D.senEx||{});
+const isEx=id=>{const e=senEx(),L=D.sen||[];return e.mode==='all'?L.includes(id):e.mode==='some'?e.ids.includes(id)&&L.includes(id):false};
+const exNote=()=>{const e=senEx(),n=(D.sen||[]).filter(isEx).length;return e.mode!=='none'&&n?`<span>مستبعد من أصحاب الهمم: ${n}</span>`:''};
+function senBox(){
+  const e=senEx(),L=(D.sen||[]).map(id=>({id,s:students.find(x=>x.id===id)}));
+  return `<div class="box"><h3>♿ أصحاب الهمم <span class="n">${L.length}</span></h3>
+   <div class="bar"><button class="btn" onclick="senModal()">✏️ تحديد قائمة أصحاب الهمم</button>
+   ${[['none','عدم الاستبعاد'],['all','استبعاد جميع أصحاب الهمم'],['some','استبعاد مجموعة محددة منهم']].map(([k,l])=>`<label class="chip"><input type="radio" name="senm" ${e.mode===k?'checked':''} onchange="senEx().mode='${k}';save();render()"> ${l}</label>`).join('')}</div>
+   ${e.mode==='some'?`<div class="bar"><button class="btn s" onclick="senEx().ids=[...(D.sen||[])];save();render()">تحديد الكل</button><button class="btn s" onclick="senEx().ids=[];save();render()">إلغاء الكل</button></div>
+    <div class="chips">${L.map(x=>`<label class="chip"><input type="checkbox" ${e.ids.includes(x.id)?'checked':''} onchange="senPick('${x.id}',this.checked)"> ${esc(x.s?x.s.name:x.id)} <span class="note">${x.s?clsName(x.s.cls):''}</span></label>`).join('')||'<span class="note">القائمة فارغة — اضغط «تحديد قائمة أصحاب الهمم»</span>'}</div>`:''}
+   <p class="note">يُطبَّق الاستبعاد على تقرير الغياب (الملخص وكشوف الأيام) وعلى تقارير الاختبارات (الإحصاءات والغائبون والمعلّقون والأسرع) وعلى ترحيل الغياب. القائمة والاختيار يُحفظان في الملف المربوط والنسخ المؤرخة.</p></div>`;
+}
+function senPick(id,v){const e=senEx();e.ids=v?[...new Set([...e.ids,id])]:e.ids.filter(x=>x!==id);save();render()}
+function senModal(){
+  const L=D.sen=D.sen||[];
+  modal(`<h3>♿ قائمة أصحاب الهمم</h3>
+   <div class="bar"><input id="senQ" list="senL" placeholder="🔍 اسم الطالب أو رقمه" style="min-width:260px" onkeydown="if(event.key==='Enter')senAdd()"><button class="btn p" onclick="senAdd()">➕ إضافة</button>
+   <select onchange="if(this.value)senAddC(this.value)"><option value="">➕ إضافة كل طلاب لجنة...</option>${visible(committees()).filter(c=>c.list.length).map(c=>`<option value="${c.id}">${c.num}: ${esc(c.name)} (${c.list.length})</option>`).join('')}</select></div>
+   <datalist id="senL">${students.map(s=>`<option value="${esc(s.name)} (${s.id})">`).join('')}</datalist>
+   ${L.map((id,i)=>{const s=students.find(x=>x.id===id);return `<div class="arow" style="grid-template-columns:1fr 130px 50px"><span>${i+1}. ${esc(s?s.name:'غير موجود في بيانات المدرسة')} <span class="note">${s?clsName(s.cls):''}</span></span><span>${id}</span><button class="btn s d" onclick="senDel('${id}')">✕</button></div>`}).join('')||'<p class="note">لا يوجد أحد بعد.</p>'}
+   <div class="bar" style="margin-top:10px"><button class="btn p" onclick="closeMod();render()">تم</button>${L.length?`<button class="btn d" onclick="if(confirm('تفريغ القائمة؟')){D.sen=[];senEx().ids=[];save();senModal()}">تفريغ القائمة</button>`:''}</div>`);
+  setTimeout(()=>{const q=$('senQ');q&&q.focus()},0);
+}
+function senAdd(){const v=$('senQ').value.trim();if(!v)return;const m=v.match(/\(([^()]+)\)\s*$/),s=students.find(x=>x.id===nid(m?m[1]:v))||students.find(x=>x.name===v);
+  if(!s){alert('لم أجد الطالب — اختره من الاقتراحات');return}if(!D.sen.includes(s.id))D.sen.push(s.id);save();senModal()}
+function senAddC(cid){const c=committees().find(x=>x.id===cid);D.sen=[...new Set([...(D.sen||[]),...c.list.map(s=>s.id)])];save();senModal()}
+function senDel(id){D.sen=D.sen.filter(x=>x!==id);senEx().ids=D.senEx.ids.filter(x=>x!==id);save();senModal()}
+
 /* ---------- تقرير الغياب ---------- */
 const absDates=()=>[...new Set(examDates().concat(Object.keys(D.abs)))].filter(Boolean).sort();
 const TYPES=['بدون عذر','بعذر','أخرى'];
@@ -615,7 +645,7 @@ function renderAbs(m){
   m.innerHTML=`<div class="box"><h3>تقرير الغياب</h3><div class="bar">
    <select onchange="absView=this.value;render()"><option value="all">كل الأيام (ملخص + تفصيل)</option>${ds.map(d=>`<option value="${d}" ${d===absView?'selected':''}>${dayName(d)} ${fd(d)}</option>`).join('')}</select>
    <button class="btn p" onclick="absModal()">➕ إدخال الغياب</button><button class="btn" onclick="buildAbs(true)">🖨️ طباعة A4</button>
-   ${absView!=='all'&&D.abs[absView]?`<button class="btn d" onclick="delAbs('${absView}')">🗑 حذف غياب هذا اليوم</button>`:''}</div></div>`;
+   ${absView!=='all'&&D.abs[absView]?`<button class="btn d" onclick="delAbs('${absView}')">🗑 حذف غياب هذا اليوم</button>`:''}</div></div>${senBox()}`;
   buildAbs(false,true);
 }
 function delAbs(d){if(!confirm('حذف سجل غياب '+fd(d)+'؟'))return;delete D.abs[d];save();render();}
@@ -625,9 +655,10 @@ function absModal(date){
   modal(`<h3>إدخال الغياب</h3><div class="bar"><label class="f">التاريخ<input type="date" id="aD" value="${date}" onchange="absModal(this.value)"></label>
    <span class="note">${dayName(date)} — ${esc(subjOf(date))}</span></div>
    ${L.map(c=>`<details class="c" open><summary>لجنة ${c.num}: ${esc(c.name)} <label style="font-weight:400;font-size:12px"><input type="checkbox" onclick="event.stopPropagation();this.closest('details').querySelectorAll('.ab').forEach(k=>k.checked=this.checked)"> تحديد الكل</label></summary><div class="in">
-    ${c.list.map(s=>{const r=rec[s.id];return `<div class="arow" data-s="${s.id}"><label><input type="checkbox" class="ab" ${r?'checked':''}> ${esc(s.name)} <span class="note">${clsName(s.cls)}</span></label>
-     <select class="at" onchange="this.nextElementSibling.style.visibility=this.value==='أخرى'?'visible':'hidden'">${TYPES.map(t=>`<option ${r&&r.t===t?'selected':''}>${t}</option>`).join('')}</select>
-     <input class="an" placeholder="ملاحظة" value="${esc(r?r.n:'')}" style="visibility:${r&&r.t==='أخرى'?'visible':'hidden'}"></div>`}).join('')}</div></details>`).join('')}
+    ${c.list.map(s=>{const r=rec[s.id];return `<div class="arow" data-s="${s.id}"><label><input type="checkbox" class="ab" ${r?'checked':''}> ${esc(s.name)} <span class="note">${clsName(s.cls)}${(D.sen||[]).includes(s.id)?' ♿'+(isEx(s.id)?' (مستبعد من التقرير)':''):''}</span></label>
+     <select class="at">${TYPES.map(t=>`<option ${r&&r.t===t?'selected':''}>${t}</option>`).join('')}</select>
+     <input class="an" placeholder="بيان السبب" value="${esc(r?r.n:'')}"></div>`}).join('')}</div></details>`).join('')}
+   <p class="note">لكل غائب: اختر «بعذر» أو «بدون عذر» أو «أخرى»، واكتب السبب في الخانة المجاورة.</p>
    <div class="bar" style="margin-top:10px"><button class="btn p" onclick="absSave()">تم — حفظ</button><button class="btn" onclick="closeMod()">إلغاء</button></div>`);
 }
 function absSave(){
@@ -639,21 +670,21 @@ function buildAbs(p,silent){
   const ds=absDates(),sel=absView==='all'?ds:[absView];
   if(!sel.length){$('preview').innerHTML='<div class="box msg">لا توجد أيام. أضف جدول الاختبارات أو سجّل الغياب.</div>';return;}
   const cn={};committees().forEach(c=>c.list.forEach(s=>cn[s.id]=c.name));
-  const items=d=>Object.entries(D.abs[d]||{}).map(([id,v])=>({s:students.find(x=>x.id===id),t:v.t,n:v.n})).filter(x=>x.s).sort((a,b)=>clsKey(a.s.cls)-clsKey(b.s.cls)||a.s.name.localeCompare(b.s.name,'ar'));
+  const items=d=>Object.entries(D.abs[d]||{}).map(([id,v])=>({s:students.find(x=>x.id===id),t:v.t,n:v.n})).filter(x=>x.s&&!isEx(x.s.id)).sort((a,b)=>clsKey(a.s.cls)-clsKey(b.s.cls)||a.s.name.localeCompare(b.s.name,'ar'));
   const cnt=(a,t)=>a.filter(x=>t==='أخرى'?(x.t!=='بعذر'&&x.t!=='بدون عذر'):x.t===t).length;
   let out='';
   if(absView==='all'){
     const T=[0,0,0,0];
     const rows=ds.map((d,i)=>{const a=items(d),rc=D.abs[d]!==undefined,v=[cnt(a,'بعذر'),cnt(a,'بدون عذر'),cnt(a,'أخرى')];if(rc){v.forEach((x,k)=>T[k]+=x);T[3]+=a.length;}
       return `<tr><td>${i+1}</td><td>${dayName(d)}</td><td>${fd(d)}</td><td>${esc(subjOf(d))}</td>${rc?v.map(x=>`<td>${x}</td>`).join('')+`<td><b>${a.length}</b></td>`:'<td colspan="4">لم يُسجَّل</td>'}</tr>`});
-    chunks(rows,24).forEach((ch,i,all)=>{out+=sheet('تقرير الغياب في الاختبارات — الملخص',baseMeta(),
+    chunks(rows,24).forEach((ch,i,all)=>{out+=sheet('تقرير الغياب في الاختبارات — الملخص',baseMeta()+exNote(),
       tbl('<col width="28"><col width="62"><col width="80"><col><col width="62"><col width="62"><col width="62"><col width="62">',['م','اليوم','التاريخ','المادة','بعذر','بدون عذر','أخرى','الإجمالي'],ch.join('')+(i===all.length-1?`<tr><th colspan="4">المجموع</th>${T.map(x=>`<th>${x}</th>`).join('')}</tr>`:'')),'','8.5mm')});
   }
   sel.forEach(d=>{
     const a=items(d),rc=D.abs[d]!==undefined;
-    const meta=baseMeta()+dateMeta(d,subjOf(d))+`<span>${rc?`الغائبون: ${a.length} (بعذر ${cnt(a,'بعذر')} — بدون عذر ${cnt(a,'بدون عذر')} — أخرى ${cnt(a,'أخرى')})`:'لم يُسجَّل الغياب لهذا اليوم'}</span>`;
-    chunks(a,26).forEach(ch=>{const tr=ch.map((x,i)=>`<tr><td>${i+1}</td><td>${x.s.id}</td><td class="nm">${esc(x.s.name)}</td><td>${clsName(x.s.cls)}</td><td>${esc(cn[x.s.id]||'')}</td><td>${x.t}${x.n?': '+esc(x.n):''}</td></tr>`).join('')||`<tr><td colspan="6">${rc?'لا يوجد غياب':'—'}</td></tr>`;
-      out+=sheet('كشف الغائبين',meta,tbl('<col width="28"><col width="92"><col><col width="58"><col width="105"><col width="120">',['م','رقم الطالب','اسم الطالب','الشعبة','اللجنة','نوع الغياب'],tr),'','7.8mm')});
+    const meta=baseMeta()+dateMeta(d,subjOf(d))+exNote()+`<span>${rc?`الغائبون: ${a.length} (بعذر ${cnt(a,'بعذر')} — بدون عذر ${cnt(a,'بدون عذر')} — أخرى ${cnt(a,'أخرى')})`:'لم يُسجَّل الغياب لهذا اليوم'}</span>`;
+    chunks(a,26).forEach(ch=>{const tr=ch.map((x,i)=>`<tr><td>${i+1}</td><td>${x.s.id}</td><td class="nm">${esc(x.s.name)}</td><td>${clsName(x.s.cls)}</td><td>${esc(cn[x.s.id]||'')}</td><td>${x.t}</td><td class="nm" style="white-space:normal;font-size:10px;line-height:1.15">${esc(x.n||'')}</td></tr>`).join('')||`<tr><td colspan="7">${rc?'لا يوجد غياب':'—'}</td></tr>`;
+      out+=sheet('كشف الغائبين',meta,tbl('<col width="26"><col width="86"><col><col width="54"><col width="92"><col width="64"><col width="125">',['م','رقم الطالب','اسم الطالب','الشعبة','اللجنة','نوع الغياب','السبب'],tr),'','7.8mm')});
   });
   if(p)show(out,true);else $('preview').innerHTML=out;
 }
@@ -689,7 +720,9 @@ function importPw(fs){
     csv?r.readAsText(f,'utf-8'):r.readAsArrayBuffer(f)});
 }
 function pwMerge(all,bad){
-  let n=0;const ks=Object.keys(all);
+  let n=0;
+  if(D.cfg.pwMerge&&Object.keys(all).length>1){const k0=Object.keys(all),nm=(prompt('سيتم دمج '+k0.length+' اختبارات كاختبار واحد.\nاسم الاختبار المدمج:',k0[0])||k0[0]).trim();all={[nm]:[].concat(...k0.map(x=>all[x]))}}
+  const ks=Object.keys(all);
   ks.forEach(ex=>{const m={};(D.pw[ex]||[]).forEach(r=>m[r.u]=r);all[ex].forEach(r=>{m[r.u]=r;n++});D.pw[ex]=Object.values(m)});
   if(ks.length)D.pwSel=ks.length>1?'__all':ks[0];save();render();
   alert('تم استيراد '+n+' طالب في '+ks.length+' اختبار'+(bad.length?'\nتعذر قراءة: '+bad.join('، '):''));
@@ -717,7 +750,7 @@ function renderPw(m,L){
   act.forEach(c=>{if(pwPick[c.id]===undefined)pwPick[c.id]=true});
   const q=s=>esc(s).replace(/'/g,"\\'");
   m.innerHTML=`<div class="box"><h3>بطاقات كلمات المرور</h3>
-   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>
+   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>${mergeChk('pwMerge','دمج الملفات المختارة كاختبار واحد')}
    ${exs.length?`<select onchange="D.pwSel=this.value;save();render()" style="max-width:520px">${exs.length>1?`<option value="__all" ${ex==='__all'?'selected':''}>📚 كل الاختبارات (${exs.length})</option>`:''}${exs.map(e=>`<option value="${esc(e)}" ${e===ex?'selected':''}>${esc(exShort(e).slice(0,90))} (${D.pw[e].length})</option>`).join('')}</select>
    ${ex!=='__all'?`<button class="btn d" onclick="if(confirm('حذف بيانات هذا الاختبار؟')){delete D.pw['${q(ex)}'];save();render()}">🗑</button>`:''}
    <button class="btn d s" onclick="if(confirm('حذف بيانات كل الاختبارات المستوردة؟')){D.pw={};D.pwSel='';save();render()}">حذف الكل</button>`:''}</div>
@@ -757,14 +790,23 @@ const mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 function repCat(r){const st=r.status||'';if(/submission/i.test(st))return 'sub';if(/absent/i.test(st)||(!/yes/i.test(r.login)&&!/yes/i.test(r.start)))return 'abs';return 'pend'}
 const repName=f=>f.replace(/\.xlsx?$/i,'').replace(/^ACUExam_/,'').replace(/_/g,' ').replace(/\s+/g,' ').replace(/(Questions)\s+\d+\s*$/i,'$1').trim();
 function importRep(fs){
-  let k=fs.length;[...fs].forEach(f=>{const r=new FileReader();r.onload=e=>{
+  const got=[];let k=fs.length;if(!k)return;[...fs].forEach(f=>{const r=new FileReader();r.onload=e=>{
     try{const wb=XLSX.read(e.target.result,{type:'array'}),a=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
       const rows=a.map(x=>({u:nid(x['Username']),n:arName(x['Full Name']),login:String(x['Login']||''),start:String(x['Start']||''),secs:secOf(x['Time Elapsed']),status:String(x['Status']||'')})).filter(x=>x.u);
-      if(!rows.length)throw 0;const nm=repName(f.name);D.rep[nm]={rows};repSel=nm;}catch(x){alert('تعذر قراءة التقرير '+f.name)}
-    if(--k===0){save();render()}};r.readAsArrayBuffer(f)});
+      if(!rows.length)throw 0;got.push({nm:repName(f.name),rows})}catch(x){alert('تعذر قراءة التقرير '+f.name)}
+    if(--k===0)repMerge(got)};r.readAsArrayBuffer(f)});
+}
+const repRank=r=>({sub:3,pend:2,abs:1})[repCat(r)];
+function repMerge(got){
+  if(!got.length)return;
+  if(D.cfg.repMerge&&got.length>1){
+    const nm=(prompt('سيتم دمج '+got.length+' تقارير كتقرير واحد.\nاسم التقرير المدمج:',got[0].nm)||got[0].nm).trim(),m={};
+    got.forEach(g=>g.rows.forEach(r=>{const o=m[r.u];if(!o||repRank(r)>repRank(o))m[r.u]=r}));
+    got=[{nm,rows:Object.values(m)}];alert('تم الدمج: '+got[0].rows.length+' طالب في تقرير «'+nm+'»');}
+  got.forEach(g=>D.rep[g.nm]={rows:g.rows});repSel=got[got.length-1].nm;save();render();
 }
 function repStats(nm){
-  const R=D.rep[nm].rows,a={sub:[],abs:[],pend:[]};R.forEach(r=>a[repCat(r)].push(r));
+  const R=D.rep[nm].rows.filter(r=>!isEx(r.u)),a={sub:[],abs:[],pend:[]};R.forEach(r=>a[repCat(r)].push(r));
   const ts=a.sub.map(r=>r.secs).filter(x=>x>0).sort((x,y)=>x-y);a.med=ts.length?ts[Math.floor(ts.length/2)]:0;
   a.thr=(+D.cfg.fastMin>0)?Math.round(D.cfg.fastMin*60):Math.round(a.med*0.4);
   a.sub.sort((x,y)=>(x.secs||1e9)-(y.secs||1e9));a.fast=a.sub.filter(r=>r.secs>0&&r.secs<a.thr);a.total=R.length;return a;
@@ -773,7 +815,7 @@ const cmap=()=>{const o={};committees().forEach(c=>c.list.forEach(s=>o[s.id]=c.n
 const rn=r=>{const s=students.find(x=>x.id===r.u);return s?s.name:arName(r.n)};
 function renderRep(m){
   const names=Object.keys(D.rep);
-  const imp=`<label class="btn p">📥 استيراد تقارير الاختبار (Excel — متعدد)<input type="file" multiple accept=".xlsx,.xls" hidden onchange="importRep(this.files)"></label>`;
+  const imp=`<label class="btn p">📥 استيراد تقارير الاختبار (Excel — متعدد)<input type="file" multiple accept=".xlsx,.xls" hidden onchange="importRep(this.files);this.value=''"></label>${mergeChk('repMerge','دمج الملفات المختارة كتقرير واحد')}`;
   if(!names.length){m.innerHTML=`<div class="box"><h3>تقارير الاختبارات</h3><div class="bar">${imp}</div><p class="note">استورد ملفات التقارير (ACUExam_...xlsx) ليظهر تقرير التسليم والغياب والمعلّق وأسرع الطلاب تسليماً.</p></div>`;return}
   const nm=names.includes(repSel)?repSel:names[0];repSel=nm;const st=repStats(nm),cm=cmap();
   const tr=(r,i,ty)=>{const k=r.u+'|'+ty+'|'+nm;return `<tr><td>${i+1}</td><td>${r.u}</td><td>${esc(rn(r))}</td><td>${esc(cm[r.u]||'—')}</td><td>${r.secs?mmss(r.secs)+' د':'—'}</td>
@@ -788,10 +830,10 @@ function renderRep(m){
    <div class="chips">${[['fast','الأسرع'],['abs','الغائبون'],['pend','المعلّقون'],['all','كل المسلّمين']].map(([k,l])=>`<label class="chip"><input type="checkbox" ${repOpt[k]?'checked':''} onchange="repOpt['${k}']=this.checked"> ${l}</label>`).join('')}
    <button class="btn" onclick="absFromRep()">⇄ ترحيل الغياب إلى سجل الغياب</button><button class="btn p" onclick="buildRep(true)">🖨️ طباعة التقرير</button><button class="btn" onclick="buildRep(false)">👁 معاينة</button></div></div>
    ${T('⚡ '+(st.fast.length?'الأسرع تسليماً (أقل من '+mmss(st.thr)+')':'أسرع 10 تسليماً (لا أحد دون الحد)'),fl,'fast')}${T('🚫 الغائبون',st.abs,'absent')}${T('⏳ معلّق (بدأ ولم يُسلّم)',st.pend,'pending')}
-   <details class="c"><summary>✅ كل المسلّمين مرتبين بالزمن <span class="n">${st.sub.length}</span></summary><div class="in"><table class="t"><tr><th>م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th></th></tr>${st.sub.map((r,i)=>tr(r,i,'fast')).join('')}</table></div></details>`;
+   ${senBox()}<details class="c"><summary>✅ كل المسلّمين مرتبين بالزمن <span class="n">${st.sub.length}</span></summary><div class="in"><table class="t"><tr><th>م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th></th></tr>${st.sub.map((r,i)=>tr(r,i,'fast')).join('')}</table></div></details>`;
 }
 function buildRep(p){
-  const nm=repSel,st=repStats(nm),cm=cmap();let out='';const meta=baseMeta()+`<span>${esc(nm)}</span>`;
+  const nm=repSel,st=repStats(nm),cm=cmap();let out='';const meta=baseMeta()+`<span>${esc(nm)}</span>`+exNote();
   const T='تقرير تسليم الاختبار';
   const sum=[['إجمالي الطلاب',st.total],['تم التسليم',st.sub.length],['غياب',st.abs.length],['معلّق (بدأ ولم يسلّم)',st.pend.length],['وسيط زمن التسليم',mmss(st.med)],['حد التسليم السريع',mmss(st.thr)],['عدد سريعي التسليم',st.fast.length]];
   out+=sheet(T,meta,tbl('<col><col width="120">',['البيان','القيمة'],sum.map(x=>`<tr><td class="nm">${x[0]}</td><td>${x[1]}</td></tr>`).join('')),'','10mm');
@@ -931,7 +973,7 @@ function renderStk(m,L){
   const num=(k,l,mx,st)=>`<label class="f">${l}<input type="number" min="0" max="${mx}" step="${st||0.5}" value="${s[k]}" oninput="setStk('${k}',+this.value);stkInfo()"></label>`;
   const ck=(k,l)=>`<label class="chip"><input type="checkbox" ${s[k]?'checked':''} onchange="setStk('${k}',this.checked)"> ${l}</label>`;
   m.innerHTML=`<div class="box"><h3>ملصقات الجلوس (A4)</h3>
-   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>
+   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>${mergeChk('pwMerge','دمج الملفات المختارة كاختبار واحد')}
    <span class="note">${Object.keys(D.pw).length?`مستورد: ${Object.keys(D.pw).length} اختبار — ${Object.keys(info).length} طالب`:'لم تُستورد ملفات بعد'}</span></div>
    <p class="note">المسار والشعبة تُقرأ من ملفات الاختبار المستوردة (نفس ملفات بطاقات كلمات المرور). الطالب غير الموجود فيها يُكتب له صفه وشعبته من بيانات المدرسة.</p>
    <div class="grid">${num('rows','عدد الصفوف',30,1)}${num('cols','عدد الأعمدة',8,1)}${num('mt','هامش أعلى (مم)',80)}${num('mb','هامش أسفل (مم)',80)}${num('mr','هامش يمين (مم)',80)}${num('ml','هامش يسار (مم)',80)}${num('fs','حجم الخط %',200,5)}</div>
