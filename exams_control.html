@@ -42,7 +42,7 @@ table.t input,table.t select{width:100%}
 #mod{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 10px}
 .mbox{background:#fff;border-radius:10px;padding:16px;width:min(760px,100%)}
 .mbox h3{margin:0 0 10px;font-family:'El Messiri',sans-serif}
-.arow{display:grid;grid-template-columns:1fr 110px 220px;gap:6px;align-items:center;padding:3px 0;border-top:1px solid #eee;font-size:13px}
+.arow{display:grid;grid-template-columns:1fr 100px 105px 170px;gap:6px;align-items:center;padding:3px 0;border-top:1px solid #eee;font-size:13px}
 #preview{display:flex;flex-direction:column;align-items:center;gap:14px;margin:14px 0}
 .sheet{background:#fff;width:210mm;height:297mm;padding:8mm 10mm;box-shadow:0 1px 6px rgba(0,0,0,.2);color:#000;font-size:12px;display:flex;flex-direction:column;overflow:hidden;page-break-after:always}
 .sh-head{display:grid;grid-template-columns:70px 1fr 70px;align-items:center;gap:8px;border-bottom:2px solid #000;padding-bottom:5px}
@@ -50,6 +50,36 @@ table.t input,table.t select{width:100%}
 .sh-head .mid{text-align:center;line-height:1.5;font-weight:700;font-size:13px}
 .sh-title{text-align:center;font-family:'El Messiri',sans-serif;font-size:18px;font-weight:700;margin:6px 0 4px}
 .sh-meta{display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:center;font-size:12px;margin-bottom:5px;font-weight:600}
+.rp-g table.sh th{white-space:normal;font-size:10px;line-height:1.1}
+.gcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin:14px 0}
+.gc{background:linear-gradient(180deg,var(--l),#fff 75%);border:1px solid var(--m);border-top:5px solid var(--c);border-radius:14px;padding:10px 12px;cursor:pointer;transition:.18s;text-align:center}
+.gc:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.gc.on{box-shadow:0 0 0 3px var(--c)}
+.gc .gh{display:flex;justify-content:space-between;align-items:baseline}.gc .gh b{color:var(--d);font-size:17px}.gc .gh span{font-size:12px;color:#666}
+.ring{width:84px;height:84px;border-radius:50%;margin:8px auto;display:grid;place-items:center}
+.ring i{width:64px;height:64px;border-radius:50%;background:#fff;display:flex;flex-direction:column;justify-content:center;font-style:normal;font-weight:800;font-size:17px;color:var(--d);line-height:1.1}
+.ring i small{font-size:10px;font-weight:600;color:#777}
+.gs{display:flex;justify-content:space-around;font-size:12.5px;font-weight:600}
+.gm{font-size:11.5px;color:#555;margin-top:6px}.gm b{color:var(--d)}
+.dash2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.pnl{border:1px solid #e5e7eb;border-radius:14px;padding:10px 14px;background:#fff}
+.pnl h4{margin:0 0 8px;font-size:13.5px}
+.sb{display:grid;grid-template-columns:62px 1fr 52px;gap:8px;align-items:center;margin:7px 0;font-size:12px;font-weight:700}
+.st{display:flex;height:22px;border-radius:7px;overflow:hidden;background:#f3f4f6}
+.st>div{display:grid;place-items:center;font-size:11px;font-weight:700;transition:filter .15s}.st>div:hover{filter:brightness(1.08)}
+.hist{display:flex;align-items:flex-end;gap:4px;height:160px;padding-top:6px}
+.hc{flex:1;display:flex;flex-direction:column;height:100%}
+.hs{flex:1;display:flex;flex-direction:column-reverse}
+.hs>div{min-height:2px;border-top:1px solid #fff}.hs>div:last-child{border-radius:4px 4px 0 0}
+.hc small{text-align:center;font-size:10px;color:#666;margin-top:2px}.hc.fast small{color:#C9504A;font-weight:800}
+.lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;margin-top:6px;color:#555}.lg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-inline-end:4px;vertical-align:middle}
+.pbars .sb{margin:1.2mm 0;font-size:11px}.pbars .st{height:5mm;border-radius:1.5mm}.pbars .lg{display:none}
+.rp-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:2.5mm;margin:3mm 0 1mm}
+.rp-cards>div{border:.4mm solid #000;border-radius:2mm;text-align:center;padding:1.5mm 1mm}
+.rp-cards>div.k{background:#eee}
+.rp-cards small{display:block;font-size:10.5px;font-weight:700;color:#333}
+.rp-cards b{display:block;font-size:20px;line-height:1.3}
+.rp-cards i{display:block;font-style:normal;font-size:9.5px;color:#555;min-height:12px}
 .env-t{text-align:center;font-family:'El Messiri',sans-serif;font-size:24px;font-weight:700;margin:5mm 0 1mm}
 .env-hero{display:grid;grid-template-columns:1fr 1.4fr;gap:4mm;margin:3mm 0 4mm}
 .env-hero>div{border:.6mm solid #000;border-radius:3mm;padding:2mm 4mm;text-align:center;overflow:hidden}
@@ -441,6 +471,7 @@ function renderPrint(m,L){
     <label class="f">مادة الاختبار<input value="${esc(S.subject)}" oninput="D.sign.subject=this.value;save()"></label>
     <label class="f">التاريخ<input type="date" value="${S.date}" onchange="D.sign.date=this.value;save()"></label>
     <label class="f">الزمن<input value="${esc(S.time)}" placeholder="8:00 – 9:30" oninput="D.sign.time=this.value;save()"></label></div>
+    <div class="bar" style="margin-bottom:8px"><label class="chip" style="background:#EEF3FF"><input type="checkbox" ${S.two?'checked':''} onchange="D.sign.two=this.checked;save()"> عمودان: اختبار ورقي واختبار إلكتروني (بدلاً من عمود التوقيع)</label></div>
     <p class="note">أسماء الملاحظين والمراقب تُؤخذ من تاب «جدول الملاحظة» لنفس التاريخ.</p>`:''}
    <div class="note">اللجان المطلوب طباعتها:</div>
    <div class="chips">${act.map(x=>`<label class="chip"><input type="checkbox" ${pick[x.id]?'checked':''} onchange="pick['${x.id}']=this.checked"> ${x.num}: ${esc(x.name)} (${x.list.length})</label>`).join('')}</div>
@@ -456,14 +487,14 @@ function buildLists(p,auto){
     let list=x.list,subj=S.subject,time=S.time;
     if(auto){list=dayStu(x,S.date);if(!list.length)return;const gs=[...new Set(list.map(gOf))],rs=D.exams.filter(e=>e.date===S.date&&exName(e)&&gs.some(g=>g>=+e.from&&g<=+e.to));subj=[...new Set(rs.map(exName))].join('، ');time=[...new Set(rs.map(e=>e.time).filter(Boolean))].join(' / ')||S.time}
     const n=list.length,rh=n<=25?'7.6mm':Math.max(5,Math.min(7.6,190/(n+1))).toFixed(2)+'mm',o=(D.obsDay[S.date]||{})[x.id]||{},hc=hlCell(x.id);let tr='';
-    for(let i=0;i<n;i++){const s=list[i];tr+=`<tr><td${hc}>${i+1}</td><td>${s.id}</td><td class="nm">${esc(s.name)}</td><td>${clsName(s.cls)}</td>${sg?'<td></td>':''}</tr>`;}
-    const cols=sg?'<col width="28"><col width="92"><col><col width="58"><col width="110">':'<col width="34"><col width="110"><col><col width="70">';
+    for(let i=0;i<n;i++){const s=list[i];tr+=`<tr><td${hc}>${i+1}</td><td>${s.id}</td><td class="nm">${esc(s.name)}</td><td>${clsName(s.cls)}</td>${sg?'<td></td>'.repeat(S.two?2:1):''}</tr>`;}
+    const cols=sg?(S.two?'<col width="26"><col width="84"><col><col width="66"><col width="82"><col width="82">':'<col width="28"><col width="92"><col><col width="58"><col width="110">'):'<col width="34"><col width="110"><col><col width="70">';
     const meta=baseMeta()+(sg?dateMeta(S.date,subj)+(time?`<span>الزمن: ${esc(time)}</span>`:''):'');
     const foot=sg?`<div class="sh-sum"><span>عدد الطلاب: ${n}</span><span>الحاضرون: ........</span><span>الغائبون: ........</span></div>
      <div class="sh-foot" style="grid-template-columns:repeat(${obsN()+1},1fr)">${OK.slice(0,obsN()).map((k,i)=>`<div>الملاحظ ${i+1}: ${esc(o[k]||'')}<br>التوقيع:</div>`).join('')}<div>المراقب: ${esc(supOf(S.date,x.id))}<br>التوقيع:</div></div>`
      :`<div class="sh-sum" style="margin-top:6px"><span>عدد طلاب اللجنة: ${n}</span></div>`;
     out+=sheet((sg?'كشف توقيع الطلاب':'كشف أسماء الطلاب')+` — لجنة رقم (${x.num}) : ${esc(x.name)}`,meta,
-      tbl(cols,['م','رقم الطالب','اسم الطالب','الشعبة'].concat(sg?['توقيع الطالب']:[]),tr),foot,rh,true);
+      tbl(cols,['م','رقم الطالب','اسم الطالب','الشعبة'].concat(sg?(S.two?['اختبار ورقي','اختبار إلكتروني']:['توقيع الطالب']):[]),tr),foot,rh,true);
   });
   show(out,p);
 }
@@ -640,12 +671,35 @@ function senDel(id){D.sen=D.sen.filter(x=>x!==id);senEx().ids=D.senEx.ids.filter
 /* ---------- تقرير الغياب ---------- */
 const absDates=()=>[...new Set(examDates().concat(Object.keys(D.abs)))].filter(Boolean).sort();
 const TYPES=['بدون عذر','بعذر','أخرى'];
+const EXK=['طبي','خلل تقني','ظرف عائلي','أخرى'];
+const ST=[['','لم يُحدَّد'],['بعذر','بعذر'],['بدون عذر','بدون عذر']];
+const absT=v=>v&&(v.t==='بعذر'||v.t==='بدون عذر')?v.t:'';
+const absLbl=v=>{const t=absT(v);return t?(t==='بعذر'&&v.k?'بعذر — '+v.k:t):'لم يُحدَّد'};
+function absEdit(){
+  const AL=absView==='all',ds=AL?Object.keys(D.abs).sort():[absView],cm=cmap(),rows=[];
+  ds.forEach(d=>Object.entries(D.abs[d]||{}).forEach(([id,v])=>{const s=students.find(x=>x.id===id);if(s)rows.push({d,s,v})}));
+  rows.sort((a,b)=>a.d.localeCompare(b.d)||clsKey(a.s.cls)-clsKey(b.s.cls)||a.s.name.localeCompare(b.s.name,'ar'));
+  const un=rows.filter(x=>!absT(x.v)).length;
+  return `<div class="box"><h3>📝 تصنيف الغائبين ${AL?'(كل الأيام)':'— '+dayName(absView)+' '+fd(absView)} <span class="n">${rows.length}</span>${un?` <span class="chip" style="background:#FEF3C7;font-size:12px">غير مصنَّف: ${un}</span>`:''}</h3>
+   ${rows.length?`<div style="overflow:auto"><table class="t"><tr><th>م</th>${AL?'<th>التاريخ</th>':''}<th>الطالب</th><th>الشعبة</th><th>اللجنة</th><th>الحالة</th><th>نوع العذر</th><th>بيان السبب</th><th></th></tr>
+   ${rows.map((x,i)=>{const t=absT(x.v),a=`'${x.d}','${x.s.id}'`;return `<tr${t?'':' style="background:#FFFBEB"'}><td>${i+1}</td>${AL?`<td style="white-space:nowrap">${dayName(x.d)} ${fd(x.d)}</td>`:''}<td>${esc(x.s.name)}${(D.sen||[]).includes(x.s.id)?' ♿':''}</td><td>${clsName(x.s.cls)}</td><td class="note">${esc(cm[x.s.id]||'')}</td>
+    <td><select onchange="absSet(${a},'t',this.value)">${ST.map(([v,l])=>`<option value="${v}" ${t===v?'selected':''}>${l}</option>`).join('')}</select></td>
+    <td>${t==='بعذر'?`<select onchange="absSet(${a},'k',this.value)"><option value="">— اختر —</option>${EXK.map(k=>`<option ${x.v.k===k?'selected':''}>${k}</option>`).join('')}</select>`:'<span class="note">—</span>'}</td>
+    <td><input value="${esc(x.v.n||'')}" placeholder="اختياري" onchange="absSet(${a},'n',this.value)" style="width:100%;min-width:140px"></td>
+    <td><button class="btn s d" title="حذف من الغياب" onclick="absDel1(${a})">✕</button></td></tr>`}).join('')}</table></div>
+   ${un?`<div class="bar" style="margin-top:8px"><button class="btn s" onclick="absAllUn('بدون عذر')">تعيين كل غير المصنَّفين: بدون عذر</button><button class="btn s" onclick="absAllUn('بعذر')">تعيين كل غير المصنَّفين: بعذر</button></div>`:''}`
+   :'<p class="note">لا يوجد غياب مسجَّل. استخدم «إدخال الغياب» أو «ترحيل الغياب» من تاب تقارير الاختبارات، ثم صنّف كل طالب هنا.</p>'}</div>`;
+}
+function absSet(d,id,f,v){const r=D.abs[d]&&D.abs[d][id];if(!r)return;r[f]=v;if(f==='t'&&v!=='بعذر')delete r.k;save();render()}
+function absDel1(d,id){if(!confirm('حذف هذا الطالب من سجل الغياب؟'))return;delete D.abs[d][id];save();render()}
+function absAllUn(t){(absView==='all'?Object.keys(D.abs):[absView]).forEach(d=>Object.values(D.abs[d]||{}).forEach(v=>{if(!absT(v)){v.t=t;if(t!=='بعذر')delete v.k}}));save();render()}
 function renderAbs(m){
   const ds=absDates();if(absView!=='all'&&!ds.includes(absView))absView='all';
   m.innerHTML=`<div class="box"><h3>تقرير الغياب</h3><div class="bar">
    <select onchange="absView=this.value;render()"><option value="all">كل الأيام (ملخص + تفصيل)</option>${ds.map(d=>`<option value="${d}" ${d===absView?'selected':''}>${dayName(d)} ${fd(d)}</option>`).join('')}</select>
    <button class="btn p" onclick="absModal()">➕ إدخال الغياب</button><button class="btn" onclick="buildAbs(true)">🖨️ طباعة A4</button>
-   ${absView!=='all'&&D.abs[absView]?`<button class="btn d" onclick="delAbs('${absView}')">🗑 حذف غياب هذا اليوم</button>`:''}</div></div>${senBox()}`;
+   ${absView!=='all'&&D.abs[absView]?`<button class="btn d" onclick="delAbs('${absView}')">🗑 حذف غياب هذا اليوم</button>`:''}</div>
+   <p class="note">«كل الأيام» يطبع تقريراً كلياً في ورقة A4 واحدة (ملخص الأيام + أسماء الغائبين وأرقامهم وصفوفهم). اختر يوماً محدداً لطباعة كشف ذلك اليوم.</p></div>${absEdit()}${senBox()}`;
   buildAbs(false,true);
 }
 function delAbs(d){if(!confirm('حذف سجل غياب '+fd(d)+'؟'))return;delete D.abs[d];save();render();}
@@ -656,35 +710,42 @@ function absModal(date){
    <span class="note">${dayName(date)} — ${esc(subjOf(date))}</span></div>
    ${L.map(c=>`<details class="c" open><summary>لجنة ${c.num}: ${esc(c.name)} <label style="font-weight:400;font-size:12px"><input type="checkbox" onclick="event.stopPropagation();this.closest('details').querySelectorAll('.ab').forEach(k=>k.checked=this.checked)"> تحديد الكل</label></summary><div class="in">
     ${c.list.map(s=>{const r=rec[s.id];return `<div class="arow" data-s="${s.id}"><label><input type="checkbox" class="ab" ${r?'checked':''}> ${esc(s.name)} <span class="note">${clsName(s.cls)}${(D.sen||[]).includes(s.id)?' ♿'+(isEx(s.id)?' (مستبعد من التقرير)':''):''}</span></label>
-     <select class="at">${TYPES.map(t=>`<option ${r&&r.t===t?'selected':''}>${t}</option>`).join('')}</select>
-     <input class="an" placeholder="بيان السبب" value="${esc(r?r.n:'')}"></div>`}).join('')}</div></details>`).join('')}
-   <p class="note">لكل غائب: اختر «بعذر» أو «بدون عذر» أو «أخرى»، واكتب السبب في الخانة المجاورة.</p>
+     <select class="at">${ST.map(([v,l])=>`<option value="${v}" ${absT(r)===v?'selected':''}>${l}</option>`).join('')}</select>
+     <select class="ak"><option value="">نوع العذر</option>${EXK.map(k=>`<option ${r&&r.k===k?'selected':''}>${k}</option>`).join('')}</select>
+     <input class="an" placeholder="بيان السبب (اختياري)" value="${esc(r?r.n:'')}"></div>`}).join('')}</div></details>`).join('')}
+   <p class="note">لكل غائب: الحالة (بعذر / بدون عذر)، ونوع العذر إن كان بعذر (طبي، خلل تقني...)، وبيان السبب. يمكن التصنيف لاحقاً من جدول «تصنيف الغائبين».</p>
    <div class="bar" style="margin-top:10px"><button class="btn p" onclick="absSave()">تم — حفظ</button><button class="btn" onclick="closeMod()">إلغاء</button></div>`);
 }
 function absSave(){
   const d=$('aD').value;if(!d){alert('اختر التاريخ');return;}const r={};
-  document.querySelectorAll('.arow').forEach(row=>{if(row.querySelector('.ab').checked)r[row.dataset.s]={t:row.querySelector('.at').value,n:row.querySelector('.an').value}});
+  document.querySelectorAll('.arow').forEach(row=>{if(row.querySelector('.ab').checked){const t=row.querySelector('.at').value,k=row.querySelector('.ak').value;r[row.dataset.s]=Object.assign({t,n:row.querySelector('.an').value},t==='بعذر'&&k?{k}:{})}});
   D.abs[d]=r;absView='all';save();closeMod();render();
 }
 function buildAbs(p,silent){
   const ds=absDates(),sel=absView==='all'?ds:[absView];
   if(!sel.length){$('preview').innerHTML='<div class="box msg">لا توجد أيام. أضف جدول الاختبارات أو سجّل الغياب.</div>';return;}
   const cn={};committees().forEach(c=>c.list.forEach(s=>cn[s.id]=c.name));
-  const items=d=>Object.entries(D.abs[d]||{}).map(([id,v])=>({s:students.find(x=>x.id===id),t:v.t,n:v.n})).filter(x=>x.s&&!isEx(x.s.id)).sort((a,b)=>clsKey(a.s.cls)-clsKey(b.s.cls)||a.s.name.localeCompare(b.s.name,'ar'));
-  const cnt=(a,t)=>a.filter(x=>t==='أخرى'?(x.t!=='بعذر'&&x.t!=='بدون عذر'):x.t===t).length;
+  const items=d=>Object.entries(D.abs[d]||{}).map(([id,v])=>({s:students.find(x=>x.id===id),t:absT(v),k:v.k,n:v.n})).filter(x=>x.s&&!isEx(x.s.id)).sort((a,b)=>clsKey(a.s.cls)-clsKey(b.s.cls)||a.s.name.localeCompare(b.s.name,'ar'));
+  const cnt=(a,t)=>a.filter(x=>x.t===t).length;
   let out='';
   if(absView==='all'){
-    const T=[0,0,0,0];
-    const rows=ds.map((d,i)=>{const a=items(d),rc=D.abs[d]!==undefined,v=[cnt(a,'بعذر'),cnt(a,'بدون عذر'),cnt(a,'أخرى')];if(rc){v.forEach((x,k)=>T[k]+=x);T[3]+=a.length;}
-      return `<tr><td>${i+1}</td><td>${dayName(d)}</td><td>${fd(d)}</td><td>${esc(subjOf(d))}</td>${rc?v.map(x=>`<td>${x}</td>`).join('')+`<td><b>${a.length}</b></td>`:'<td colspan="4">لم يُسجَّل</td>'}</tr>`});
-    chunks(rows,24).forEach((ch,i,all)=>{out+=sheet('تقرير الغياب في الاختبارات — الملخص',baseMeta()+exNote(),
-      tbl('<col width="28"><col width="62"><col width="80"><col><col width="62"><col width="62"><col width="62"><col width="62">',['م','اليوم','التاريخ','المادة','بعذر','بدون عذر','أخرى','الإجمالي'],ch.join('')+(i===all.length-1?`<tr><th colspan="4">المجموع</th>${T.map(x=>`<th>${x}</th>`).join('')}</tr>`:'')),'','8.5mm')});
+    const T=[0,0,0,0],all=[];
+    const rows=ds.map((d,i)=>{const a=items(d),rc=D.abs[d]!==undefined,v=[cnt(a,'بعذر'),cnt(a,'بدون عذر'),cnt(a,'')];if(rc){v.forEach((x,k)=>T[k]+=x);T[3]+=a.length;a.forEach(x=>all.push(Object.assign({d},x)))}
+      return `<tr><td>${i+1}</td><td>${dayName(d)}</td><td>${fd(d)}</td><td class="nm">${esc(subjOf(d))}</td>${rc?v.map(x=>`<td>${x}</td>`).join('')+`<td><b>${a.length}</b></td>`:'<td colspan="4">لم يُسجَّل</td>'}</tr>`});
+    const sumT=tbl('<col width="24"><col width="58"><col width="74"><col><col width="56"><col width="60"><col width="60"><col width="58">',['م','اليوم','التاريخ','المادة','بعذر','بدون عذر','لم يُحدَّد','الإجمالي'],rows.join('')+`<tr><th colspan="4">المجموع</th>${T.map(x=>`<th>${x}</th>`).join('')}</tr>`);
+    const nr=(x,i)=>`<tr><td>${i+1}</td><td>${fd(x.d)}</td><td>${x.s.id}</td><td class="nm">${esc(x.s.name)}</td><td>${clsName(x.s.cls)}</td><td class="nm">${esc(cn[x.s.id]||'')}</td><td>${absLbl(x)}</td><td class="nm" style="white-space:normal;font-size:9.5px;line-height:1.1">${esc(x.n||'')}</td></tr>`;
+    const nc='<col width="22"><col width="72"><col width="76"><col><col width="58"><col width="76"><col width="80"><col width="80">',nh=['م','التاريخ','رقم الطالب','اسم الطالب','الشعبة','اللجنة','الحالة','السبب'];
+    const cap=Math.max(6,Math.floor((178-(ds.length+2)*6.3)/6.3)),first=all.slice(0,cap),rest=all.length>cap?chunks(all.slice(cap),36):[];
+    const meta=baseMeta()+exNote()+`<span>إجمالي حالات الغياب: ${all.length}</span>`;
+    out+=sheet('تقرير الغياب في الاختبارات — التقرير الكلي',meta,`<div class="env-h" style="margin-top:2mm">ملخص أيام الاختبار</div>${sumT}<div class="env-h">أسماء الطلاب الغائبين</div>`+(all.length?tbl(nc,nh,first.map(nr).join('')):'<p style="text-align:center;font-weight:700">لا يوجد غياب ✓</p>'),'','6.3mm');
+    rest.forEach((ch,j)=>{out+=sheet('تقرير الغياب — أسماء الغائبين (تابع)',meta,tbl(nc,nh,ch.map((x,i)=>nr(x,cap+j*36+i)).join('')),'','6.3mm')});
+    if(p)show(out,true);else $('preview').innerHTML=out;return;
   }
   sel.forEach(d=>{
     const a=items(d),rc=D.abs[d]!==undefined;
-    const meta=baseMeta()+dateMeta(d,subjOf(d))+exNote()+`<span>${rc?`الغائبون: ${a.length} (بعذر ${cnt(a,'بعذر')} — بدون عذر ${cnt(a,'بدون عذر')} — أخرى ${cnt(a,'أخرى')})`:'لم يُسجَّل الغياب لهذا اليوم'}</span>`;
-    chunks(a,26).forEach(ch=>{const tr=ch.map((x,i)=>`<tr><td>${i+1}</td><td>${x.s.id}</td><td class="nm">${esc(x.s.name)}</td><td>${clsName(x.s.cls)}</td><td>${esc(cn[x.s.id]||'')}</td><td>${x.t}</td><td class="nm" style="white-space:normal;font-size:10px;line-height:1.15">${esc(x.n||'')}</td></tr>`).join('')||`<tr><td colspan="7">${rc?'لا يوجد غياب':'—'}</td></tr>`;
-      out+=sheet('كشف الغائبين',meta,tbl('<col width="26"><col width="86"><col><col width="54"><col width="92"><col width="64"><col width="125">',['م','رقم الطالب','اسم الطالب','الشعبة','اللجنة','نوع الغياب','السبب'],tr),'','7.8mm')});
+    const meta=baseMeta()+dateMeta(d,subjOf(d))+exNote()+`<span>${rc?`الغائبون: ${a.length} (بعذر ${cnt(a,'بعذر')} — بدون عذر ${cnt(a,'بدون عذر')}${cnt(a,'')?' — لم يُحدَّد '+cnt(a,''):''})`:'لم يُسجَّل الغياب لهذا اليوم'}</span>`;
+    chunks(a,26).forEach(ch=>{const tr=ch.map((x,i)=>`<tr><td>${i+1}</td><td>${x.s.id}</td><td class="nm">${esc(x.s.name)}</td><td>${clsName(x.s.cls)}</td><td>${esc(cn[x.s.id]||'')}</td><td>${absLbl(x)}</td><td class="nm" style="white-space:normal;font-size:10px;line-height:1.15">${esc(x.n||'')}</td></tr>`).join('')||`<tr><td colspan="7">${rc?'لا يوجد غياب':'—'}</td></tr>`;
+      out+=sheet('كشف الغائبين',meta,tbl('<col width="26"><col width="86"><col><col width="52"><col width="88"><col width="86"><col width="110">',['م','رقم الطالب','اسم الطالب','الشعبة','اللجنة','الحالة','السبب'],tr),'','7.8mm')});
   });
   if(p)show(out,true);else $('preview').innerHTML=out;
 }
@@ -815,6 +876,50 @@ function repStats(nm){
   a.thr=(+D.cfg.fastMin>0)?Math.round(D.cfg.fastMin*60):Math.round(a.med*0.4);
   a.sub.sort((x,y)=>(x.secs||1e9)-(y.secs||1e9));a.fast=a.sub.filter(r=>r.secs>0&&r.secs<a.thr);a.total=R.length;return a;
 }
+const GPAL=[{c:'#2E9E6B',l:'#E8F5EE',m:'#B6DEC9',d:'#1D6A47'},{c:'#2F6FB3',l:'#E7EFF9',m:'#B4CDEA',d:'#1E4A7A'},{c:'#D9A40F',l:'#FFF7DC',m:'#F3DA88',d:'#7F5F05'},{c:'#C9504A',l:'#FBEBEA',m:'#EDB4B0',d:'#8A2E29'}];
+const gCol=g=>g?GPAL[(((g-5)%4)+4)%4]:{c:'#8A8F98',l:'#F2F3F5',m:'#D4D7DC',d:'#4B5058'};
+const gVar=g=>{const k=gCol(g);return `--c:${k.c};--l:${k.l};--m:${k.m};--d:${k.d}`};
+let repG=null;
+const gOfId=id=>{const x=students.find(s=>s.id===id);return x?gOf(x):0};
+function repGrades(nm,thr){
+  const SM={};students.forEach(x=>SM[x.id]=x);const G={};
+  repRows(nm).filter(r=>!isEx(r.u)).forEach(r=>{const x=SM[r.u],g=x?gOf(x):0;(G[g]=G[g]||[]).push(r)});
+  return Object.keys(G).map(Number).sort((a,b)=>(a===0)-(b===0)||a-b).map(g=>{const a={sub:[],abs:[],pend:[]};G[g].forEach(r=>a[repCat(r)].push(r));
+    const ts=a.sub.map(r=>r.secs).filter(x=>x>0).sort((x,y)=>x-y);
+    return {g,ts,lb:g?(GR[g]||g):'غير مسجّل',n:G[g].length,sub:a.sub.length,abs:a.abs.length,pend:a.pend.length,fast:ts.filter(x=>x<thr).length,med:ts.length?ts[Math.floor(ts.length/2)]:0,min:ts[0]||0,max:ts[ts.length-1]||0}});
+}
+const pc=(a,b)=>b?Math.round(a*1000/b)/10+'%':'—';
+function repGradeT(st,nm,print){
+  const G=repGrades(nm,st.thr),hd=['الصف','الإجمالي','سلّموا','نسبة التسليم','غياب','نسبة الغياب','معلّق','سريعو التسليم','وسيط الزمن','أقل زمن','أعلى زمن'];
+  const ts=st.sub.map(r=>r.secs).filter(x=>x>0);
+  const row=(x,th)=>{const c=th?'th':'td',k=gCol(x.g);return `<tr${th?'':` style="background:${k.l}"`}><${c}${th?'':` style="background:${k.m};color:${k.d};font-weight:700"`}>${x.lb}</${c}><${c}>${x.n}</${c}><${c}>${x.sub}</${c}><${c}>${pc(x.sub,x.n)}</${c}><${c}>${x.abs}</${c}><${c}>${pc(x.abs,x.n)}</${c}><${c}>${x.pend}</${c}><${c}>${x.fast}</${c}><${c}>${x.med?mmss(x.med):'—'}</${c}><${c}>${x.min?mmss(x.min):'—'}</${c}><${c}>${x.max?mmss(x.max):'—'}</${c}></tr>`};
+  const tot={g:-1,lb:'المجموع',n:st.total,sub:st.sub.length,abs:st.abs.length,pend:st.pend.length,fast:st.fast.length,med:st.med,min:ts.length?Math.min(...ts):0,max:ts.length?Math.max(...ts):0};
+  const body=G.map(x=>row(x)).join('')+row(tot,true);
+  return print?`<div class="rp-g">${tbl('<col width="58">'+'<col>'.repeat(10),hd,body)}</div>`:`<div style="overflow:auto"><table class="t"><tr>${hd.map(h=>`<th>${h}</th>`).join('')}</tr>${body}</table></div>`;
+}
+function repBars(G){
+  return G.map(x=>{const k=gCol(x.g),w=v=>x.n?v*100/x.n:0;
+    return `<div class="sb"><span class="sl" style="color:${k.d}">${x.lb}</span><div class="st">${[['sub','سلّموا',k.c,'#fff'],['pend','معلّق',k.m,k.d],['abs','غياب',k.d,'#fff']].map(([f,l,c,t])=>x[f]?`<div style="width:${w(x[f])}%;background:${c};color:${t}" title="${x.lb} — ${l}: ${x[f]} (${pc(x[f],x.n)})">${w(x[f])>6?x[f]:''}</div>`:'').join('')}</div><span class="sv" style="color:${k.d}">${pc(x.sub,x.n)}</span></div>`}).join('')
+   +`<div class="lg"><span><i style="background:#555"></i>سلّموا (اللون الأساسي)</span><span><i style="background:#ccc"></i>معلّق (فاتح)</span><span><i style="background:#222"></i>غياب (داكن)</span></div>`;
+}
+function repDash(st,nm){
+  const G=repGrades(nm,st.thr);if(!G.length)return '';
+  const card=x=>{const p=x.n?Math.round(x.sub*100/x.n):0;return `<div class="gc${repG===x.g?' on':''}" style="${gVar(x.g)}" onclick="repG=repG===${x.g}?null:${x.g};render()" title="اضغط لعرض طلاب هذا الصف فقط في القوائم">
+    <div class="gh"><b>${x.lb}</b><span>${x.n} طالب</span></div>
+    <div class="ring" style="background:conic-gradient(var(--c) ${p*3.6}deg,var(--l) 0)"><i>${p}%<small>تسليم</small></i></div>
+    <div class="gs"><span title="سلّموا">✅ ${x.sub}</span><span title="غياب">🚫 ${x.abs}</span><span title="معلّق">⏳ ${x.pend}</span><span title="سريعو التسليم">⚡ ${x.fast}</span></div>
+    <div class="gm">الوسيط <b>${x.med?mmss(x.med):'—'}</b> · أقل <b>${x.min?mmss(x.min):'—'}</b> · أعلى <b>${x.max?mmss(x.max):'—'}</b></div></div>`};
+  const mm=Math.max(1,...G.map(x=>x.med));
+  const meds=G.map(x=>{const k=gCol(x.g);return `<div class="sb"><span class="sl" style="color:${k.d}">${x.lb}</span><div class="st" style="background:${k.l}"><div style="width:${x.med*100/mm}%;background:linear-gradient(90deg,${k.m},${k.c});color:#fff" title="وسيط ${x.lb}: ${mmss(x.med)}">${x.med?mmss(x.med):''}</div></div><span class="sv">${x.fast?'⚡'+x.fast:''}</span></div>`}).join('');
+  const all=G.flatMap(x=>x.ts),mx=Math.max(0,...all),bs=mx>3600?600:300,nb=Math.max(1,Math.ceil((mx+1)/bs));
+  const H=[...Array(nb)].map((_,i)=>G.map(x=>({x,n:x.ts.filter(t=>t>=i*bs&&t<(i+1)*bs).length}))),hm=Math.max(1,...H.map(b=>b.reduce((a,o)=>a+o.n,0)));
+  const hist=`<div class="hist">${H.map((b,i)=>{const tt=b.reduce((a,o)=>a+o.n,0);return `<div class="hc${(i+1)*bs<=st.thr?' fast':''}" title="${i*bs/60}–${(i+1)*bs/60} دقيقة: ${tt} طالب"><div class="hs">${b.map(o=>o.n?`<div style="height:${o.n*100/hm}%;background:${gCol(o.x.g).c}" title="${o.x.lb}: ${o.n} طالب (${i*bs/60}–${(i+1)*bs/60} د)"></div>`:'').join('')}</div><small>${i*bs/60}</small></div>`}).join('')}</div>
+    <div class="lg">${G.map(x=>`<span><i style="background:${gCol(x.g).c}"></i>${x.lb}</span>`).join('')}<span style="color:#C9504A">الأرقام الحمراء = ضمن التسليم السريع</span></div>`;
+  return `<div class="gcs">${G.map(card).join('')}</div>
+   <div class="dash2"><div class="pnl"><h4>📊 حالة التسليم لكل صف</h4>${repBars(G)}</div><div class="pnl"><h4>⏱ وسيط زمن التسليم لكل صف</h4>${meds}</div></div>
+   <div class="pnl" style="margin-top:12px"><h4>📈 توزيع أزمنة التسليم (بالدقائق — كل عمود ${bs/60} دقائق)</h4>${hist}</div>
+   <details class="c" style="margin-top:12px"><summary>📋 جدول الإحصاءات التفصيلي</summary><div class="in">${repGradeT(st,nm)}</div></details>`;
+}
 const cmap=()=>{const o={};committees().forEach(c=>c.list.forEach(s=>o[s.id]=c.num+': '+c.name));return o};
 const rn=r=>{const s=students.find(x=>x.id===r.u);return s?s.name:arName(r.n)};
 function renderRep(m){
@@ -822,26 +927,37 @@ function renderRep(m){
   const imp=`<label class="btn p">📥 استيراد تقارير الاختبار (Excel — متعدد)<input type="file" multiple accept=".xlsx,.xls" hidden onchange="importRep(this.files);this.value=''"></label>`;
   if(!names.length){m.innerHTML=`<div class="box"><h3>تقارير الاختبارات</h3><div class="bar">${imp}</div><p class="note">استورد ملفات التقارير (ACUExam_...xlsx) ليظهر تقرير التسليم والغياب والمعلّق وأسرع الطلاب تسليماً.</p></div>`;return}
   const nm=names.includes(repSel)||(repSel==='__all'&&names.length>1)?repSel:names[0];repSel=nm;const AL=nm==='__all';const st=repStats(nm),cm=cmap();
-  const tr=(r,i,ty)=>{const k=r.u+'|'+ty+'|'+r.ex;return `<tr><td>${i+1}</td><td>${r.u}</td><td>${esc(rn(r))}${AL?`<div class="note">${esc(r.ex.slice(0,60))}</div>`:''}</td><td>${esc(cm[r.u]||'—')}</td><td>${r.secs?mmss(r.secs)+' د':'—'}</td>
+  const tr=(r,i,ty)=>{const k=r.u+'|'+ty+'|'+r.ex,gc=gCol(gOfId(r.u));return `<tr style="box-shadow:inset -4px 0 0 ${gc.c}"><td>${i+1}</td><td>${r.u}</td><td>${esc(rn(r))}${AL?`<div class="note">${esc(r.ex.slice(0,60))}</div>`:''}</td><td>${esc(cm[r.u]||'—')}</td><td>${r.secs?mmss(r.secs)+' د':'—'}</td>
     <td><button class="btn s" onclick="openMsg('${r.u}','${ty}',decodeURIComponent('${qa(r.ex)}'))">✉ رسالة</button> ${D.sent[k]?'<span class="note">✓ أُرسلت</span>':''}</td></tr>`};
   const T=(title,list,ty)=>`<details class="c" open><summary>${title} <span class="n">${list.length}</span></summary><div class="in"><table class="t"><tr><th width="34">م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th width="170">ولي الأمر</th></tr>${list.map((r,i)=>tr(r,i,ty)).join('')||'<tr><td colspan="6" class="note">لا يوجد</td></tr>'}</table></div></details>`;
-  const fl=st.fast.length?st.fast:st.sub.filter(r=>r.secs>0).slice(0,10);
+  const fg=a=>repG===null?a:a.filter(r=>gOfId(r.u)===repG),F={fast:fg(st.fast),abs:fg(st.abs),pend:fg(st.pend),sub:fg(st.sub)};
+  const fl=F.fast.length?F.fast:F.sub.filter(r=>r.secs>0).slice(0,10);
   m.innerHTML=`<div class="box"><h3>تقارير الاختبارات</h3><div class="bar">${imp}
    <select onchange="repSel=this.value;render()">${names.length>1?`<option value="__all" ${AL?'selected':''}>📚 كل التقارير معاً (${names.length} ملفات — ${repRows('__all').length} طالب)</option>`:''}${names.map(n=>`<option value="${esc(n)}" ${n===nm?'selected':''}>${esc(n.slice(0,90))} (${D.rep[n].rows.length})</option>`).join('')}</select>
    ${AL?`<button class="btn d" onclick="if(confirm('حذف كل التقارير المستوردة؟')){D.rep={};save();render()}">🗑 حذف الكل</button>`:`<button class="btn d" onclick="if(confirm('حذف هذا التقرير؟')){delete D.rep[decodeURIComponent('${qa(nm)}')];save();render()}">🗑</button>`}</div>
-   <div class="chips"><span class="chip">الإجمالي: <b>${st.total}</b></span><span class="chip">✅ سلّموا: <b>${st.sub.length}</b></span><span class="chip">🚫 غياب: <b>${st.abs.length}</b></span><span class="chip">⏳ معلّق: <b>${st.pend.length}</b></span><span class="chip">وسيط الزمن: <b>${mmss(st.med)}</b></span><span class="chip">⚡ سريعو التسليم: <b>${st.fast.length}</b></span></div>
+   <div class="chips"><span class="chip">الإجمالي: <b>${st.total}</b></span><span class="chip">✅ سلّموا: <b>${st.sub.length}</b></span><span class="chip">🚫 غياب: <b>${st.abs.length}</b></span><span class="chip">⏳ معلّق: <b>${st.pend.length}</b></span><span class="chip">وسيط الزمن: <b>${mmss(st.med)}</b></span><span class="chip">⚡ سريعو التسليم: <b>${st.fast.length}</b></span>
+    <label class="chip" style="background:#EEF3FF"><input type="checkbox" ${senEx().mode!=='none'?'checked':''} onchange="senEx().mode=this.checked?'all':'none';save();render()"> ♿ استبعاد أصحاب الهمم${(D.sen||[]).length?' ('+D.sen.length+')':' — حدّد القائمة من الصندوق أدناه'}</label></div>
+   ${repDash(st,nm)}
+   ${repG!==null?`<div class="bar" style="margin-top:10px"><span class="chip" style="${gVar(repG)};background:var(--l);border-color:var(--c);color:var(--d);font-weight:700">القوائم أدناه مُصفّاة: ${repG?GR[repG]||repG:'غير مسجّل'}</span><button class="btn s" onclick="repG=null;render()">✕ عرض كل الصفوف</button></div>`:''}
    <div class="bar" style="margin-top:10px"><label class="f">يُعدّ التسليم سريعاً إذا كان أقل من (دقيقة) — اتركه فارغاً للحساب التلقائي (40% من الوسيط = ${mmss(Math.round(st.med*.4))})<input type="number" min="0" value="${D.cfg.fastMin||''}" onchange="D.cfg.fastMin=+this.value;save();render()" style="max-width:120px"></label></div>
    <div class="chips">${[['fast','الأسرع'],['abs','الغائبون'],['pend','المعلّقون'],['all','كل المسلّمين']].map(([k,l])=>`<label class="chip"><input type="checkbox" ${repOpt[k]?'checked':''} onchange="repOpt['${k}']=this.checked"> ${l}</label>`).join('')}
    <button class="btn" onclick="absFromRep()">⇄ ترحيل الغياب إلى سجل الغياب</button><button class="btn p" onclick="buildRep(true)">🖨️ طباعة التقرير</button><button class="btn" onclick="buildRep(false)">👁 معاينة</button></div></div>
-   ${T('⚡ '+(st.fast.length?'الأسرع تسليماً (أقل من '+mmss(st.thr)+')':'أسرع 10 تسليماً (لا أحد دون الحد)'),fl,'fast')}${T('🚫 الغائبون',st.abs,'absent')}${T('⏳ معلّق (بدأ ولم يُسلّم)',st.pend,'pending')}
-   ${senBox()}<details class="c"><summary>✅ كل المسلّمين مرتبين بالزمن <span class="n">${st.sub.length}</span></summary><div class="in"><table class="t"><tr><th>م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th></th></tr>${st.sub.map((r,i)=>tr(r,i,'fast')).join('')}</table></div></details>`;
+   ${T('⚡ '+(F.fast.length?'الأسرع تسليماً (أقل من '+mmss(st.thr)+')':'أسرع 10 تسليماً (لا أحد دون الحد)'),fl,'fast')}${T('🚫 الغائبون',F.abs,'absent')}${T('⏳ معلّق (بدأ ولم يُسلّم)',F.pend,'pending')}
+   ${senBox()}<details class="c"><summary>✅ كل المسلّمين مرتبين بالزمن <span class="n">${F.sub.length}</span></summary><div class="in"><table class="t"><tr><th>م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th></th></tr>${F.sub.map((r,i)=>tr(r,i,'fast')).join('')}</table></div></details>`;
 }
 function buildRep(p){
   const nm=repSel,st=repStats(nm),cm=cmap();let out='';const meta=baseMeta()+`<span>${esc(repLbl(nm))}</span>`+exNote();
   const T='تقرير تسليم الاختبار';
-  const sum=[['إجمالي الطلاب',st.total],['تم التسليم',st.sub.length],['غياب',st.abs.length],['معلّق (بدأ ولم يسلّم)',st.pend.length],['وسيط زمن التسليم',mmss(st.med)],['حد التسليم السريع',mmss(st.thr)],['عدد سريعي التسليم',st.fast.length]];
-  out+=sheet(T,meta,tbl('<col><col width="120">',['البيان','القيمة'],sum.map(x=>`<tr><td class="nm">${x[0]}</td><td>${x[1]}</td></tr>`).join('')),'','10mm');
-  const secs=[];if(repOpt.fast)secs.push(['الطلاب الأسرع تسليماً (أقل من '+mmss(st.thr)+' دقيقة)',st.fast]);if(repOpt.abs)secs.push(['الغائبون',st.abs]);if(repOpt.pend)secs.push(['المعلّقون (بدأوا ولم يسلّموا)',st.pend]);if(repOpt.all)secs.push(['جميع المسلّمين مرتبين بالزمن',st.sub]);
+  const AL=nm==='__all',G=repGrades(nm,st.thr).length;
+  const cards=`<div class="rp-cards">${[['إجمالي الطلاب',st.total,'',1],['تم التسليم',st.sub.length,pc(st.sub.length,st.total)],['غياب',st.abs.length,pc(st.abs.length,st.total)],['معلّق',st.pend.length,'بدأ ولم يسلّم'],['وسيط زمن التسليم',mmss(st.med),'دقيقة:ثانية'],['سريعو التسليم',st.fast.length,'أقل من '+mmss(st.thr)]].map(([l,v,i,k])=>`<div${k?' class="k"':''}><small>${l}</small><b>${v}</b><i>${i}</i></div>`).join('')}</div>`;
+  const ab=st.abs.slice().sort((a,b)=>{const x=students.find(s=>s.id===a.u),y=students.find(s=>s.id===b.u);return (x?clsKey(x.cls):1e9)-(y?clsKey(y.cls):1e9)||rn(a).localeCompare(rn(b),'ar')});
+  const ar=(r,i)=>{const x=students.find(s=>s.id===r.u);return `<tr><td>${i+1}</td><td>${r.u}</td><td class="nm">${esc(rn(r))}</td><td style="background:${gCol(x?gOf(x):0).l};color:${gCol(x?gOf(x):0).d};font-weight:700">${x?clsName(x.cls):'—'}</td><td class="nm">${esc(cm[r.u]||'')}</td>${AL?`<td class="nm" style="font-size:9px;white-space:normal;line-height:1.05">${esc(exShort(r.ex))}</td>`:''}</tr>`};
+  const ac=AL?'<col width="22"><col width="72"><col><col width="64"><col width="92"><col width="96">':'<col width="24"><col width="88"><col><col width="68"><col width="120">',ah=['م','رقم الطالب','اسم الطالب','الشعبة','اللجنة'].concat(AL?['الاختبار']:[]);
+  const cap=Math.max(5,Math.floor((205-(G+2)*6.6-G*7)/6.6)),f1=ab.slice(0,cap),r1=ab.length>cap?chunks(ab.slice(cap),36):[];
+  out+=sheet(T+' — الملخص',meta,cards+`<div class="env-h">إحصاءات حسب الصف</div>${repGradeT(st,nm,true)}<div class="env-h">حالة التسليم لكل صف</div><div class="pbars">${repBars(repGrades(nm,st.thr))}</div><div class="env-h">أسماء الطلاب الغائبين (${ab.length})</div>`+(ab.length?tbl(ac,ah,f1.map(ar).join('')):'<p style="text-align:center;font-weight:700">لا يوجد غياب ✓</p>'),'','6.6mm');
+  r1.forEach((ch,j)=>{out+=sheet(T+' — أسماء الغائبين (تابع)',meta,tbl(ac,ah,ch.map((r,i)=>ar(r,cap+j*36+i)).join('')),'','6.6mm')});
+  if(repOpt.abs&&ab.length)repOpt._skipAbs=true;
+  const secs=[];if(repOpt.fast)secs.push(['الطلاب الأسرع تسليماً (أقل من '+mmss(st.thr)+' دقيقة)',st.fast]);if(repOpt.abs&&!repOpt._skipAbs)secs.push(['الغائبون',st.abs]);delete repOpt._skipAbs;if(repOpt.pend)secs.push(['المعلّقون (بدأوا ولم يسلّموا)',st.pend]);if(repOpt.all)secs.push(['جميع المسلّمين مرتبين بالزمن',st.sub]);
   secs.forEach(([ti,list])=>chunks(list,24).forEach((ch,pi)=>{
     const tr=ch.map((r,i)=>`<tr><td>${pi*24+i+1}</td><td>${r.u}</td><td class="nm">${esc(rn(r))}</td><td>${esc(cm[r.u]||'')}</td><td>${r.secs?mmss(r.secs):'—'}</td></tr>`).join('')||'<tr><td colspan="5">لا يوجد</td></tr>';
     out+=sheet(T+' — '+ti,meta,tbl('<col width="28"><col width="92"><col><col width="110"><col width="55">',['م','رقم الطالب','اسم الطالب','اللجنة','الزمن'],tr),'','8mm')}));
@@ -914,19 +1030,19 @@ function absFromRep(){
   modal(`<h3>⇄ ترحيل الغياب إلى سجل الغياب</h3><p class="note">${esc(repLbl(repSel))}</p>
    <div class="grid"><label class="f">تاريخ الاختبار<input type="date" id="afD" value="${d0}"></label>
    <label class="f">من جدول الاختبارات<select onchange="if(this.value)$('afD').value=this.value"><option value="">— اختر —</option>${examDates().map(x=>`<option value="${x}">${dayName(x)} ${fd(x)} — ${esc(subjOf(x))}</option>`).join('')}</select></label>
-   <label class="f">نوع الغياب<select id="afT">${TYPES.map(x=>`<option>${x}</option>`).join('')}</select></label></div>
+   </div>
    <div class="chips" style="margin-top:10px"><label class="chip"><input type="checkbox" id="afA" checked> الغائبون (${st.abs.length}، المسجلون في المدرسة ${st.abs.filter(has).length})</label>
    <label class="chip"><input type="checkbox" id="afP"> المعلّقون (${st.pend.length})</label></div>
-   <p class="note">لا يُستبدل غياب مسجّل مسبقاً لنفس الطالب في هذا التاريخ، ويُضاف فقط من لم يُسجَّل.</p>
+   <p class="note">لا يُستبدل غياب مسجّل مسبقاً لنفس الطالب في هذا التاريخ. يُرحَّل الطلاب «غير مصنَّفين»، ثم تحدد لكل طالب (بعذر / بدون عذر ونوع العذر) من تاب «تقرير الغياب».</p>
    <div class="bar"><button class="btn p" onclick="afrDo()">ترحيل</button><button class="btn" onclick="closeMod()">إلغاء</button></div>`);
 }
 function afrDo(){
   const d=$('afD').value;if(!d){alert('اختر التاريخ');return}
-  const st=repStats(repSel),ty=$('afT').value,list=[...($('afA').checked?st.abs.map(r=>[r,'']):[]),...($('afP').checked?st.pend.map(r=>[r,' (معلّق)']):[])];
+  const st=repStats(repSel),list=[...($('afA').checked?st.abs.map(r=>[r,'']):[]),...($('afP').checked?st.pend.map(r=>[r,' (معلّق)']):[])];
   const rec=D.abs[d]=D.abs[d]||{};let add=0,skip=0,miss=0;
-  list.forEach(([r,n])=>{if(!students.some(s=>s.id===r.u)){miss++;return}if(rec[r.u]){skip++;return}rec[r.u]={t:ty,n:'من تقرير الاختبار'+n};add++});
+  list.forEach(([r,n])=>{if(!students.some(s=>s.id===r.u)){miss++;return}if(rec[r.u]){skip++;return}rec[r.u]={t:'',n:n?'بدأ ولم يسلّم':''};add++});
   D.absDate=d;save();closeMod();
-  alert('تم ترحيل '+add+' طالب'+(skip?'، تجاوز '+skip+' مسجّلين مسبقاً':'')+(miss?'، '+miss+' غير موجودين في بيانات المدرسة':'')+'\nيمكنك مراجعتهم في تاب «تقرير الغياب».');
+  alert('تم ترحيل '+add+' طالب'+(skip?'، تجاوز '+skip+' مسجّلين مسبقاً':'')+(miss?'، '+miss+' غير موجودين في بيانات المدرسة':'')+'\nصنّفهم (بعذر / بدون عذر) من تاب «تقرير الغياب».');
   render();
 }
 
