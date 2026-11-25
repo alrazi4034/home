@@ -65,7 +65,8 @@ table.t input,table.t select{width:100%}
 .env-ab .it{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:.2mm solid #ddd;padding:.6mm 0}
 .env-ab .l{border-bottom:.3mm dotted #555;height:7.5mm}
 .env-ab .no{grid-column:1/-1;text-align:center;font-weight:700;align-self:center}
-.env-foot{margin-top:2mm}
+.env-foot{margin-top:auto}
+.env-foot table.sh th{height:9mm}
 .env-notes{flex:1;min-height:14mm;border:.4mm solid #000;border-radius:2mm;padding:1.5mm 4mm;font-weight:700;font-size:12px}
 .sh-title.sp{margin-top:7mm}
 .sh-meta.sp{margin-bottom:7mm}
@@ -505,8 +506,8 @@ function envSheet(c,d,L,all){
   const cm=L.map(x=>({x,a:x.list.filter(s=>s.cls===c)})).filter(o=>o.a.length);
   const abIn=a=>ab?a.filter(s=>rec[s.id]).length:'';
   const cmName2=x=>{const c2=L.find(y=>y.list.some(s=>s.id===x.id));return c2?'لجنة '+c2.num:''};
-  const crows=cm.map((o,i)=>`<tr><td>${i+1}</td><td class="nm">لجنة ${o.x.num}: ${esc(o.x.name)}</td><td><b>${o.a.length}</b> طالب</td><td>${ab?o.a.length-abIn(o.a):''}</td><td>${abIn(o.a)}</td></tr>`).join('')
-    +`<tr><th colspan="2">المجموع</th><th>${n}</th><th>${ab?n-ab.length:''}</th><th>${ab?ab.length:''}</th></tr>`;
+  const crows=cm.map((o,i)=>`<tr><td>${i+1}</td><td class="nm">لجنة ${o.x.num}: ${esc(o.x.name)}</td><td><b>${o.a.length}</b> طالب</td></tr>`).join('')
+    +`<tr><th colspan="2">المجموع</th><th>${n} طالب</th></tr>`;
   let abH;
   if(ab&&ab.length)abH=`<div class="env-ab ${ab.length>16?'c3':''}">${ab.map((s,i)=>{const r=rec[s.id];return `<div class="it">${i+1}. <b>${esc(s.name)}</b> — ${cmName2(s)}${r.t?' ('+esc(r.t)+')':''}</div>`}).join('')}</div>`;
   else if(ab)abH='<div class="env-ab"><div class="no">لا يوجد غياب ✓</div></div>';
@@ -517,12 +518,11 @@ function envSheet(c,d,L,all){
    <div class="env-hero"><div><small>الصف / الشعبة</small><b>${clsName(c)}</b></div><div><small>المادة</small><b>${esc(subj)||'&nbsp;'}</b></div></div>
    <table class="sh"><colgroup><col width="70"><col><col width="70"><col><col width="60"><col></colgroup><tr><th>اليوم</th><td>${d?dayName(d):''}</td><th>التاريخ</th><td>${d?fd(d):''}</td><th>الزمن</th><td>${esc(time)}</td></tr></table>
    <div class="env-h">توزيع طلاب الشعبة على اللجان</div>
-   ${tbl('<col width="30"><col><col width="95"><col width="80"><col width="80">',['م','اللجنة','عدد طلاب الشعبة','الحضور','الغياب'],crows)}
+   ${tbl('<col width="30"><col><col width="130">',['م','اللجنة','عدد طلاب الشعبة'],crows)}
    <div class="env-stats"><div>العدد الكلي لطلبة الشعبة<b>${n}</b></div><div>عدد الحضور<b>${ab?n-ab.length:''}</b></div><div>عدد الغياب<b>${ab?ab.length:''}</b></div></div>
    <div class="env-h">أسماء الطلبة المتغيبين</div>${abH}
-   <div class="env-h">ملاحظات</div><div class="env-notes"></div>
    <div class="env-foot"><div class="env-h">إجراءات التصحيح والرصد</div>
-   ${tbl('<col width="70">'+W.map(()=>'<col>').join(''),['البيان'].concat(W),['الاسم','التوقيع','التاريخ'].map(r=>`<tr><th>${r}</th>${W.map(()=>'<td></td>').join('')}</tr>`).join(''))}</div></div>`;
+   <div style="--rh:16mm">${tbl(W.map(()=>'<col>').join(''),W,`<tr>${W.map(()=>'<td></td>').join('')}</tr>`)}</div></div></div>`;
 }
 
 /* ---------- جدول الاختبارات ---------- */
