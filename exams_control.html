@@ -721,7 +721,7 @@ function importPw(fs){
 }
 function pwMerge(all,bad){
   let n=0;
-  if(D.cfg.pwMerge&&Object.keys(all).length>1){const k0=Object.keys(all),nm=(prompt('سيتم دمج '+k0.length+' اختبارات كاختبار واحد.\nاسم الاختبار المدمج:',k0[0])||k0[0]).trim();all={[nm]:[].concat(...k0.map(x=>all[x]))}}
+  if(false){const k0=Object.keys(all),nm=(prompt('سيتم دمج '+k0.length+' اختبارات كاختبار واحد.\nاسم الاختبار المدمج:',k0[0])||k0[0]).trim();all={[nm]:[].concat(...k0.map(x=>all[x]))}}
   const ks=Object.keys(all);
   ks.forEach(ex=>{const m={};(D.pw[ex]||[]).forEach(r=>m[r.u]=r);all[ex].forEach(r=>{m[r.u]=r;n++});D.pw[ex]=Object.values(m)});
   if(ks.length)D.pwSel=ks.length>1?'__all':ks[0];save();render();
@@ -750,7 +750,7 @@ function renderPw(m,L){
   act.forEach(c=>{if(pwPick[c.id]===undefined)pwPick[c.id]=true});
   const q=s=>esc(s).replace(/'/g,"\\'");
   m.innerHTML=`<div class="box"><h3>بطاقات كلمات المرور</h3>
-   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>${mergeChk('pwMerge','دمج الملفات المختارة كاختبار واحد')}
+   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>
    ${exs.length?`<select onchange="D.pwSel=this.value;save();render()" style="max-width:520px">${exs.length>1?`<option value="__all" ${ex==='__all'?'selected':''}>📚 كل الاختبارات (${exs.length})</option>`:''}${exs.map(e=>`<option value="${esc(e)}" ${e===ex?'selected':''}>${esc(exShort(e).slice(0,90))} (${D.pw[e].length})</option>`).join('')}</select>
    ${ex!=='__all'?`<button class="btn d" onclick="if(confirm('حذف بيانات هذا الاختبار؟')){delete D.pw['${q(ex)}'];save();render()}">🗑</button>`:''}
    <button class="btn d s" onclick="if(confirm('حذف بيانات كل الاختبارات المستوردة؟')){D.pw={};D.pwSel='';save();render()}">حذف الكل</button>`:''}</div>
@@ -770,9 +770,10 @@ function buildPw(p){
   const exs=Object.keys(D.pw),sel=D.pwSel==='__all'?exs:[D.pwSel].filter(e=>D.pw[e]);if(!sel.length){alert('لا توجد بيانات');return}
   const L=committees(),cm={};L.forEach(c=>c.list.forEach(s=>cm[s.id]=c));let cells=[];
   const pad=()=>{const n=pwMode==='page'?30:3;while(cells.length%n)cells.push(null)};
-  sel.forEach(ex=>{const mp={},es=exShort(ex);D.pw[ex].forEach(r=>mp[r.u]=r);
-    L.filter(c=>c.list.length&&pwPick[c.id]!==false).forEach(c=>{const it=c.list.filter(s=>mp[s.id]).map(s=>({s,r:mp[s.id],c,es}));if(it.length){cells.push(...it);pad()}});
-    if(pwPick.__u!==false){const it=D.pw[ex].filter(r=>!cm[r.u]).map(r=>({s:null,r,c:null,es}));if(it.length){cells.push(...it);pad()}}});
+  /* اللجنة أولاً ثم الاختبارات: لجنة واحدة = ورقة واحدة حتى لو جاء طلابها من عدة ملفات */
+  const MP=sel.map(ex=>{const mp={};D.pw[ex].forEach(r=>mp[r.u]=r);return {ex,mp,es:exShort(ex)}});
+  L.filter(c=>c.list.length&&pwPick[c.id]!==false).forEach(c=>{const it=[];c.list.forEach(s=>MP.forEach(o=>{if(o.mp[s.id])it.push({s,r:o.mp[s.id],c,es:o.es})}));if(it.length){cells.push(...it);pad()}});
+  if(pwPick.__u!==false){const it=[];MP.forEach(o=>D.pw[o.ex].filter(r=>!cm[r.u]).forEach(r=>it.push({s:null,r,c:null,es:o.es})));if(it.length){cells.push(...it);pad()}}
   if(!cells.length){alert('لا توجد بطاقات للجان المحددة');return}
   const IM=pwM(),ip=`padding:${IM.it}mm ${IM.ir}mm ${IM.ib}mm ${IM.il}mm`;
   const card=x=>{if(!x)return '<div class="pc" style="border:none"></div>';const r=x.r,s=x.s;
@@ -799,14 +800,17 @@ function importRep(fs){
 const repRank=r=>({sub:3,pend:2,abs:1})[repCat(r)];
 function repMerge(got){
   if(!got.length)return;
-  if(D.cfg.repMerge&&got.length>1){
+  if(false){
     const nm=(prompt('سيتم دمج '+got.length+' تقارير كتقرير واحد.\nاسم التقرير المدمج:',got[0].nm)||got[0].nm).trim(),m={};
     got.forEach(g=>g.rows.forEach(r=>{const o=m[r.u];if(!o||repRank(r)>repRank(o))m[r.u]=r}));
     got=[{nm,rows:Object.values(m)}];alert('تم الدمج: '+got[0].rows.length+' طالب في تقرير «'+nm+'»');}
   got.forEach(g=>D.rep[g.nm]={rows:g.rows});repSel=got[got.length-1].nm;save();render();
 }
+const repRows=nm=>nm==='__all'?[].concat(...Object.entries(D.rep).map(([k,o])=>o.rows.map(r=>Object.assign({},r,{ex:k})))):((D.rep[nm]||{}).rows||[]).map(r=>Object.assign({},r,{ex:nm}));
+const repLbl=nm=>nm==='__all'?'كل التقارير ('+Object.keys(D.rep).length+')':nm;
+const qa=x=>encodeURIComponent(x).replace(/'/g,'%27');
 function repStats(nm){
-  const R=D.rep[nm].rows.filter(r=>!isEx(r.u)),a={sub:[],abs:[],pend:[]};R.forEach(r=>a[repCat(r)].push(r));
+  const R=repRows(nm).filter(r=>!isEx(r.u)),a={sub:[],abs:[],pend:[]};R.forEach(r=>a[repCat(r)].push(r));
   const ts=a.sub.map(r=>r.secs).filter(x=>x>0).sort((x,y)=>x-y);a.med=ts.length?ts[Math.floor(ts.length/2)]:0;
   a.thr=(+D.cfg.fastMin>0)?Math.round(D.cfg.fastMin*60):Math.round(a.med*0.4);
   a.sub.sort((x,y)=>(x.secs||1e9)-(y.secs||1e9));a.fast=a.sub.filter(r=>r.secs>0&&r.secs<a.thr);a.total=R.length;return a;
@@ -815,16 +819,16 @@ const cmap=()=>{const o={};committees().forEach(c=>c.list.forEach(s=>o[s.id]=c.n
 const rn=r=>{const s=students.find(x=>x.id===r.u);return s?s.name:arName(r.n)};
 function renderRep(m){
   const names=Object.keys(D.rep);
-  const imp=`<label class="btn p">📥 استيراد تقارير الاختبار (Excel — متعدد)<input type="file" multiple accept=".xlsx,.xls" hidden onchange="importRep(this.files);this.value=''"></label>${mergeChk('repMerge','دمج الملفات المختارة كتقرير واحد')}`;
+  const imp=`<label class="btn p">📥 استيراد تقارير الاختبار (Excel — متعدد)<input type="file" multiple accept=".xlsx,.xls" hidden onchange="importRep(this.files);this.value=''"></label>`;
   if(!names.length){m.innerHTML=`<div class="box"><h3>تقارير الاختبارات</h3><div class="bar">${imp}</div><p class="note">استورد ملفات التقارير (ACUExam_...xlsx) ليظهر تقرير التسليم والغياب والمعلّق وأسرع الطلاب تسليماً.</p></div>`;return}
-  const nm=names.includes(repSel)?repSel:names[0];repSel=nm;const st=repStats(nm),cm=cmap();
-  const tr=(r,i,ty)=>{const k=r.u+'|'+ty+'|'+nm;return `<tr><td>${i+1}</td><td>${r.u}</td><td>${esc(rn(r))}</td><td>${esc(cm[r.u]||'—')}</td><td>${r.secs?mmss(r.secs)+' د':'—'}</td>
-    <td><button class="btn s" onclick="openMsg('${r.u}','${ty}')">✉ رسالة</button> ${D.sent[k]?'<span class="note">✓ أُرسلت</span>':''}</td></tr>`};
+  const nm=names.includes(repSel)||(repSel==='__all'&&names.length>1)?repSel:names[0];repSel=nm;const AL=nm==='__all';const st=repStats(nm),cm=cmap();
+  const tr=(r,i,ty)=>{const k=r.u+'|'+ty+'|'+r.ex;return `<tr><td>${i+1}</td><td>${r.u}</td><td>${esc(rn(r))}${AL?`<div class="note">${esc(r.ex.slice(0,60))}</div>`:''}</td><td>${esc(cm[r.u]||'—')}</td><td>${r.secs?mmss(r.secs)+' د':'—'}</td>
+    <td><button class="btn s" onclick="openMsg('${r.u}','${ty}',decodeURIComponent('${qa(r.ex)}'))">✉ رسالة</button> ${D.sent[k]?'<span class="note">✓ أُرسلت</span>':''}</td></tr>`};
   const T=(title,list,ty)=>`<details class="c" open><summary>${title} <span class="n">${list.length}</span></summary><div class="in"><table class="t"><tr><th width="34">م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th width="170">ولي الأمر</th></tr>${list.map((r,i)=>tr(r,i,ty)).join('')||'<tr><td colspan="6" class="note">لا يوجد</td></tr>'}</table></div></details>`;
   const fl=st.fast.length?st.fast:st.sub.filter(r=>r.secs>0).slice(0,10);
   m.innerHTML=`<div class="box"><h3>تقارير الاختبارات</h3><div class="bar">${imp}
-   <select onchange="repSel=this.value;render()">${names.map(n=>`<option value="${esc(n)}" ${n===nm?'selected':''}>${esc(n.slice(0,90))} (${D.rep[n].rows.length})</option>`).join('')}</select>
-   <button class="btn d" onclick="if(confirm('حذف هذا التقرير؟')){delete D.rep['${esc(nm).replace(/'/g,"\\'")}'];save();render()}">🗑</button></div>
+   <select onchange="repSel=this.value;render()">${names.length>1?`<option value="__all" ${AL?'selected':''}>📚 كل التقارير معاً (${names.length} ملفات — ${repRows('__all').length} طالب)</option>`:''}${names.map(n=>`<option value="${esc(n)}" ${n===nm?'selected':''}>${esc(n.slice(0,90))} (${D.rep[n].rows.length})</option>`).join('')}</select>
+   ${AL?`<button class="btn d" onclick="if(confirm('حذف كل التقارير المستوردة؟')){D.rep={};save();render()}">🗑 حذف الكل</button>`:`<button class="btn d" onclick="if(confirm('حذف هذا التقرير؟')){delete D.rep[decodeURIComponent('${qa(nm)}')];save();render()}">🗑</button>`}</div>
    <div class="chips"><span class="chip">الإجمالي: <b>${st.total}</b></span><span class="chip">✅ سلّموا: <b>${st.sub.length}</b></span><span class="chip">🚫 غياب: <b>${st.abs.length}</b></span><span class="chip">⏳ معلّق: <b>${st.pend.length}</b></span><span class="chip">وسيط الزمن: <b>${mmss(st.med)}</b></span><span class="chip">⚡ سريعو التسليم: <b>${st.fast.length}</b></span></div>
    <div class="bar" style="margin-top:10px"><label class="f">يُعدّ التسليم سريعاً إذا كان أقل من (دقيقة) — اتركه فارغاً للحساب التلقائي (40% من الوسيط = ${mmss(Math.round(st.med*.4))})<input type="number" min="0" value="${D.cfg.fastMin||''}" onchange="D.cfg.fastMin=+this.value;save();render()" style="max-width:120px"></label></div>
    <div class="chips">${[['fast','الأسرع'],['abs','الغائبون'],['pend','المعلّقون'],['all','كل المسلّمين']].map(([k,l])=>`<label class="chip"><input type="checkbox" ${repOpt[k]?'checked':''} onchange="repOpt['${k}']=this.checked"> ${l}</label>`).join('')}
@@ -833,7 +837,7 @@ function renderRep(m){
    ${senBox()}<details class="c"><summary>✅ كل المسلّمين مرتبين بالزمن <span class="n">${st.sub.length}</span></summary><div class="in"><table class="t"><tr><th>م</th><th>رقم الطالب</th><th>الاسم</th><th>اللجنة</th><th>الزمن</th><th></th></tr>${st.sub.map((r,i)=>tr(r,i,'fast')).join('')}</table></div></details>`;
 }
 function buildRep(p){
-  const nm=repSel,st=repStats(nm),cm=cmap();let out='';const meta=baseMeta()+`<span>${esc(nm)}</span>`+exNote();
+  const nm=repSel,st=repStats(nm),cm=cmap();let out='';const meta=baseMeta()+`<span>${esc(repLbl(nm))}</span>`+exNote();
   const T='تقرير تسليم الاختبار';
   const sum=[['إجمالي الطلاب',st.total],['تم التسليم',st.sub.length],['غياب',st.abs.length],['معلّق (بدأ ولم يسلّم)',st.pend.length],['وسيط زمن التسليم',mmss(st.med)],['حد التسليم السريع',mmss(st.thr)],['عدد سريعي التسليم',st.fast.length]];
   out+=sheet(T,meta,tbl('<col><col width="120">',['البيان','القيمة'],sum.map(x=>`<tr><td class="nm">${x[0]}</td><td>${x[1]}</td></tr>`).join('')),'','10mm');
@@ -856,9 +860,9 @@ const VIOL=['استخدام الهاتف أو جهاز غير مسموح','مح�
 const M={sid:'',name:'',type:'fast',exam:'',viol:VIOL[0],mins:'',tel:''};
 function waPhone(t){let d=String(t||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);const cc=D.cfg.cc||'971';
   if(d.startsWith('0'))d=cc+d.slice(1);else if(d.length===9&&d[0]==='5')d=cc+d;return d}
-function openMsg(u,type){
-  const r=((D.rep[repSel]||{}).rows||[]).find(x=>x.u===u),s=students.find(x=>x.id===u);
-  Object.assign(M,{sid:u,name:s?s.name:(r?arName(r.n):u),tel:s&&s.tel||'',type,exam:repSel,mins:r&&r.secs?Math.max(1,Math.round(r.secs/60)):''});
+function openMsg(u,type,ex){
+  const r=repRows(repSel).find(x=>x.u===u&&(!ex||x.ex===ex)),s=students.find(x=>x.id===u);
+  Object.assign(M,{sid:u,name:s?s.name:(r?arName(r.n):u),tel:s&&s.tel||'',type,exam:ex||(r&&r.ex)||repSel,mins:r&&r.secs?Math.max(1,Math.round(r.secs/60)):''});
   modal(msgForm()+'<div class="bar"><button class="btn" onclick="closeMod()">إغلاق</button></div>');msgGen();
 }
 function msgForm(){
@@ -899,7 +903,7 @@ function renderMsg(m){
 }
 function msgPick(v){
   const mm=v.match(/\(([^()]+)\)\s*$/);const s=mm&&students.find(x=>x.id===nid(mm[1]));if(!s)return;
-  Object.assign(M,{sid:s.id,name:s.name,tel:s.tel||'',exam:M.exam||repSel||D.pwSel||''});
+  Object.assign(M,{sid:s.id,name:s.name,tel:s.tel||'',exam:M.exam||(repSel==='__all'?'':repSel)||D.pwSel||''});
   $('mForm').innerHTML=msgForm();msgGen();
 }
 
@@ -907,7 +911,7 @@ function msgPick(v){
 function absFromRep(){
   const st=repStats(repSel),has=r=>students.some(s=>s.id===r.u);
   const d0=D.absDate||examDates()[0]||new Date().toISOString().slice(0,10);
-  modal(`<h3>⇄ ترحيل الغياب إلى سجل الغياب</h3><p class="note">${esc(repSel)}</p>
+  modal(`<h3>⇄ ترحيل الغياب إلى سجل الغياب</h3><p class="note">${esc(repLbl(repSel))}</p>
    <div class="grid"><label class="f">تاريخ الاختبار<input type="date" id="afD" value="${d0}"></label>
    <label class="f">من جدول الاختبارات<select onchange="if(this.value)$('afD').value=this.value"><option value="">— اختر —</option>${examDates().map(x=>`<option value="${x}">${dayName(x)} ${fd(x)} — ${esc(subjOf(x))}</option>`).join('')}</select></label>
    <label class="f">نوع الغياب<select id="afT">${TYPES.map(x=>`<option>${x}</option>`).join('')}</select></label></div>
@@ -973,7 +977,7 @@ function renderStk(m,L){
   const num=(k,l,mx,st)=>`<label class="f">${l}<input type="number" min="0" max="${mx}" step="${st||0.5}" value="${s[k]}" oninput="setStk('${k}',+this.value);stkInfo()"></label>`;
   const ck=(k,l)=>`<label class="chip"><input type="checkbox" ${s[k]?'checked':''} onchange="setStk('${k}',this.checked)"> ${l}</label>`;
   m.innerHTML=`<div class="box"><h3>ملصقات الجلوس (A4)</h3>
-   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>${mergeChk('pwMerge','دمج الملفات المختارة كاختبار واحد')}
+   <div class="bar"><label class="btn p">📥 استيراد ملفات Excel (متعدد)<input type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="importPw(this.files);this.value=''"></label>
    <span class="note">${Object.keys(D.pw).length?`مستورد: ${Object.keys(D.pw).length} اختبار — ${Object.keys(info).length} طالب`:'لم تُستورد ملفات بعد'}</span></div>
    <p class="note">المسار والشعبة تُقرأ من ملفات الاختبار المستوردة (نفس ملفات بطاقات كلمات المرور). الطالب غير الموجود فيها يُكتب له صفه وشعبته من بيانات المدرسة.</p>
    <div class="grid">${num('rows','عدد الصفوف',30,1)}${num('cols','عدد الأعمدة',8,1)}${num('mt','هامش أعلى (مم)',80)}${num('mb','هامش أسفل (مم)',80)}${num('mr','هامش يمين (مم)',80)}${num('ml','هامش يسار (مم)',80)}${num('fs','حجم الخط %',200,5)}</div>
