@@ -50,6 +50,23 @@ table.t input,table.t select{width:100%}
 .sh-head .mid{text-align:center;line-height:1.5;font-weight:700;font-size:13px}
 .sh-title{text-align:center;font-family:'El Messiri',sans-serif;font-size:18px;font-weight:700;margin:6px 0 4px}
 .sh-meta{display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:center;font-size:12px;margin-bottom:5px;font-weight:600}
+.env-t{text-align:center;font-family:'El Messiri',sans-serif;font-size:24px;font-weight:700;margin:5mm 0 1mm}
+.env-hero{display:grid;grid-template-columns:1fr 1.4fr;gap:4mm;margin:3mm 0 4mm}
+.env-hero>div{border:.6mm solid #000;border-radius:3mm;padding:2mm 4mm;text-align:center;overflow:hidden}
+.env-hero small{display:block;font-size:11px;color:#444;font-weight:600}
+.env-hero b{display:block;font-family:'El Messiri',sans-serif;font-size:30px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.env-hero>div:first-child{background:#f1f1f1}
+.env-h{font-family:'El Messiri',sans-serif;font-weight:700;font-size:14px;margin:4.5mm 0 1.5mm;padding-inline-start:2.5mm;border-inline-start:1.5mm solid #000}
+.env-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;margin-top:4mm}
+.env-stats>div{border:.4mm solid #000;border-radius:2mm;display:flex;justify-content:space-between;align-items:center;padding:1.5mm 0 1.5mm 0;padding-inline-start:4mm;font-weight:700;font-size:13px}
+.env-stats b{font-size:22px;min-width:18mm;text-align:center;border-inline-start:.3mm solid #999;min-height:9mm;line-height:9mm}
+.env-ab{border:.4mm solid #000;border-radius:2mm;padding:2mm 4mm;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5mm 8mm;font-size:12px;min-height:14mm}
+.env-ab.c3{grid-template-columns:repeat(3,minmax(0,1fr));font-size:11px}
+.env-ab .it{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:.2mm solid #ddd;padding:.6mm 0}
+.env-ab .l{border-bottom:.3mm dotted #555;height:7.5mm}
+.env-ab .no{grid-column:1/-1;text-align:center;font-weight:700;align-self:center}
+.env-foot{margin-top:2mm}
+.env-notes{flex:1;min-height:14mm;border:.4mm solid #000;border-radius:2mm;padding:1.5mm 4mm;font-weight:700;font-size:12px}
 .sh-title.sp{margin-top:7mm}
 .sh-meta.sp{margin-bottom:7mm}
 .sheet,.stpage{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -114,6 +131,7 @@ textarea.mt{min-height:120px}
   <button class="tab on" data-v="setup">⚙️ الإعدادات واللجان</button>
   <button class="tab" data-v="lists">📄 كشوف اللجان</button>
   <button class="tab" data-v="sign">✍️ كشوف التوقيع</button>
+  <button class="tab" data-v="env">✉️ أغلفة الأظرف</button>
   <button class="tab" data-v="exams">📅 جدول الاختبارات</button>
   <button class="tab" data-v="obs">👁 جدول الملاحظة</button>
   <button class="tab" data-v="abs">🚫 تقرير الغياب</button>
@@ -138,7 +156,7 @@ let lsFail=false,HIST=[],sessionBase=null,sessionSnap=false,fsPend=false,base=[]
 try{Object.assign(D,JSON.parse(localStorage.getItem(LS)||'{}'))}catch(e){}
 try{HIST=JSON.parse(localStorage.getItem(LS+'_hist')||'[]')}catch(e){}
 let lastSnap=HIST.length?+new Date(HIST[0].t):0;
-const SNAPK=['cfg','custom','ren','assign','order','manual','removed','exams','staff','obsDay','supDay','obsSub','obsSel','abs','sent','tpl','sign','stk','hl'];
+const SNAPK=['cfg','custom','ren','assign','order','manual','removed','exams','staff','obsDay','supDay','obsSub','obsSel','abs','sent','tpl','sign','stk','hl','env'];
 const slim=()=>{const o={};SNAPK.forEach(k=>o[k]=JSON.parse(JSON.stringify(D[k]===undefined?null:D[k])));return o};
 function snapObj(o,label){if(HIST.length&&JSON.stringify(HIST[0].d)===JSON.stringify(o))return false;HIST.unshift({t:new Date().toISOString(),label,d:o});HIST=HIST.slice(0,10);try{localStorage.setItem(LS+'_hist',JSON.stringify(HIST))}catch(e){}return true}
 function autoSnap(){
@@ -355,7 +373,7 @@ function render(){
   const m=$('main');renderWarn();badge();
   if(!students.length&&view!=='exams'&&view!=='rep'&&view!=='dash'){m.innerHTML='<div class="box msg">لا توجد بيانات طلاب. افتح البرنامج بعد ربط ملف بيانات المدرسة من الصفحة الرئيسية، أو ارفع الملف من الزر بالأعلى.</div>';return;}
   const L=committees();
-  ({dash:renderDash,setup:renderSetup,lists:renderPrint,sign:renderPrint,exams:renderExams,obs:renderObs,abs:renderAbs,pw:renderPw,stk:renderStk,rep:renderRep,msg:renderMsg}[view])(m,L);
+  ({dash:renderDash,setup:renderSetup,lists:renderPrint,sign:renderPrint,env:renderEnv,exams:renderExams,obs:renderObs,abs:renderAbs,pw:renderPw,stk:renderStk,rep:renderRep,msg:renderMsg}[view])(m,L);
 }
 function renderSetup(m,L){
   const c=D.cfg,cap=+c.cap||30,V=visible(L);
@@ -447,6 +465,64 @@ function buildLists(p,auto){
       tbl(cols,['م','رقم الطالب','اسم الطالب','الشعبة'].concat(sg?['توقيع الطالب']:[]),tr),foot,rh,true);
   });
   show(out,p);
+}
+
+/* ---------- أغلفة الأظرف (لكل شعبة) ---------- */
+let envPick={};
+const envS=()=>D.env=Object.assign({date:'',subject:'',time:'',only:true,blank:6},D.env||{});
+const classes=()=>[...new Set(students.map(s=>s.cls))].sort((a,b)=>clsKey(a)-clsKey(b));
+function envFrom(d){const e=envS();e.date=d;e.subject='';e.time='';save();render()}
+function envSubj(c,d){const g=+c.slice(0,-1),rs=D.exams.filter(e=>e.date===d&&exName(e)&&g>=+e.from&&g<=+e.to);
+  return {s:[...new Set(rs.map(exName))].join('، '),t:[...new Set(rs.map(e=>e.time).filter(Boolean))].join(' / ')}}
+const envOk=(c,d,only)=>{const tg=d?testedGrades(d):null;return !(only&&tg)||tg.has(+c.slice(0,-1))};
+function renderEnv(m){
+  const e=envS(),cl=classes(),tg=e.date?testedGrades(e.date):null,shown=cl.filter(c=>envOk(c,e.date,e.only));
+  cl.forEach(c=>{if(envPick[c]===undefined)envPick[c]=true});
+  m.innerHTML=`<div class="box"><h3>✉️ أغلفة الأظرف (غلاف لكل شعبة)</h3>
+   <div class="grid">
+    <label class="f">من جدول الاختبارات<select onchange="if(this.value)envFrom(this.value)"><option value="">— اختر —</option>${examDates().map(d=>`<option value="${d}" ${d===e.date?'selected':''}>${dayName(d)} ${fd(d)} — ${esc(subjOf(d))}</option>`).join('')}</select></label>
+    <label class="f">أو التاريخ يدوياً<input type="date" value="${e.date}" onchange="D.env.date=this.value;save();render()"></label>
+    <label class="f">المادة ${tg?'(اتركها فارغة لتُؤخذ من الجدول لكل شعبة)':''}<input value="${esc(e.subject)}" placeholder="${esc(e.date?subjOf(e.date):'')}" oninput="D.env.subject=this.value;save()"></label>
+    <label class="f">الزمن<input value="${esc(e.time)}" placeholder="من الجدول" oninput="D.env.time=this.value;save()"></label>
+    <label class="f">أسطر فارغة للمتغيبين (إن لم يُسجَّل الغياب)<input type="number" min="0" max="20" value="${e.blank}" oninput="D.env.blank=+this.value;save()"></label></div>
+   <p class="note">يُعبّأ تلقائياً: الصف والشعبة، المادة والزمن من الجدول، توزيع طلاب الشعبة على اللجان وعددهم في كل لجنة، العدد الكلي، و<b>الحضور والغياب وأسماء المتغيبين إن سُجّل الغياب</b> لهذا اليوم في تاب «تقرير الغياب» (وإلا تبقى فارغة للكتابة اليدوية).</p>
+   <div class="bar" style="margin-top:6px">${tg?`<label class="chip"><input type="checkbox" ${e.only?'checked':''} onchange="D.env.only=this.checked;save();render()"> الشعب المختبَرة في هذا اليوم فقط</label>`:''}
+    <button class="btn s" onclick="document.querySelectorAll('.ep').forEach(k=>{k.checked=true;envPick[k.dataset.c]=true})">الكل</button><button class="btn s" onclick="document.querySelectorAll('.ep').forEach(k=>{k.checked=false;envPick[k.dataset.c]=false})">لا أحد</button></div>
+   <div class="chips">${shown.map(c=>`<label class="chip"><input type="checkbox" class="ep" data-c="${c}" ${envPick[c]?'checked':''} onchange="envPick['${c}']=this.checked"> ${clsName(c)} (${students.filter(s=>s.cls===c).length})</label>`).join('')||'<span class="note">لا توجد شعب</span>'}</div>
+   <div class="bar" style="margin-top:12px"><button class="btn p" onclick="buildEnv(true)">🖨️ طباعة</button><button class="btn" onclick="buildEnv(false)">👁 معاينة</button>
+    ${examDates().length?`<button class="btn" onclick="buildEnv(true,true)">🖨️ طباعة أظرف كل أيام الاختبار</button>`:''}</div></div>`;
+}
+function buildEnv(p,all){
+  const e=envS(),L=committees(),dates=all?examDates():[e.date];let out='';
+  dates.forEach(d=>classes().filter(c=>(all||envPick[c]!==false)&&envOk(c,d,all||e.only)).forEach(c=>out+=envSheet(c,d,L,all)));
+  if(!out){alert('لا توجد شعب محددة');return}
+  show(out,p);
+}
+function envSheet(c,d,L,all){
+  const e=envS(),st=students.filter(s=>s.cls===c),n=st.length,js=d?envSubj(c,d):{s:'',t:''};
+  const subj=(!all&&e.subject)||js.s||(d?subjOf(d):''),time=(!all&&e.time)||js.t;
+  const rec=d?D.abs[d]:undefined,ab=rec?st.filter(s=>rec[s.id]):null;
+  const cm=L.map(x=>({x,a:x.list.filter(s=>s.cls===c)})).filter(o=>o.a.length);
+  const abIn=a=>ab?a.filter(s=>rec[s.id]).length:'';
+  const cmName2=x=>{const c2=L.find(y=>y.list.some(s=>s.id===x.id));return c2?'لجنة '+c2.num:''};
+  const crows=cm.map((o,i)=>`<tr><td>${i+1}</td><td class="nm">لجنة ${o.x.num}: ${esc(o.x.name)}</td><td><b>${o.a.length}</b> طالب</td><td>${ab?o.a.length-abIn(o.a):''}</td><td>${abIn(o.a)}</td></tr>`).join('')
+    +`<tr><th colspan="2">المجموع</th><th>${n}</th><th>${ab?n-ab.length:''}</th><th>${ab?ab.length:''}</th></tr>`;
+  let abH;
+  if(ab&&ab.length)abH=`<div class="env-ab ${ab.length>16?'c3':''}">${ab.map((s,i)=>{const r=rec[s.id];return `<div class="it">${i+1}. <b>${esc(s.name)}</b> — ${cmName2(s)}${r.t?' ('+esc(r.t)+')':''}</div>`}).join('')}</div>`;
+  else if(ab)abH='<div class="env-ab"><div class="no">لا يوجد غياب ✓</div></div>';
+  else abH=`<div class="env-ab">${Array.from({length:Math.max(2,+e.blank||0)},(_,i)=>`<div class="l">${i+1}.</div>`).join('')}</div>`;
+  const W=['صحّح','روجع','دقّق','رصد في الكشف','رصد في المنهل'];
+  return `<div class="sheet" style="--rh:9mm">${headH()}
+   <div class="env-t">مغلف أوراق إجابة الاختبار</div><div class="sh-meta">${baseMeta()}</div>
+   <div class="env-hero"><div><small>الصف / الشعبة</small><b>${clsName(c)}</b></div><div><small>المادة</small><b>${esc(subj)||'&nbsp;'}</b></div></div>
+   <table class="sh"><colgroup><col width="70"><col><col width="70"><col><col width="60"><col></colgroup><tr><th>اليوم</th><td>${d?dayName(d):''}</td><th>التاريخ</th><td>${d?fd(d):''}</td><th>الزمن</th><td>${esc(time)}</td></tr></table>
+   <div class="env-h">توزيع طلاب الشعبة على اللجان</div>
+   ${tbl('<col width="30"><col><col width="95"><col width="80"><col width="80">',['م','اللجنة','عدد طلاب الشعبة','الحضور','الغياب'],crows)}
+   <div class="env-stats"><div>العدد الكلي لطلبة الشعبة<b>${n}</b></div><div>عدد الحضور<b>${ab?n-ab.length:''}</b></div><div>عدد الغياب<b>${ab?ab.length:''}</b></div></div>
+   <div class="env-h">أسماء الطلبة المتغيبين</div>${abH}
+   <div class="env-h">ملاحظات</div><div class="env-notes"></div>
+   <div class="env-foot"><div class="env-h">إجراءات التصحيح والرصد</div>
+   ${tbl('<col width="70">'+W.map(()=>'<col>').join(''),['البيان'].concat(W),['الاسم','التوقيع','التاريخ'].map(r=>`<tr><th>${r}</th>${W.map(()=>'<td></td>').join('')}</tr>`).join(''))}</div></div>`;
 }
 
 /* ---------- جدول الاختبارات ---------- */
