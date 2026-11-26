@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استبيان بوابة الرازي الذكية | مدرسة الرازي للبنين</title>
+<link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c2733; --soft:#5b6875; --faint:#8a95a1; --line:#dfe5ea; --bg:#f4f6f8; --card:#fff;
+  --brand:#0b3d6b; --brand2:#12558f; --accent:#b8862b; --ok:#0a7d2c; --bad:#b3261e;
+  --before:#9aa5b1; --after:#257de0;
+  --lk1:#c93b3c; --lk2:#f0a3a3; --lk3:#e3e3e3; --lk4:#9cc3f0; --lk5:#257de0;
+  --sq1:#0b3d6b; --sq2:#257de0; --sq3:#7fb2ec; --sq4:#c3dbf6; --sq5:#dfe5ea; --sq6:#f1f4f7;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans Arabic',sans-serif;line-height:1.7;font-size:15px}
+h1,h2,h3{font-family:'El Messiri',sans-serif;line-height:1.35}
+header.top{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:22px 18px 20px}
+header.top .wrap{max-width:860px;margin:auto}
+header.top h1{margin:0;font-size:24px}
+header.top p{margin:4px 0 0;opacity:.85;font-size:14px}
+main{max-width:860px;margin:18px auto 40px;padding:0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.card h2{margin:0 0 8px;font-size:19px;color:var(--brand)}
+.muted{color:var(--soft);font-size:13.5px}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+.role{border:2px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;background:#fff;text-align:right;font-family:inherit;font-size:15px;color:var(--ink);transition:.15s}
+.role:hover{border-color:var(--brand2)}
+.role.sel{border-color:var(--brand);background:#eef4fb}
+.role .ic{font-size:26px;display:block}
+.role b{display:block;margin-top:4px}
+.role small{color:var(--soft);font-size:12.5px}
+.field{margin:12px 0}
+.field label.lab{display:block;font-weight:600;margin-bottom:6px}
+input[type=text],input[type=number],textarea,select{width:100%;font-family:inherit;font-size:15px;padding:9px 11px;border:1px solid #cfd7de;border-radius:9px;background:#fff;color:var(--ink)}
+textarea{min-height:80px;resize:vertical}
+input:focus,textarea:focus,select:focus{outline:2px solid #9cc3f0;border-color:var(--after)}
+.block-title{display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.block-title span{font-size:22px}
+.q{padding:14px 0;border-bottom:1px dashed var(--line)}
+.q:last-child{border-bottom:0}
+.qt{font-weight:600;display:block;margin-bottom:8px}
+.qt .n{color:var(--accent);margin-left:6px}
+.req{color:var(--bad);margin-right:3px}
+.hint{display:block;font-size:12.5px;color:var(--soft);font-weight:400;margin-top:2px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt span{display:inline-block;border:1px solid #cfd7de;border-radius:20px;padding:6px 14px;cursor:pointer;background:#fff;font-size:14px;user-select:none}
+.opt input:checked+span{background:var(--brand);border-color:var(--brand);color:#fff}
+.opt input:focus-visible+span{outline:2px solid #9cc3f0}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scale .opt span{display:block;text-align:center;border-radius:9px;padding:7px 4px;font-size:12.5px;line-height:1.35}
+.scale .opt span b{display:block;font-size:16px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pair .box{background:#f7f9fb;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.pair .box small{display:block;font-weight:600;color:var(--soft);margin-bottom:4px}
+.pair .box.after small{color:var(--after)}
+.unit{display:flex;align-items:center;gap:6px}
+.unit em{font-style:normal;color:var(--soft);font-size:13px;white-space:nowrap}
+.na-chip{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:13.5px;color:var(--soft);border:1px dashed #cfd7de;border-radius:20px;padding:3px 12px;cursor:pointer}
+.q.is-na .pair{opacity:.4}
+.q.is-na .na-chip{background:#fff6e6;border-color:#e8c98a;color:#6b5a2e}
+.declare{background:#f6f9fd;border:1px solid #c9daee;border-right:4px solid var(--brand);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:14.5px}
+select:disabled{background:#f1f4f7}
+.btn{font-family:inherit;font-size:15px;font-weight:600;border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:10px;padding:10px 18px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:#fff;color:var(--brand)}
+.btn.wa{background:#1f9e55;border-color:#1f9e55}
+.btn.sm{font-size:13px;padding:6px 12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.consent{display:flex;gap:8px;align-items:flex-start;background:#fffaf0;border:1px solid #f1e3c4;border-radius:10px;padding:10px 12px;font-size:14px}
+.consent input{margin-top:6px}
+.err{color:var(--bad);font-size:13.5px;margin-top:8px;min-height:20px}
+.q.missing{background:#fff4f4;border-radius:8px;padding-inline:8px}
+.hidden{display:none!important}
+.progress{height:6px;background:#e7ecf0;border-radius:6px;overflow:hidden;margin:6px 0 0}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:.3s}
+.sticky-bar{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0}
+.done{text-align:center;padding:28px 18px}
+.done .big{font-size:52px}
+footer.ft{text-align:center;color:var(--faint);font-size:12.5px;margin:20px 0 30px}
+footer.ft button{background:none;border:0;color:var(--faint);font-family:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(15,25,35,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}
+.modal .box{background:#fff;border-radius:14px;padding:20px;max-width:360px;width:100%;text-align:center}
+.modal input{text-align:center;font-size:20px;letter-spacing:6px;margin:10px 0}
+
+/* analysis */
+#analysis main{max-width:1080px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .v{font-family:'El Messiri',sans-serif;font-size:28px;font-weight:700;color:var(--brand);line-height:1.2}
+.kpi .l{font-size:12.5px;color:var(--soft)}
+.metric{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:#fff;break-inside:avoid}
+.metric h4{margin:0 0 6px;font-size:15px;font-family:'IBM Plex Sans Arabic';font-weight:600}
+.metric .meta{font-size:12px;color:var(--faint)}
+.hbar{display:grid;grid-template-columns:110px 1fr 70px;gap:8px;align-items:center;margin:5px 0;font-size:13px}
+.hbar .track{background:#f1f4f7;border-radius:4px;height:16px;position:relative}
+.hbar .fill{height:100%;border-radius:4px 0 0 4px;min-width:2px}
+.hbar .val{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.hbar.wide{grid-template-columns:260px 1fr 90px}
+.hbar.wide>span:first-child{line-height:1.4}
+.badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12.5px;font-weight:700;margin-right:6px}
+.badge.good{background:#e5f4ea;color:var(--ok)}
+.badge.bad{background:#fdeceb;color:var(--bad)}
+.badge.neu{background:#eef1f4;color:var(--soft)}
+.stack{display:flex;height:22px;border-radius:4px;overflow:hidden;gap:2px;background:#fff}
+.stack div{height:100%;min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--soft);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:5px;vertical-align:middle}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:22px 0 4px}
+.sec-h h3{margin:0;color:var(--brand);font-size:19px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:10px}
+.textlist{margin:6px 0 0;padding-right:18px;font-size:13.5px}
+.textlist li{margin:3px 0}
+.textlist li small{color:var(--faint)}
+table.raw{width:100%;border-collapse:collapse;font-size:12.5px}
+table.raw th,table.raw td{border:1px solid var(--line);padding:5px 7px;text-align:right}
+table.raw th{background:#eef3f8}
+.endorse{border:2px solid var(--brand);border-radius:12px;padding:14px;background:#f6f9fd}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.report-head{display:none}
+@media (max-width:560px){
+  .pair,.pairc{grid-template-columns:1fr}
+  .scale{grid-template-columns:repeat(5,1fr);gap:4px}
+  .scale .opt span{font-size:11px}
+  .hbar{grid-template-columns:84px 1fr 58px}
+  .hbar.wide{grid-template-columns:130px 1fr 70px}
+  .grid2{grid-template-columns:1fr}
+}
+@media print{
+  body{background:#fff;font-size:12px}
+  header.top,.no-print,footer.ft,#survey{display:none!important}
+  #analysis main{max-width:none;margin:0;padding:0}
+  .card,.metric,.kpi{border-color:#cfd7de;break-inside:avoid}
+  .report-head{display:block;border-bottom:2px solid var(--brand);margin-bottom:10px;padding-bottom:6px}
+  .grid2{grid-template-columns:1fr 1fr}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<header class="top no-print"><div class="wrap">
+  <h1>استبيان تجربة بوابة الرازي الذكية</h1>
+  <p>مدرسة الرازي للبنين – الحلقة الثانية (4034) · نسعد بمشاركتك رأيك وخبرتك</p>
+</div></header>
+
+<!-- ======================= الاستبيان ======================= -->
+<div id="survey">
+<main>
+  <section id="stepIntro" class="card">
+    <h2>مرحباً بك 👋</h2>
+    <p class="muted">يهدف هذا الاستبيان إلى قياس أثر بوابة الرازي الذكية وبرامجها في تسريع العمليات المدرسية وتقليل الورق والتواصل مع أولياء الأمور. يستغرق من 3 إلى 5 دقائق، وكل الأسئلة اختيارات. في أسئلة المقارنة اختر الأقرب لواقعك قبل البوابة والآن.</p>
+    <div class="field">
+      <label class="lab">اختر صفتك<span class="req">*</span></label>
+      <div class="roles" id="roleCards"></div>
+    </div>
+    <div class="field" id="nameField">
+      <label class="lab" for="respName">الاسم<span class="req">*</span></label>
+      <input type="text" id="respName" maxlength="60" autocomplete="name">
+    </div>
+    <div class="err" id="introErr"></div>
+    <div class="actions"><button class="btn" onclick="startSurvey()">ابدأ الاستبيان ←</button></div>
+  </section>
+
+  <section id="stepQuestions" class="hidden">
+    <div class="sticky-bar no-print">
+      <div class="muted" id="progressLabel"></div>
+      <div class="progress"><i id="progressBar"></i></div>
+    </div>
+    <div id="blocks"></div>
+    <div class="card">
+      <label class="consent"><input type="checkbox" id="consent"> <span>أوافق على استخدام إجاباتي في ملف مشاركة المدرسة في جائزة NOVA وتقارير تطوير البوابة. تُعرض النتائج مجمّعة، ولا تُنشر الأسماء.</span></label>
+      <div class="err" id="formErr"></div>
+      <div class="actions">
+        <button class="btn wa" onclick="submitSurvey()">📤 إرسال الاستجابة عبر واتساب</button>
+        <button class="btn ghost" onclick="backToIntro()">→ رجوع</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0">عند الضغط على «إرسال» يُفتح واتساب برسالة جاهزة. اضغط زر الإرسال داخل واتساب لإتمام المشاركة، ولا تعدّل نص الرسالة.</p>
+    </div>
+  </section>
+
+  <section id="stepDone" class="card done hidden">
+    <div class="big">✅</div>
+    <h2>شكراً لمشاركتك</h2>
+    <p class="muted">إذا لم يُفتح واتساب أو لم تُرسل الرسالة، استخدم أحد الزرين:</p>
+    <div class="actions" style="justify-content:center">
+      <button class="btn wa" onclick="openWhatsApp()">💬 فتح واتساب مرة أخرى</button>
+      <button class="btn ghost" onclick="copyResponse()">📋 نسخ الرد لإرساله يدوياً</button>
+    </div>
+    <p class="muted" id="copyMsg"></p>
+  </section>
+</main>
+</div>
+
+<!-- ======================= التحليل ======================= -->
+<div id="analysis" class="hidden">
+<main>
+  <div class="card no-print">
+    <div class="sec-h" style="margin-top:0">
+      <h3>🔒 تحليل نتائج الاستبيان</h3>
+      <button class="btn ghost sm" onclick="closeAnalysis()">✖ إغلاق</button>
+    </div>
+    <p class="muted">انسخ رسائل الردود من محادثات واتساب، ولو كانت عدة رسائل مع أسماء المرسلين والتواريخ، والصقها كلها في المربع. يستخرج البرنامج كل رد تلقائياً ويتجاهل المكرر.</p>
+    <textarea id="pasteBox" style="min-height:150px;direction:ltr;text-align:left;font-size:12px" placeholder="الصق الردود هنا..."></textarea>
+    <div class="field" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">
+      <label class="muted">عدد المعلمين المستهدفين<input type="number" id="invT" value="26" min="0"></label>
+      <label class="muted">المرشدون المستهدفون<input type="number" id="invC" value="1" min="0"></label>
+      <label class="muted">رؤساء الشؤون المستهدفون<input type="number" id="invH" value="3" min="0"></label>
+      <label class="muted">الإدارة المستهدفة<input type="number" id="invP" value="1" min="0"></label>
+    </div>
+    <div class="toolbar">
+      <button class="btn" onclick="runAnalysis()">📊 تحليل النتائج</button>
+      <button class="btn ghost sm" onclick="copyReport()" id="btnCopyRep" disabled>📋 نسخ التقرير الملخص</button>
+      <button class="btn ghost sm" onclick="downloadCSV()" id="btnCsv" disabled>⬇️ تنزيل البيانات الأصلية (CSV)</button>
+      <button class="btn ghost sm" onclick="window.print()" id="btnPrint" disabled>🖨️ طباعة / حفظ PDF كدليل</button>
+      <label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hideNames" checked onchange="runAnalysis(true)"> إخفاء الأسماء في العرض</label>
+    </div>
+    <div class="err" id="anaMsg" style="color:var(--soft)"></div>
+  </div>
+  <div id="anaOut"></div>
+</main>
+</div>
+
+<footer class="ft no-print">إعداد: الأستاذ محمود شحادة · بوابة الرازي الذكية · <button onclick="askCode()">🔒 تحليل النتائج</button></footer>
+
+<div class="modal hidden" id="codeModal">
+  <div class="box">
+    <h3 style="margin:0">🔒 تحليل النتائج</h3>
+    <p class="muted" style="margin:4px 0">أدخل رمز الدخول</p>
+    <input type="password" id="codeInput" inputmode="numeric" maxlength="8" onkeydown="if(event.key==='Enter')checkCode()">
+    <div class="err" id="codeErr"></div>
+    <div class="actions" style="justify-content:center">
+      <button class="btn" onclick="checkCode()">دخول</button>
+      <button class="btn ghost" onclick="hide('codeModal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   الإعدادات
+   ===================================================================== */
+const WA_NUMBER   = '971505700908';   // 0505700908
+const ACCESS_CODE = '131991';
+const SCHOOL      = 'مدرسة الرازي للبنين – الحلقة الثانية (4034)';
+const MARK_OPEN = 'NOVA[', MARK_CLOSE = ']';
+const DATA_VERSION = 2;
+
+const LIKERT = ['غير موافق بشدة','غير موافق','محايد','موافق','موافق بشدة'];
+const EASE   = ['صعبة جداً','صعبة','متوسطة','سهلة','سهلة جداً'];
+const FREQ   = ['دائماً','أحياناً','نادراً'];
+const NOTIFY = ['في الساعة نفسها','في اليوم نفسه','بعد يوم إلى يومين','بعد أكثر من يومين','لا يُبلَّغ غالباً'];
+const NA_LABEL = 'ليس من اختصاصي';
+
+/* مقاييس الفئات (للمقارنة قبل / الآن). كل خيار: [النص، القيمة التقديرية = منتصف الفئة]
+   الفئة المفتوحة (أكثر من...) تأخذ قيمة تقديرية محافظة. */
+const SC = {
+  short:   {unit:'دقيقة',      o:[['أقل من دقيقة',0.5],['1–2 دقيقة',1.5],['3–5 دقائق',4],['6–10 دقائق',8],['أكثر من 10 دقائق',12]]},
+  long:    {unit:'دقيقة',      o:[['أقل من 5 دقائق',3],['5–15 دقيقة',10],['16–30 دقيقة',23],['31–60 دقيقة',45.5],['1–2 ساعة',90],['أكثر من ساعتين',150]]},
+  hweek:   {unit:'ساعة/أسبوع', o:[['أقل من ساعة',0.5],['1–3 ساعات',2],['4–6 ساعات',5],['7–10 ساعات',8.5],['أكثر من 10 ساعات',12]]},
+  hours:   {unit:'ساعة',       o:[['أقل من ساعة',0.5],['1–3 ساعات',2],['4–6 ساعات',5],['7–12 ساعة',9.5],['أكثر من 12 ساعة',15]]},
+  contacts:{unit:'مرة/أسبوع',  o:[['لا يوجد',0],['1–3 مرات',2],['4–10 مرات',7],['11–20 مرة',15.5],['أكثر من 20 مرة',25]]},
+  paper:   {unit:'ورقة/أسبوع', o:[['لا شيء',0],['1–10 أوراق',5.5],['11–30 ورقة',20.5],['31–60 ورقة',45.5],['أكثر من 60 ورقة',75]]},
+  cards:   {unit:'بطاقة/شهر',  o:[['لا شيء',0],['1–5 بطاقات',3],['6–15 بطاقة',10.5],['16–30 بطاقة',23],['أكثر من 30 بطاقة',35]]}
+};
+
+/* أنواع الأسئلة (لا يوجد أي إدخال نصي أو رقمي؛ كلها اختيارات):
+   prange = مقارنة قبل / الآن بفئات من مقياس SC   | pairc = مقارنة قبل / الآن بخيارات وصفية
+   choice = اختيار واحد | multi = اختيار متعدد | likert = موافقة 1-5 | rate = سهولة 1-5
+   agree  = إقرار بالموافقة
+   na: true  = يظهر خيار «ليس من اختصاصي» ويُلغي السؤال
+   better: 'down' (الأقل أفضل) أو 'up' (الأكثر أفضل)                        */
+const BLOCKS = {
+  principal:{ icon:'🏛️', title:'رأي إدارة المدرسة واعتمادها للبوابة', qs:[
+    {id:'p1',t:'likert',q:'أنا مطّلع/ة على مكوّنات بوابة الرازي الذكية وبرامجها المختلفة'},
+    {id:'p2',t:'likert',q:'تخدم البوابة توجّه المدرسة نحو تصفير البيروقراطية وتقليل المعاملات الورقية'},
+    {id:'p3',t:'likert',q:'أسهمت البوابة في تسريع إنجاز الإجراءات المدرسية (الحضور، المخالفات، التقارير)'},
+    {id:'p4',t:'likert',q:'أسهمت البوابة في تسريع التواصل مع أولياء الأمور وزيادته'},
+    {id:'p5',t:'likert',q:'توفّر البوابة لإدارة المدرسة بيانات وتقارير فورية تدعم اتخاذ القرار'},
+    {id:'p6',t:'likert',q:'ترتيبات حماية البيانات مناسبة: الحفظ على OneDrive حساب الوزارة، وصلاحيات محدودة لكل موظف'},
+    {id:'p7',t:'choice',req:1,q:'اعتماد بوابة الرازي الذكية منصةً للعمليات المدرسية',opts:['معتمدة للاستخدام الرسمي في المدرسة','معتمدة مع ملاحظات','غير معتمدة حالياً']},
+    {id:'p8',t:'choice',req:1,q:'الموافقة على مشاركة المدرسة بمشروع البوابة في جائزة NOVA – فئة المؤسسة المتميزة (العمليات المدرسية)',opts:['أوافق','أوافق مع ملاحظات','لا أوافق']},
+    {id:'p9',t:'agree',req:1,q:'إقرار بالتكليف ومنح الصلاحيات',
+      text:'أُقرّ بالموافقة على تكليف الموظف محمود زكي شحادة (الرقم الوظيفي 521950)، معلم مادة الذكاء الاصطناعي والتكنولوجيا، بتشغيل بوابة الرازي الذكية ومتابعتها ومتابعة بياناتها، ومنحه الصلاحيات اللازمة لذلك على ملفات السجلات والبيانات المحفوظة في OneDrive حساب الوزارة.',
+      opts:['أوافق وأمنح الصلاحيات','لا أوافق']},
+    {id:'p10',t:'multi',q:'أبرز أثر لاحظته للبوابة على عمل المدرسة',opts:['سرعة إنجاز الإجراءات','تقليل الورق والمعاملات','سرعة التواصل مع أولياء الأمور','تقارير فورية تدعم القرار','دقة البيانات وتوحيدها','تفرّغ المرشد الأكاديمي للعمل مع الطلاب']}
+  ]},
+  teacher:{ icon:'🧑‍🏫', title:'رصد الغياب والمخالفات والتواصل مع ولي الأمر', qs:[
+    {id:'t1',t:'prange',sc:'short',better:'down',q:'زمن رصد غياب الطلاب في الحصة الواحدة',hint:'المقصود: كشف الغياب الورقي سابقاً مقابل رابط نموذج Forms الآن. لا يشمل رصد الغياب في نظام المنهل الوزاري.',bl:'ورقياً (قبل)',al:'رابط Forms (الآن)'},
+    {id:'t2',t:'prange',sc:'short',better:'down',q:'زمن تسجيل مخالفة سلوكية واحدة',hint:'قبل: إحضار النموذج الورقي وتعبئته وتسليمه · الآن: عبر رابط النموذج',bl:'ورقياً (قبل)',al:'رابط Forms (الآن)'},
+    {id:'t3',t:'choice',q:'قبل البرنامج، كم مرة أجّلت تسجيل مخالفة أو لم تسجّلها لعدم توفر النموذج الورقي أو لضيق الوقت؟',opts:['كثيراً','أحياناً','نادراً','أبداً']},
+    {id:'t4',t:'choice',q:'تقريباً، كم مخالفة سجّلت عبر الرابط منذ بداية العام الدراسي؟',opts:['لا شيء','من 1 إلى 5','من 6 إلى 15','أكثر من 15']},
+    {id:'t5',t:'choice',q:'هل تستخدم البوابة في التواصل مع ولي الأمر لأغراض سلوكية؟',opts:FREQ},
+    {id:'t6',t:'choice',q:'هل تستخدم البوابة في التواصل مع ولي الأمر لأغراض أخرى (غياب، تعزيز، متابعة أكاديمية)؟',opts:FREQ},
+    {id:'t7',t:'prange',sc:'paper',better:'down',q:'عدد الأوراق التي تستخدمها أسبوعياً لكشوف الغياب ونماذج المخالفات',bl:'قبل البوابة',al:'الآن'},
+    {id:'t8',t:'choice',q:'دقة بيانات الحضور والمخالفات الآن مقارنة بالسابق (نقص، أخطاء أسماء، تكرار)',opts:['أسوأ','نفسها','أفضل قليلاً','أفضل كثيراً']}
+  ]},
+  counselor:{ icon:'🧭', title:'برنامج متابعة المخالفات السلوكية', qs:[
+    {id:'c1',t:'prange',sc:'short',better:'down',q:'زمن توثيق مخالفة واحدة في السجل',hint:'قبل: نقلها من الورق إلى Excel يدوياً',bl:'قبل البرنامج',al:'الآن'},
+    {id:'c2',t:'prange',sc:'long',better:'down',q:'زمن إعداد تقرير أو إحصائية أسبوعية للمخالفات',bl:'قبل البرنامج',al:'الآن'},
+    {id:'c3',t:'prange',sc:'hweek',better:'down',q:'الساعات الأسبوعية التي تقضيها في التوثيق والسجلات والتقارير السلوكية',bl:'قبل البرنامج',al:'الآن'},
+    {id:'c4',t:'prange',sc:'contacts',better:'up',q:'عدد مرات تواصلك مع أولياء الأمور أسبوعياً',bl:'قبل البرنامج',al:'الآن'},
+    {id:'c5',t:'pairc',q:'متى يُبلَّغ ولي الأمر عادةً بعد تسجيل المخالفة؟',opts:NOTIFY},
+    {id:'c6',t:'multi',q:'فيمَ تستخدم الوقت الذي وفّره البرنامج؟',opts:['جلسات فردية مع الطلاب','متابعة الحالات المتكررة','التواصل مع أولياء الأمور','برامج وقائية وتوعوية','أخرى']},
+    {id:'c7',t:'likert',q:'تقارير البرنامج وتوصياته تساعدني على اكتشاف الحالات المتكررة مبكراً'},
+    {id:'c8',t:'likert',q:'النماذج الرسمية الصادرة من البرنامج تغني عن تعبئتها يدوياً'},
+    {id:'c9',t:'choice',q:'عدد المخالفات المسجّلة إلكترونياً منذ بداية العام الدراسي (تقريباً)',opts:['أقل من 50','من 50 إلى 100','من 101 إلى 200','أكثر من 200']},
+    {id:'c10',t:'choice',q:'هل لاحظت أخطاء في البرنامج (رقم خاطئ في تقرير، طالب غير ظاهر، بيانات ناقصة)؟',opts:['لم ألاحظ أخطاء','نعم، وعولجت','نعم، وما زالت قائمة']}
+  ]},
+  head:{ icon:'🗂️', title:'متابعة الحضور والتواصل مع ولي الأمر وكلمات المرور', qs:[
+    {id:'h0',t:'choice',req:1,q:'القسم',opts:['الشؤون الأكاديمية','شؤون الطلبة','الخدمات المدرسية']},
+    {id:'h1',t:'prange',sc:'long',better:'down',na:1,q:'زمن إعداد تقرير الحضور والغياب اليومي',bl:'قبل البرنامج',al:'الآن'},
+    {id:'h2',t:'prange',sc:'long',better:'down',na:1,q:'زمن إعداد تقرير الحضور الأسبوعي أو الشامل لفترة',bl:'قبل البرنامج',al:'الآن'},
+    {id:'h3',t:'pairc',na:1,q:'متى يُبلَّغ ولي الأمر عادةً بغياب ابنه؟',opts:NOTIFY},
+    {id:'h4',t:'prange',sc:'contacts',better:'up',na:1,q:'عدد مرات التواصل مع أولياء الأمور أسبوعياً (واتساب أو هاتف)',bl:'قبل البوابة',al:'الآن'},
+    {id:'h5',t:'prange',sc:'short',better:'down',na:1,q:'زمن إرسال رسالة واحدة لولي الأمر',bl:'قبل البوابة',al:'برسالة جاهزة (الآن)'},
+    {id:'h6',t:'prange',sc:'short',better:'down',na:1,q:'زمن تسليم كلمات مرور المنصات لطالب فقد بطاقته',bl:'قبل البوابة',al:'الآن'},
+    {id:'h7',t:'prange',sc:'cards',better:'down',na:1,q:'عدد بطاقات كلمات المرور التي يُعاد طباعتها شهرياً',bl:'قبل البوابة',al:'الآن'},
+    {id:'h8',t:'prange',sc:'hours',better:'down',na:1,q:'الزمن الكلي لتوزيع كلمات المرور على طلاب المدرسة بداية العام',bl:'قبل البوابة',al:'الآن'},
+    {id:'h9',t:'prange',sc:'paper',better:'down',na:1,q:'الأوراق المستهلكة أسبوعياً في متابعة الحضور والتواصل',bl:'قبل البوابة',al:'الآن'},
+    {id:'h10',t:'choice',q:'نسبة أولياء الأمور الذين يمكن الوصول إليهم عبر الواتساب المعتمد',opts:['أقل من 50%','من 50% إلى 75%','من 75% إلى 90%','أكثر من 90%']},
+    {id:'h11',t:'multi',q:'عند تعذّر الوصول إلى ولي الأمر عبر الواتساب، نتواصل معه عن طريق',opts:['اتصال هاتفي','رسالة نصية (SMS)','استدعاء أو لقاء مباشر','عن طريق الطالب','البريد الإلكتروني','لا توجد حالات']}
+  ]},
+  common:{ icon:'⭐', title:'تجربتك العامة مع البوابة', qs:[
+    {id:'k1',t:'choice',req:1,q:'منذ متى تستخدم البوابة أو أحد برامجها؟',opts:['أقل من شهر','من شهر إلى 3 أشهر','منذ بداية 2026-2027','منذ 2025-2026 أو قبل']},
+    {id:'k2',t:'choice',req:1,q:'كم مرة تستخدمها عادةً؟',opts:['عدة مرات يومياً','مرة يومياً','عدة مرات أسبوعياً','نادراً']},
+    {id:'k3',t:'rate',req:1,q:'سهولة استخدام البوابة بشكل عام'},
+    {id:'k4',t:'likert',q:'الصلاحيات الممنوحة لي مناسبة لعملي: أصل إلى ما أحتاجه ولا أصل إلى ما لا يخصني'},
+    {id:'k5',t:'likert',q:'أطمئن إلى أن بيانات الطلاب محفوظة بأمان داخل حساب الوزارة'},
+    {id:'k6',t:'likert',q:'ساهمت البوابة في تقليل الإجراءات الورقية والبيروقراطية في عملي'},
+    {id:'k7',t:'likert',q:'أصبح التواصل مع أولياء الأمور أسرع وأسهل'},
+    {id:'k8',t:'choice',q:'هل واجهت صعوبة في استخدام البوابة؟',opts:['لا','نعم في البداية ثم زالت','نعم وما زالت']},
+    {id:'k9',t:'multi',q:'المساعدة التي احتجتها أو تحتاجها',opts:['لم أحتج','شرح مباشر من زميل','دليل مكتوب أو مصوّر','ورشة قصيرة']},
+    {id:'k10',t:'multi',q:'أبرز ما قدّمته لك البوابة',opts:['توفير الوقت','تقليل الورق','سرعة التواصل مع ولي الأمر','سهولة الوصول إلى البيانات','تقارير وإحصاءات فورية','دقة البيانات']}
+  ]}
+};
+const ROLES = {
+  principal:{label:'مدير/ة المدرسة',sub:'رأي عام واعتماد المنصة',icon:'🏛️',blocks:['principal']},
+  teacher:{label:'معلم/ة',sub:'الغياب، المخالفات، التواصل مع ولي الأمر',icon:'🧑‍🏫',blocks:['teacher','common']},
+  counselor:{label:'المرشد الأكاديمي',sub:'برنامج المخالفات السلوكية',icon:'🧭',blocks:['counselor','common']},
+  head:{label:'رئيس/ة شؤون',sub:'الأكاديمية · الطلابية · الخدمات المدرسية',icon:'🗂️',blocks:['head','common']}
+};
+const ROLE_ORDER = ['principal','teacher','counselor','head'];
+const QIDX = {}; Object.entries(BLOCKS).forEach(([b,o])=>o.qs.forEach(q=>{ QIDX[q.id]={...q,block:b}; if(q.sc){ QIDX[q.id].unit=SC[q.sc].unit; QIDX[q.id].opts=SC[q.sc].o.map(x=>x[0]); } }));
+
+/* =====================================================================
+   أدوات عامة
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const hide = id => $(id).classList.add('hidden');
+const show = id => $(id).classList.remove('hidden');
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n,d=1) => (n==null||isNaN(n))?'—':(Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('en-US');
+const pct = n => (n==null||isNaN(n))?'—':Math.round(n)+'%';
+function b64enc(str){ const bytes=new TextEncoder().encode(str); let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b)); return btoa(bin); }
+function b64dec(b64){ const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return new TextDecoder().decode(bytes); }
+const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const nowStamp = () => { const x=new Date(); return today()+' '+String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0'); };
+const isNA = v => v==='na';
+
+/* =====================================================================
+   واجهة الاستبيان
+   ===================================================================== */
+let role = null, lastMsg = '';
+function renderRoles(){
+  $('roleCards').innerHTML = ROLE_ORDER.map(k=>{const r=ROLES[k];return `<button type="button" class="role" data-r="${k}" onclick="pickRole('${k}')"><span class="ic">${r.icon}</span><b>${r.label}</b><small>${r.sub}</small></button>`;}).join('');
+}
+function pickRole(k){
+  role = k;
+  document.querySelectorAll('.role').forEach(b=>b.classList.toggle('sel',b.dataset.r===k));
+  $('introErr').textContent='';
+}
+function startSurvey(){
+  if(!role){ $('introErr').textContent='اختر صفتك أولاً.'; return; }
+  if($('respName').value.trim().length<3){ $('introErr').textContent='الاسم مطلوب.'; $('respName').focus(); return; }
+  $('blocks').innerHTML = ROLES[role].blocks.map(renderBlock).join('');
+  hide('stepIntro'); show('stepQuestions'); window.scrollTo(0,0); updateProgress();
+}
+function backToIntro(){ hide('stepQuestions'); show('stepIntro'); window.scrollTo(0,0); }
+let qCounter = 0;
+function renderBlock(bk){
+  const b = BLOCKS[bk]; if(bk===ROLES[role].blocks[0]) qCounter=0;
+  return `<section class="card"><h2 class="block-title"><span>${b.icon}</span>${b.title}</h2>${b.qs.map(q=>renderQ(QIDX[q.id],++qCounter)).join('')}</section>`;
+}
+function renderQ(q,n){
+  const head = `<span class="qt"><span class="n">${n}.</span>${esc(q.q)}${q.req?'<span class="req">*</span>':''}${q.hint?`<span class="hint">${esc(q.hint)}</span>`:''}</span>`;
+  const radios=(name,opts,type='radio')=>`<div class="opts">${opts.map((o,i)=>`<label class="opt"><input type="${type}" name="${name}" value="${i}" onchange="updateProgress()"><span>${esc(o)}</span></label>`).join('')}</div>`;
+  const sel=(name,opts)=>`<select name="${name}" onchange="updateProgress()"><option value="">— اختر —</option>${opts.map((o,i)=>`<option value="${i}">${esc(o)}</option>`).join('')}</select>`;
+  let body='';
+  switch(q.t){
+    case 'prange': case 'pairc':
+      body=`<div class="pair"><div class="box"><small>${esc(q.bl||'قبل البرنامج')}</small>${sel(q.id+'_b',q.opts)}</div><div class="box after"><small>${esc(q.al||'الآن')}</small>${sel(q.id+'_a',q.opts)}</div></div>`;
+      if(q.na) body += `<label class="na-chip"><input type="checkbox" name="${q.id}_na" onchange="toggleNA('${q.id}',this.checked)"> ${NA_LABEL}</label>`;
+      break;
+    case 'choice': body=radios(q.id,q.opts); break;
+    case 'multi': body=radios(q.id,q.opts,'checkbox'); break;
+    case 'likert': case 'rate': { const L=q.t==='likert'?LIKERT:EASE; body=`<div class="scale">${L.map((o,i)=>`<label class="opt"><input type="radio" name="${q.id}" value="${i+1}" onchange="updateProgress()"><span><b>${i+1}</b>${o}</span></label>`).join('')}</div>`; break; }
+    case 'agree': body=`<div class="declare">${esc(q.text)}</div>`+radios(q.id,q.opts); break;
+  }
+  return `<div class="q" id="q_${q.id}">${head}${body}</div>`;
+}
+function toggleNA(id,on){
+  document.querySelectorAll(`[name="${id}_b"],[name="${id}_a"]`).forEach(s=>{ s.disabled=on; if(on) s.value=''; });
+  $('q_'+id).classList.toggle('is-na',on); updateProgress();
+}
+function readAnswers(){
+  const a = {};
+  ROLES[role].blocks.forEach(bk=>BLOCKS[bk].qs.forEach(q0=>{
+    const q=QIDX[q0.id];
+    const val = n => { const el=document.querySelector(`[name="${n}"]`); return el? el.value : ''; };
+    switch(q.t){
+      case 'prange': case 'pairc': {
+        const na=document.querySelector(`[name="${q.id}_na"]`);
+        if(na && na.checked){ a[q.id]='na'; break; }
+        const b=val(q.id+'_b'), af=val(q.id+'_a');
+        if(b!==''||af!=='') a[q.id]=[b===''?null:+b, af===''?null:+af];
+        break; }
+      case 'choice': case 'likert': case 'rate': case 'agree': { const el=document.querySelector(`[name="${q.id}"]:checked`); if(el) a[q.id]=+el.value; break; }
+      case 'multi': { const arr=[...document.querySelectorAll(`[name="${q.id}"]:checked`)].map(e=>+e.value); if(arr.length) a[q.id]=arr; break; }
+    }
+  }));
+  return a;
+}
+function updateProgress(){
+  if(!role) return;
+  const total = ROLES[role].blocks.reduce((s,bk)=>s+BLOCKS[bk].qs.length,0);
+  const done = Object.keys(readAnswers()).length;
+  $('progressLabel').textContent = `${ROLES[role].icon} ${ROLES[role].label} · أُجيب ${done} من ${total}`;
+  $('progressBar').style.width = Math.round(done/total*100)+'%';
+}
+function shortAnswer(q,v){
+  if(isNA(v)) return NA_LABEL;
+  const o=q.opts||[];
+  switch(q.t){
+    case 'prange': case 'pairc': return `${o[v[0]]??'—'} ← ${o[v[1]]??'—'}`;
+    case 'choice': case 'agree': return o[v];
+    case 'multi': return v.map(i=>o[i]).join('، ');
+    case 'likert': return `${v}/5 (${LIKERT[v-1]})`;
+    case 'rate': return `${v}/5 (${EASE[v-1]})`;
+  }
+}
+function buildMessage(payload){
+  const lines = [`📋 استبيان بوابة الرازي الذكية`, `الصفة: ${ROLES[payload.r].label}`, `الاسم: ${payload.n}`, `التاريخ: ${payload.d}`];
+  const keys = Object.keys(payload.a).filter(k=>['prange','pairc','choice','agree'].includes(QIDX[k].t)).slice(0,9);
+  keys.forEach(k=>lines.push(`• ${QIDX[k].q.slice(0,55)}${QIDX[k].q.length>55?'…':''}: ${shortAnswer(QIDX[k],payload.a[k])}`));
+  lines.push('', '(السطر التالي خاص بالتحليل، لا تعدّله)');
+  lines.push(MARK_OPEN + b64enc(JSON.stringify(payload)) + MARK_CLOSE);
+  return lines.join('\n');
+}
+function submitSurvey(){
+  document.querySelectorAll('.q.missing').forEach(e=>e.classList.remove('missing'));
+  const a = readAnswers();
+  const missing = [];
+  ROLES[role].blocks.forEach(bk=>BLOCKS[bk].qs.forEach(q=>{ if(q.req && a[q.id]==null) missing.push(q.id); }));
+  if(missing.length){
+    missing.forEach(id=>$('q_'+id).classList.add('missing'));
+    $('formErr').textContent = 'يرجى الإجابة عن الأسئلة المميزة بنجمة (*).';
+    $('q_'+missing[0]).scrollIntoView({behavior:'smooth',block:'center'}); return;
+  }
+  if(!$('consent').checked){ $('formErr').textContent='يرجى الموافقة على استخدام الإجابات قبل الإرسال.'; return; }
+  $('formErr').textContent='';
+  const payload = { v:DATA_VERSION, id: Date.now().toString(36)+Math.random().toString(36).slice(2,7), d: nowStamp(), r: role, n: $('respName').value.trim().slice(0,60), a };
+  lastMsg = buildMessage(payload);
+  openWhatsApp();
+  hide('stepQuestions'); show('stepDone'); window.scrollTo(0,0);
+}
+function openWhatsApp(){ if(lastMsg) window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(lastMsg)}`,'_blank'); }
+function copyText(t, ok){
+  const done=()=>ok&&ok();
+  if(navigator.clipboard&&window.isSecureContext){ navigator.clipboard.writeText(t).then(done).catch(()=>fb()); } else fb();
+  function fb(){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); done();}catch(e){ prompt('انسخ النص:',t); } ta.remove(); }
+}
+function copyResponse(){ copyText(lastMsg, ()=>$('copyMsg').textContent='تم النسخ ✔ أرسله إلى الرقم 0505700908 عبر واتساب.'); }
+
+/* =====================================================================
+   رمز الدخول للتحليل
+   ===================================================================== */
+function askCode(){ show('codeModal'); $('codeInput').value=''; $('codeErr').textContent=''; setTimeout(()=>$('codeInput').focus(),50); }
+function checkCode(){
+  if($('codeInput').value.trim()===ACCESS_CODE){ hide('codeModal'); hide('survey'); show('analysis'); document.querySelector('header.top h1').textContent='تحليل نتائج استبيان بوابة الرازي الذكية'; window.scrollTo(0,0); }
+  else $('codeErr').textContent='الرمز غير صحيح.';
+}
+function closeAnalysis(){ hide('analysis'); show('survey'); document.querySelector('header.top h1').textContent='استبيان تجربة بوابة الرازي الذكية'; }
+
+/* =====================================================================
+   التحليل
+   ===================================================================== */
+let RESP = [], REPORT = '';
+function parsePasted(text){
+  const out=[], seen=new Set(); let bad=0, old=0;
+  const re=/NOVA\[([A-Za-z0-9+/=\s]+?)\]/g; let m;
+  while((m=re.exec(text))){
+    try{
+      const p=JSON.parse(b64dec(m[1].replace(/\s+/g,'')));
+      if(!p||!p.r||!ROLES[p.r]||!p.a){bad++;continue;}
+      if(p.v!==DATA_VERSION){old++;continue;}
+      if(seen.has(p.id)) continue; seen.add(p.id); out.push(p);
+    } catch(e){ bad++; }
+  }
+  return {out,bad,old};
+}
+const mean = a => a.length? a.reduce((s,x)=>s+x,0)/a.length : null;
+const median = a => { if(!a.length) return null; const s=[...a].sort((x,y)=>x-y), h=s.length>>1; return s.length%2? s[h] : (s[h-1]+s[h])/2; };
+const respsFor = qid => RESP.filter(r=>ROLES[r.r].blocks.includes(QIDX[qid].block));
+const naCount = qid => respsFor(qid).filter(r=>isNA(r.a[qid])).length;
+const modeLabel = (arr,opts) => { if(!arr.length) return '—'; const c={}; arr.forEach(i=>c[i]=(c[i]||0)+1); const best=Object.keys(c).sort((x,y)=>c[y]-c[x])[0]; return opts[best]; };
+
+/* مقارنة بالفئات: القيم التقديرية = منتصف الفئة */
+function statRange(qid){
+  const q=QIDX[qid], rs=respsFor(qid), vals=SC[q.sc].o.map(x=>x[1]);
+  const pairs = rs.map(r=>r.a[qid]).filter(v=>Array.isArray(v)&&v[0]!=null&&v[1]!=null);
+  const B=pairs.map(p=>vals[p[0]]), A=pairs.map(p=>vals[p[1]]);
+  const mb=mean(B), ma=mean(A);
+  const change = (mb && mb>0) ? (ma-mb)/mb*100 : null;
+  const improved = pairs.filter(p=> q.better==='up' ? p[1]>p[0] : p[1]<p[0]).length;
+  const same = pairs.filter(p=>p[1]===p[0]).length;
+  return {q, n:pairs.length, mb, ma, change, improved, same, worse:pairs.length-improved-same,
+          modeB:modeLabel(pairs.map(p=>p[0]),q.opts), modeA:modeLabel(pairs.map(p=>p[1]),q.opts),
+          distB:q.opts.map((_,i)=>pairs.filter(p=>p[0]===i).length), distA:q.opts.map((_,i)=>pairs.filter(p=>p[1]===i).length),
+          na:naCount(qid), total:rs.length};
+}
+function statDist(qid, k){
+  const q=QIDX[qid], rs=respsFor(qid); const counts=new Array(k).fill(0); let n=0;
+  rs.forEach(r=>{ const v=r.a[qid]; if(v==null||isNA(v)) return; n++; if(Array.isArray(v)) v.forEach(i=>counts[i]!=null&&counts[i]++); else if(q.t==='likert'||q.t==='rate') counts[v-1]++; else counts[v]++; });
+  return {q,n,counts,total:rs.length};
+}
+function statPairC(qid){
+  const q=QIDX[qid], rs=respsFor(qid), k=q.opts.length; const B=new Array(k).fill(0), A=new Array(k).fill(0); let n=0;
+  rs.forEach(r=>{ const v=r.a[qid]; if(!Array.isArray(v)) return; if(v[0]!=null) B[v[0]]++; if(v[1]!=null) A[v[1]]++; if(v[0]!=null&&v[1]!=null) n++; });
+  const share=(arr)=>{const t=arr.reduce((s,x)=>s+x,0); return t? (arr[0]+arr[1])/t*100 : null;};
+  return {q,n,B,A,sb:share(B),sa:share(A),na:naCount(qid)};
+}
+function changeBadge(s){
+  if(s.change==null) return '<span class="badge neu">—</span>';
+  const good = s.q.better==='up' ? s.change>0 : s.change<0;
+  const sign = s.change>0?'+':'−';
+  return `<span class="badge ${good?'good':'bad'}"><bdi dir="ltr">${sign}${Math.abs(Math.round(s.change))}%</bdi></span>`;
+}
+function hbar(label,val,max,color,text,html,cls){
+  const w = max>0? Math.max(0,val)/max*100 : 0;
+  const tip = String(text).replace(/<[^>]+>/g,'');
+  return `<div class="hbar ${cls||''}" title="${esc(label)}: ${esc(tip)}"><span>${esc(label)}</span><div class="track"><div class="fill" style="width:${w}%;background:${color}"></div></div><span class="val">${html?text:esc(text)}</span></div>`;
+}
+const SQ=['var(--sq1)','var(--sq2)','var(--sq3)','var(--sq4)','var(--sq5)','var(--sq6)'];
+function distRow(lab,arr,opts,colors){
+  const t=arr.reduce((a,b)=>a+b,0)||1;
+  return `<div class="hbar" style="grid-template-columns:110px 1fr"><span>${lab}</span><div class="stack">${arr.map((c,i)=>c?`<div style="width:${c/t*100}%;background:${colors[i]}" title="${esc(opts[i])}: ${c}"></div>`:'').join('')}</div></div>`;
+}
+function renderRange(s){
+  const max=Math.max(s.mb||0,s.ma||0);
+  return `<div class="metric"><h4>${esc(s.q.q)} ${changeBadge(s)}</h4>
+    ${hbar(s.q.bl||'قبل',s.mb||0,max,'var(--before)',fmt(s.mb)+' '+s.q.unit)}
+    ${hbar(s.q.al||'الآن',s.ma||0,max,'var(--after)',fmt(s.ma)+' '+s.q.unit)}
+    <div class="meta">متوسط تقديري من منتصف الفئات · الفئة الأكثر تكراراً: قبل «${esc(s.modeB)}» ← الآن «${esc(s.modeA)}»<br>
+    أفاد ${s.improved} من ${s.n} (${pct(s.n?s.improved/s.n*100:null)}) بتحسّن، و${s.same} دون تغيير، و${s.worse} بتراجع${s.na?` · «${NA_LABEL}»: ${s.na}`:''}</div></div>`;
+}
+const LK_COLORS=['var(--lk1)','var(--lk2)','var(--lk3)','var(--lk4)','var(--lk5)'];
+function renderLikert(s){
+  const L=s.q.t==='likert'?LIKERT:EASE; const tot=s.counts.reduce((a,b)=>a+b,0)||1;
+  const m = s.n? s.counts.reduce((acc,c,i)=>acc+c*(i+1),0)/s.n : null;
+  const agree = s.n? (s.counts[3]+s.counts[4])/s.n*100 : null;
+  return `<div class="metric"><h4>${esc(s.q.q)}</h4>
+   <div class="stack">${s.counts.map((c,i)=>c?`<div style="width:${c/tot*100}%;background:${LK_COLORS[i]}" title="${L[i]}: ${c} (${Math.round(c/tot*100)}%)"></div>`:'').join('')}</div>
+   <div class="legend">${L.map((l,i)=>`<span><i style="background:${LK_COLORS[i]}"></i>${l} (${s.counts[i]})</span>`).join('')}</div>
+   <div class="meta">المتوسط ${fmt(m,2)} من 5 · ${s.q.t==='likert'?'موافق وموافق بشدة':'سهلة وسهلة جداً'} ${pct(agree)} · n = ${s.n}</div></div>`;
+}
+function renderChoice(s){
+  const max=Math.max(...s.counts,1), denom=s.n||1;
+  return `<div class="metric"><h4>${esc(s.q.q)}</h4>
+    ${s.q.opts.map((o,i)=>hbar(o,s.counts[i],max,'var(--after)',`${s.counts[i]} (${Math.round(s.counts[i]/denom*100)}%)`)).join('')}
+    <div class="meta">n = ${s.n}${s.q.t==='multi'?' · النسب من عدد المجيبين (يمكن اختيار أكثر من خيار)':''}</div></div>`;
+}
+function renderPairC(s){
+  return `<div class="metric"><h4>${esc(s.q.q)}</h4>${distRow('قبل البرنامج',s.B,s.q.opts,SQ)}${distRow('الآن',s.A,s.q.opts,SQ)}
+   <div class="legend">${s.q.opts.map((o,i)=>`<span><i style="background:${SQ[i]}"></i>${o}</span>`).join('')}</div>
+   <div class="meta">الإبلاغ في اليوم نفسه أو أسرع: قبل ${pct(s.sb)} ← الآن ${pct(s.sa)} · n = ${s.n}${s.na?` · «${NA_LABEL}»: ${s.na}`:''}</div></div>`;
+}
+function renderQStat(qid){
+  const q=QIDX[qid];
+  switch(q.t){
+    case 'prange': return renderRange(statRange(qid));
+    case 'pairc': return renderPairC(statPairC(qid));
+    case 'likert': case 'rate': return renderLikert(statDist(qid,5));
+    case 'choice': case 'multi': case 'agree': return renderChoice(statDist(qid,q.opts.length));
+  }
+}
+
+function runAnalysis(silent){
+  const txt=$('pasteBox').value;
+  if(!txt.trim()){ if(!silent) $('anaMsg').textContent='الصق الردود أولاً.'; return; }
+  const {out,bad,old}=parsePasted(txt); RESP=out;
+  $('anaMsg').textContent = `تم استخراج ${out.length} رد صالح${bad?` · ${bad} رد تعذّر قراءته (ربما عُدّل نصه)`:''}${old?` · ${old} رد من نسخة سابقة من الاستبيان لم يُحتسب`:''}.`;
+  if(!out.length){ $('anaOut').innerHTML=''; return; }
+  const hideNames=$('hideNames').checked;
+  const byRole = {}; ROLE_ORDER.forEach(k=>byRole[k]=out.filter(r=>r.r===k));
+  const inv = {teacher:+$('invT').value||0,counselor:+$('invC').value||0,head:+$('invH').value||0,principal:+$('invP').value||0};
+  const dates=out.map(r=>r.d).sort(); const period=`${dates[0].slice(0,10)} إلى ${dates[dates.length-1].slice(0,10)}`;
+
+  const rStats = Object.keys(QIDX).filter(k=>QIDX[k].t==='prange').map(statRange).filter(s=>s.n>0);
+  const timeOnly = rStats.filter(s=>s.q.better==='down' && /دقيقة|ساعة/.test(s.q.unit));
+  const paperOnly = rStats.filter(s=>/ورقة|بطاقة/.test(s.q.unit));
+  const avgRed = mean(timeOnly.map(s=>-s.change).filter(x=>x!=null&&!isNaN(x)));
+  const avgPaper = mean(paperOnly.map(s=>-s.change).filter(x=>x!=null&&!isNaN(x)));
+  const lk = id => { const s=statDist(id,5); return s.n? (s.counts[3]+s.counts[4])/s.n*100 : null; };
+  const ease = (()=>{const s=statDist('k3',5); return s.n? s.counts.reduce((a,c,i)=>a+c*(i+1),0)/s.n : null;})();
+  const bdi = t => `<bdi dir="ltr">${t}</bdi>`;
+
+  let h = `<div class="report-head"><h2 style="margin:0">تقرير نتائج استبيان تجربة بوابة الرازي الذكية</h2><div class="muted">${SCHOOL} · جائزة NOVA – فئة المؤسسة المتميزة (العمليات المدرسية) · فترة جمع الردود: ${period} · تاريخ إعداد التقرير: ${today()}</div></div>`;
+  h += `<div class="kpis">
+    <div class="kpi"><div class="v">${out.length}</div><div class="l">إجمالي الردود</div></div>
+    ${ROLE_ORDER.map(k=>`<div class="kpi"><div class="v">${byRole[k].length}${inv[k]?`<small style="font-size:14px;color:var(--soft)"> / ${inv[k]}</small>`:''}</div><div class="l">${ROLES[k].label}${inv[k]?` · نسبة الاستجابة ${pct(byRole[k].length/inv[k]*100)}`:''}</div></div>`).join('')}
+    <div class="kpi"><div class="v">${avgRed!=null?bdi('−'+Math.round(avgRed)+'%'):'—'}</div><div class="l">متوسط خفض زمن الإجراءات (${timeOnly.length} إجراءات)</div></div>
+    <div class="kpi"><div class="v">${avgPaper!=null?bdi('−'+Math.round(avgPaper)+'%'):'—'}</div><div class="l">متوسط خفض الورق والبطاقات المطبوعة</div></div>
+    <div class="kpi"><div class="v">${pct(lk('k6'))}</div><div class="l">يرون أن البوابة قلّلت الورق والبيروقراطية</div></div>
+    <div class="kpi"><div class="v">${pct(lk('k7'))}</div><div class="l">يرون أن التواصل مع ولي الأمر أصبح أسرع</div></div>
+    <div class="kpi"><div class="v">${fmt(ease,1)}<small style="font-size:14px;color:var(--soft)"> /5</small></div><div class="l">متوسط سهولة الاستخدام</div></div>
+  </div>`;
+
+  if(timeOnly.length){
+    h += `<div class="sec-h"><h3>⏱️ خفض زمن الإجراءات (قبل ← الآن)</h3></div><div class="metric"><h4>نسبة خفض متوسط الزمن لكل إجراء</h4>
+      ${[...timeOnly].sort((a,b)=>a.change-b.change).map(s=>hbar(s.q.q.replace(/^زمن /,''), -(s.change||0), 100, 'var(--after)', (s.change!=null?bdi('−'+Math.abs(Math.round(s.change))+'%'):'—')+` <small style="color:var(--faint);font-weight:400">n=${s.n}</small>`, true, 'wide')).join('')}
+      <div class="meta">طول العمود = نسبة الخفض. النسبة = (متوسط الآن − متوسط قبل) ÷ متوسط قبل، والمتوسط تقديري من منتصف الفئة المختارة، ويُحسب على الردود التي أجابت عن الطرفين فقط.</div></div>`;
+  }
+
+  if(byRole.principal.length){
+    const P=BLOCKS.principal.qs;
+    h += `<div class="sec-h"><h3>🏛️ رأي إدارة المدرسة واعتمادها</h3></div>`;
+    byRole.principal.forEach(p=>{
+      h += `<div class="endorse"><b>${esc(p.n||'—')}</b> · ${esc(p.d)}<br>
+        اعتماد البوابة: <b>${esc(QIDX.p7.opts[p.a.p7]??'—')}</b> · المشاركة في الجائزة: <b>${esc(QIDX.p8.opts[p.a.p8]??'—')}</b><br>
+        <span style="font-size:13.5px">${esc(QIDX.p9.text)}</span><br>الإقرار: <b>${esc(QIDX.p9.opts[p.a.p9]??'—')}</b></div>`;
+    });
+    h += `<div class="grid2">${P.filter(q=>!['p7','p8','p9'].includes(q.id)).map(q=>renderQStat(q.id)).join('')}</div>`;
+  }
+  [['teacher','🧑‍🏫 المعلمون'],['counselor','🧭 المرشد الأكاديمي'],['head','🗂️ رؤساء الشؤون'],['common','⭐ التجربة العامة (المعلمون والمرشد ورؤساء الشؤون)']].forEach(([bk,title])=>{
+    const n = bk==='common'? out.filter(r=>r.r!=='principal').length : byRole[bk].length;
+    if(!n) return;
+    h += `<div class="sec-h"><h3>${title} <span class="muted">(${n} رد)</span></h3></div><div class="grid2">${BLOCKS[bk].qs.map(q=>renderQStat(q.id)).join('')}</div>`;
+  });
+  h += `<div class="sec-h"><h3>📄 سجل الردود (مرمّز)</h3></div><div class="metric" style="overflow:auto"><table class="raw"><tr><th>الرمز</th><th>التاريخ والوقت</th><th>الصفة</th>${hideNames?'':'<th>الاسم</th>'}<th>عدد الأسئلة المجاب عنها</th></tr>
+    ${out.map((r,i)=>`<tr><td>R${String(i+1).padStart(2,'0')}</td><td>${esc(r.d)}</td><td>${ROLES[r.r].label}${r.a.h0!=null?' – '+QIDX.h0.opts[r.a.h0]:''}</td>${hideNames?'':`<td>${esc(r.n||'—')}</td>`}<td>${Object.keys(r.a).length}</td></tr>`).join('')}</table>
+    <div class="meta">مصدر البيانات: ردود الاستبيان الإلكتروني المرسلة عبر واتساب، والمستخرجة آلياً من نص الرسائل. البيانات الأصلية الكاملة في ملف CSV.</div></div>`;
+  $('anaOut').innerHTML = h;
+  REPORT = buildReport(out, byRole, inv, period, avgRed, avgPaper);
+  ['btnCopyRep','btnCsv','btnPrint'].forEach(id=>$(id).disabled=false);
+}
+
+function buildReport(out, byRole, inv, period, avgRed, avgPaper){
+  const L=[];
+  L.push('تقرير ملخص – استبيان تجربة بوابة الرازي الذكية');
+  L.push(`${SCHOOL} | جائزة NOVA – العمليات المدرسية`);
+  L.push(`فترة جمع الردود: ${period} | تاريخ التقرير: ${today()}`);
+  L.push(`إجمالي الردود: ${out.length} — ` + ROLE_ORDER.map(k=>`${ROLES[k].label}: ${byRole[k].length}${inv[k]?`/${inv[k]}`:''}`).join('، '));
+  L.push('طريقة الحساب: يختار المستجيب فئة (قبل) وفئة (الآن)، ويُقدَّر المتوسط من منتصف كل فئة. نسبة التغير = (متوسط الآن − متوسط قبل) ÷ متوسط قبل، على الردود المكتملة للطرفين. تُستبعد إجابات «ليس من اختصاصي».');
+  if(avgRed!=null) L.push(`متوسط خفض زمن الإجراءات: ${Math.round(avgRed)}%`);
+  if(avgPaper!=null) L.push(`متوسط خفض الورق والبطاقات: ${Math.round(avgPaper)}%`);
+  L.push('');
+  if(byRole.principal.length){
+    L.push('== رأي إدارة المدرسة ==');
+    byRole.principal.forEach(p=>{
+      L.push(`- ${p.n} (${p.d}): اعتماد البوابة: ${QIDX.p7.opts[p.a.p7]??'—'} | المشاركة في الجائزة: ${QIDX.p8.opts[p.a.p8]??'—'} | إقرار تكليف محمود زكي شحادة (521950) بتشغيل البوابة ومتابعة بياناتها: ${QIDX.p9.opts[p.a.p9]??'—'}`);
+      ['p1','p2','p3','p4','p5','p6'].forEach(id=>{ if(p.a[id]) L.push(`- ${QIDX[id].q}: ${p.a[id]}/5`); });
+      if(p.a.p10) L.push(`- ${QIDX.p10.q}: ${p.a.p10.map(i=>QIDX.p10.opts[i]).join('، ')}`);
+    });
+    L.push('');
+  }
+  const sect=(bk,title)=>{
+    const n = bk==='common'? out.filter(r=>r.r!=='principal').length : byRole[bk].length; if(!n) return;
+    L.push(`== ${title} (${n} رد) ==`);
+    BLOCKS[bk].qs.forEach(q0=>{ const q=QIDX[q0.id];
+      if(q.t==='prange'){ const s=statRange(q.id); if(!s.n&&!s.na) return;
+        L.push(`- ${q.q} [${q.unit}]: قبل ≈${fmt(s.mb)} ← الآن ≈${fmt(s.ma)} | التغير ${s.change!=null?(s.change>0?'+':'')+Math.round(s.change)+'%':'—'} | الفئة الأكثر تكراراً: «${s.modeB}» ← «${s.modeA}» | تحسّن ${s.improved}، دون تغيير ${s.same}، تراجع ${s.worse} | n=${s.n}${s.na?` | ليس من اختصاصي: ${s.na}`:''}`);
+        L.push(`   توزيع قبل: ${q.opts.map((o,i)=>`${o} ${s.distB[i]}`).join('، ')} | توزيع الآن: ${q.opts.map((o,i)=>`${o} ${s.distA[i]}`).join('، ')}`); }
+      else if(q.t==='pairc'){ const s=statPairC(q.id); if(!s.n&&!s.na) return; L.push(`- ${q.q}: الإبلاغ في اليوم نفسه أو أسرع قبل ${pct(s.sb)} ← الآن ${pct(s.sa)} | n=${s.n}${s.na?` | ليس من اختصاصي: ${s.na}`:''} | قبل: ${q.opts.map((o,i)=>o+' '+s.B[i]).join('، ')} | الآن: ${q.opts.map((o,i)=>o+' '+s.A[i]).join('، ')}`); }
+      else if(q.t==='likert'||q.t==='rate'){ const s=statDist(q.id,5); if(!s.n) return; const m=s.counts.reduce((a,c,i)=>a+c*(i+1),0)/s.n; L.push(`- ${q.q}: متوسط ${fmt(m,2)}/5 | موافق أو أعلى ${pct((s.counts[3]+s.counts[4])/s.n*100)} | توزيع 1→5: ${s.counts.join('/')} | n=${s.n}`); }
+      else { const s=statDist(q.id,q.opts.length); if(!s.n) return; L.push(`- ${q.q}: ${q.opts.map((o,i)=>`${o} ${s.counts[i]}`).join('، ')} | n=${s.n}`); }
+    });
+    L.push('');
+  };
+  sect('teacher','المعلمون'); sect('counselor','المرشد الأكاديمي'); sect('head','رؤساء الشؤون'); sect('common','التجربة العامة');
+  return L.join('\n');
+}
+function copyReport(){ copyText(REPORT, ()=>$('anaMsg').textContent='تم نسخ التقرير الملخص ✔ أرسله لـ Claude لإعداد النماذج والأدلة.'); }
+function downloadCSV(){
+  const cols=['الرمز','التاريخ','الصفة','الاسم'];
+  const qids=Object.keys(QIDX);
+  qids.forEach(id=>{ const q=QIDX[id];
+    if(q.t==='prange'){ cols.push(`${id} ${q.q} – قبل (فئة)`,`${id} – قبل (قيمة تقديرية ${q.unit})`,`${id} – الآن (فئة)`,`${id} – الآن (قيمة تقديرية ${q.unit})`); }
+    else if(q.t==='pairc'){ cols.push(`${id} ${q.q} – قبل`, `${id} – الآن`); }
+    else cols.push(`${id} ${q.q}`); });
+  const rows=RESP.map((r,i)=>{
+    const row=['R'+String(i+1).padStart(2,'0'), r.d, ROLES[r.r].label, $('hideNames').checked?'':(r.n||'')];
+    qids.forEach(id=>{ const q=QIDX[id], v=r.a[id];
+      if(q.t==='prange'){ if(isNA(v)) row.push(NA_LABEL,'',NA_LABEL,''); else { const o=SC[q.sc].o; row.push(v&&v[0]!=null?o[v[0]][0]:'', v&&v[0]!=null?o[v[0]][1]:'', v&&v[1]!=null?o[v[1]][0]:'', v&&v[1]!=null?o[v[1]][1]:''); } }
+      else if(q.t==='pairc'){ if(isNA(v)) row.push(NA_LABEL,NA_LABEL); else row.push(v&&v[0]!=null?q.opts[v[0]]:'', v&&v[1]!=null?q.opts[v[1]]:''); }
+      else if(v==null) row.push('');
+      else if(q.t==='choice'||q.t==='agree') row.push(q.opts[v]);
+      else if(q.t==='multi') row.push(v.map(x=>q.opts[x]).join(' | '));
+      else row.push(v);
+    });
+    return row;
+  });
+  const csv='﻿'+[cols,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=`ردود_استبيان_بوابة_الرازي_${today()}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+renderRoles();
+</script>
+</body>
+</html>
